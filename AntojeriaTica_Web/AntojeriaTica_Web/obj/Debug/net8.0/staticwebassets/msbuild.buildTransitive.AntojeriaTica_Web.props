@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\buildMultiTargeting\AntojeriaTica_Web.props" />
+</Project>
