@@ -1,12 +1,37 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Api\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{2CF3CE62-FA07-492C-B2B5-89AF1FC84F05}|AntojeriaTica_Api\\AntojeriaTica_Api.csproj|c:\\users\\adrian\\source\\repos\\puntodeventa_antojeriatica\\antojeriatica_api\\antojeriatica_api\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{2CF3CE62-FA07-492C-B2B5-89AF1FC84F05}|AntojeriaTica_Api\\AntojeriaTica_Api.csproj|solutionrelative:antojeriatica_api\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": ".gitignore",
+              "DocumentMoniker": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Api\\AntojeriaTica_Api\\.gitignore",
+              "RelativeDocumentMoniker": "AntojeriaTica_Api\\.gitignore",
+              "ToolTip": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Api\\AntojeriaTica_Api\\.gitignore",
+              "RelativeToolTip": "AntojeriaTica_Api\\.gitignore",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-05-26T04:07:09.703Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -58,3 +58,5 @@ C:\Users\Adrian\source\repos\PuntoDeVenta_AntojeriaTica\AntojeriaTica_Web\Antoje
 C:\Users\Adrian\source\repos\PuntoDeVenta_AntojeriaTica\AntojeriaTica_Web\AntojeriaTica_Web\obj\Debug\net8.0\AntojeriaTica_Web.pdb
 C:\Users\Adrian\source\repos\PuntoDeVenta_AntojeriaTica\AntojeriaTica_Web\AntojeriaTica_Web\obj\Debug\net8.0\AntojeriaTica_Web.genruntimeconfig.cache
 C:\Users\Adrian\source\repos\PuntoDeVenta_AntojeriaTica\AntojeriaTica_Web\AntojeriaTica_Web\obj\Debug\net8.0\ref\AntojeriaTica_Web.dll
+C:\Users\Adrian\source\repos\PuntoDeVenta_AntojeriaTica\AntojeriaTica_Web\AntojeriaTica_Web\obj\Debug\net8.0\AntojeriaTica_Web.sourcelink.json
+C:\Users\Adrian\source\repos\PuntoDeVenta_AntojeriaTica\AntojeriaTica_Web\AntojeriaTica_Web\bin\Debug\net8.0\wwwroot\Content\vendor\bootstrap-icons\bootstrap-icons.json

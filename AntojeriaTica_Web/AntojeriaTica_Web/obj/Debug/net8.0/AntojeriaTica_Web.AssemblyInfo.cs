@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AntojeriaTica_Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bf18a505c21984a891617d7bcc8f29cce771d30c")]
 [assembly: System.Reflection.AssemblyProductAttribute("AntojeriaTica_Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AntojeriaTica_Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

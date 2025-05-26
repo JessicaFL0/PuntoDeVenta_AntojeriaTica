@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "q1zPp3hmuYkBmtktkA5ccyEJ3JLla0cZPo2XqiOxnfE=",
+  "Hash": "jQtVppnCjTFexyjsV6oQMevIuwVuq+Iwj5VNipq35/Q=",
   "Source": "AntojeriaTica_Web",
   "BasePath": "_content/AntojeriaTica_Web",
   "Mode": "Default",
@@ -53,6 +53,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Web\\AntojeriaTica_Web\\obj\\Debug\\net8.0\\scopedcss\\projectbundle\\AntojeriaTica_Web.bundle.scp.css"
+    },
+    {
+      "Identity": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Web\\AntojeriaTica_Web\\wwwroot\\Content\\vendor\\bootstrap-icons\\bootstrap-icons.json",
+      "SourceId": "AntojeriaTica_Web",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Web\\AntojeriaTica_Web\\wwwroot\\",
+      "BasePath": "_content/AntojeriaTica_Web",
+      "RelativePath": "Content/vendor/bootstrap-icons/bootstrap-icons.json",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "PreserveNewest",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\Content\\vendor\\bootstrap-icons\\bootstrap-icons.json"
     },
     {
       "Identity": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Web\\AntojeriaTica_Web\\wwwroot\\css\\site.css",

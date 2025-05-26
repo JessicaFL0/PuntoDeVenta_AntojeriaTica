@@ -5,6 +5,10 @@
       "PackagePath": "staticwebassets\\AntojeriaTica_Web.bundle.scp.css"
     },
     {
+      "Id": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Web\\AntojeriaTica_Web\\wwwroot\\Content\\vendor\\bootstrap-icons\\bootstrap-icons.json",
+      "PackagePath": "staticwebassets\\Content\\vendor\\bootstrap-icons\\bootstrap-icons.json"
+    },
+    {
       "Id": "C:\\Users\\Adrian\\source\\repos\\PuntoDeVenta_AntojeriaTica\\AntojeriaTica_Web\\AntojeriaTica_Web\\wwwroot\\css\\site.css",
       "PackagePath": "staticwebassets\\css\\site.css"
     },
