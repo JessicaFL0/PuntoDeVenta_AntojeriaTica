@@ -1,0 +1,29 @@
+name: Build .NET Projects
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore and Build AntojeriaTica_Web
+        run: |
+          dotnet restore AntojeriaTica_Web/AntojeriaTica_Web/AntojeriaTica_Web.csproj
+          dotnet build AntojeriaTica_Web/AntojeriaTica_Web/AntojeriaTica_Web.csproj --no-restore --configuration Release
+
+      - name: Restore and Build AntojeriaTica_Api
+        run: |
+          dotnet restore AntojeriaTica_Api/AntojeriaTica_Api/AntojeriaTica_Api.csproj
+          dotnet build AntojeriaTica_Api/AntojeriaTica_Api/AntojeriaTica_Api.csproj --no-restore --configuration Release 
