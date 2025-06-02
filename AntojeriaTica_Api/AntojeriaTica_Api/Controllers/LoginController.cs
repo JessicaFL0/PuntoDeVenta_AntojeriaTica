@@ -10,29 +10,62 @@ namespace AntojeriaTica_Api.Controllers
     [ApiController]
     public class LoginController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
+
+        public LoginController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
         [HttpPost]
         [Route("RegistrarCuenta")]
         public IActionResult RegistrarCuenta(UsuarioModel model)
         {
-            using (var context = new SqlConnection("Server=ZU;Database=AntojeriaTicaDB;Trusted_Connection=True;TrustServerCertificate=True"))
+            try
             {
-                using (SqlCommand comando = new SqlCommand ("sp_InsertarUsuario", context))
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+                
+                using (var context = new SqlConnection(connectionString))
                 {
-                    comando.CommandType = System.Data.CommandType.StoredProcedure;
-                    comando.Parameters.AddWithValue("@Cedula", model.Cedula);
-                    comando.Parameters.AddWithValue("@ContrasenaHash", model.ContrasenaHash);
-                    comando.Parameters.AddWithValue("@NombreCompleto", model.NombreCompleto);
-                    comando.Parameters.AddWithValue("@Correo", model.Correo);
+                    using (SqlCommand comando = new SqlCommand("sp_InsertarUsuario", context))
+                    {
+                        comando.CommandType = System.Data.CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("@NombreCompleto", model.NombreCompleto ?? "");
+                        comando.Parameters.AddWithValue("@Correo", model.Correo ?? "");
+                        comando.Parameters.AddWithValue("@Cedula", model.Cedula ?? "");
+                        comando.Parameters.AddWithValue("@ContrasenaHash", model.ContrasenaHash ?? "");
+                        comando.Parameters.AddWithValue("@Estado", model.Estado ?? "Activo");
+                        comando.Parameters.AddWithValue("@IdRol", model.IdRol ?? 1);
 
-                    context.Open();
-                    comando.ExecuteNonQuery();
+                        context.Open();
+                        var result = comando.ExecuteScalar();
+                        
+                        return Ok(new { 
+                            success = true, 
+                            message = "Usuario registrado exitosamente",
+                            idUsuario = result
+                        });
+                    }
                 }
-                    //var result = context.Execute("sp_InsertarUsuario",
-                    //    new { model.Cedula, model.ContrasenaHash, model.NombreCompleto, model.Correo });
             }
-
-            return Ok();
+            catch (SqlException ex)
+            {
+                // Log del error específico de SQL
+                return StatusCode(500, new { 
+                    success = false, 
+                    message = "Error de base de datos", 
+                    error = ex.Message 
+                });
+            }
+            catch (Exception ex)
+            {
+                // Log del error general
+                return StatusCode(500, new { 
+                    success = false, 
+                    message = "Error interno del servidor", 
+                    error = ex.Message 
+                });
+            }
         }
-
     }
 }
