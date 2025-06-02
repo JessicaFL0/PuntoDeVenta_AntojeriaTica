@@ -1,0 +1,39 @@
+﻿@model AntojeriaTica_Web.Models.UsuarioModel
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-scroller">
+    <div class="container-fluid page-body-wrapper full-page-wrapper">
+        <div class="main-panel">
+            <div class="content-wrapper d-flex align-items-center auth px-0">
+                <div class="row w-100 mx-0">
+                    <div class="col-lg-4 mx-auto">
+                        <div class="auth-form-light text-left py-5 px-4 px-sm-5">
+                            <h2>Soda Antojería Tica</h2>
+                            <h4 class="font-weight-light">Recuperar Contraseña</h4>
+
+                            <form asp-action="RecuperarContraseña" asp-controller="Login" method="post" class="pt-3">
+                                <div class="form-group">
+                                    <input type="email" asp-for="Correo" class="form-control form-control-lg" placeholder="Correo electrónico registrado" />
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-block btn-primary btn-lg font-weight-medium auth-form-btn">
+                                        Enviar enlace de recuperación
+                                    </button>
+                                </div>
+                                <div class="text-center mt-4 font-weight-light">
+                                    ¿Ya tienes cuenta? <a href="@Url.Action("IniciarSesion", "Login")" class="text-primary">Iniciar sesión</a>
+                                </div>
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -8,20 +8,20 @@
     <meta name="description" content="">
     <meta name="keywords" content="">
 
-    <link href="Content/img/favicon.png" rel="icon">
-    <link href="Content/img/apple-touch-icon.png" rel="apple-touch-icon">
+    <link href="@Url.Content("~/Content/img/favicon.png")" rel="icon">
+    <link href="@Url.Content("~/Content/img/apple-touch-icon.png")" rel="apple-touch-icon">
 
     <link href="https://fonts.googleapis.com" rel="preconnect">
     <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
 
-    <link href="/Content/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/Content/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-    <link href="/Content/vendor/aos/aos.css" rel="stylesheet">
-    <link href="/Content/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
-    <link href="/Content/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+    <link href="@Url.Content("~/Content/vendor/bootstrap/css/bootstrap.min.css")" rel="stylesheet">
+    <link href="@Url.Content("~/Content/vendor/bootstrap-icons/bootstrap-icons.css")" rel="stylesheet">
+    <link href="@Url.Content("~/Content/vendor/aos/aos.css")" rel="stylesheet">
+    <link href="@Url.Content("~/Content/vendor/glightbox/css/glightbox.min.css")" rel="stylesheet">
+    <link href="@Url.Content("~/Content/vendor/swiper/swiper-bundle.min.css")" rel="stylesheet">
 
-    <link href="Content/css/main.css" rel="stylesheet">
+    <link href="@Url.Content("~/Content/css/main.css")" rel="stylesheet">
 
 </head>
 
@@ -83,7 +83,7 @@
                     </ul>
                     <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
                 </nav>
-                <a class="btn-book-a-table d-none d-xl-block ms-2" href="#book-a-table">Iniciar Sesión</a>
+                <a class="btn-book-a-table d-none d-xl-block ms-2" href="/Login/IniciarSesion">Iniciar Sesión</a>
             </div>
 
         </div>
@@ -94,7 +94,7 @@
 
         <section id="hero" class="hero section dark-background">
 
-            <img src="Content/img/hero-bg.jpg" alt="" data-aos="fade-in">
+            <img src="@Url.Content("~/Content/img/hero-bg.jpg")" alt="" data-aos="fade-in">
 
             <div class="container">
                 <div class="row">
@@ -119,7 +119,7 @@
 
                 <div class="row gy-4">
                     <div class="col-lg-6 order-1 order-lg-2">
-                        <img src="Content/img/about.jpg" class="img-fluid about-img" alt="">
+                        <img src="@Url.Content("~/Content/img/about.jpg")" class="img-fluid about-img" alt="">
                     </div>
                     <div class="col-lg-6 order-2 order-lg-1 content">
                         <h3>Voluptatem dignissimos provident</h3>
@@ -205,7 +205,7 @@
                 <div class="row isotope-container" data-aos="fade-up" data-aos-delay="200">
 
                     <div class="col-lg-6 menu-item isotope-item filter-starters">
-                        <img src="Content/img/menu/lobster-bisque.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/lobster-bisque.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Lobster Bisque</a><span>$5.95</span>
                         </div>
@@ -215,7 +215,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-specialty">
-                        <img src="Content/img/menu/bread-barrel.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/bread-barrel.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Bread Barrel</a><span>$6.95</span>
                         </div>
@@ -225,7 +225,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-starters">
-                        <img src="Content/img/menu/cake.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/cake.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Crab Cake</a><span>$7.95</span>
                         </div>
@@ -235,7 +235,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-salads">
-                        <img src="Content/img/menu/caesar.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/caesar.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Caesar Selections</a><span>$8.95</span>
                         </div>
@@ -245,7 +245,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-specialty">
-                        <img src="Content/img/menu/tuscan-grilled.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/tuscan-grilled.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Tuscan Grilled</a><span>$9.95</span>
                         </div>
@@ -255,7 +255,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-starters">
-                        <img src="Content/img/menu/mozzarella.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/mozzarella.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Mozzarella Stick</a><span>$4.95</span>
                         </div>
@@ -265,7 +265,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-salads">
-                        <img src="Content/img/menu/greek-salad.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/greek-salad.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Greek Salad</a><span>$9.95</span>
                         </div>
@@ -275,7 +275,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-salads">
-                        <img src="Content/img/menu/spinach-salad.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/spinach-salad.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Spinach Salad</a><span>$9.95</span>
                         </div>
@@ -285,7 +285,7 @@
                     </div>
 
                     <div class="col-lg-6 menu-item isotope-item filter-specialty">
-                        <img src="Content/img/menu/lobster-roll.jpg" class="menu-img" alt="">
+                        <img src="@Url.Content("~/Content/img/menu/lobster-roll.jpg")" class="menu-img" alt="">
                         <div class="menu-content">
                             <a href="#">Lobster Roll</a><span>$12.95</span>
                         </div>
@@ -339,7 +339,7 @@
                                         <p>Et nobis maiores eius. Voluptatibus ut enim blanditiis atque harum sint. Laborum eos ipsum ipsa odit magni. Incidunt hic ut molestiae aut qui. Est repellat minima eveniet eius et quis magni nihil. Consequatur dolorem quaerat quos qui similique accusamus nostrum rem vero</p>
                                     </div>
                                     <div class="col-lg-4 text-center order-1 order-lg-2">
-                                        <img src="Content/img/specials-1.png" alt="" class="img-fluid">
+                                        <img src="@Url.Content("~/Content/img/specials-1.png")" alt="" class="img-fluid">
                                     </div>
                                 </div>
                             </div>
@@ -351,7 +351,7 @@
                                         <p>Ea ipsum voluptatem consequatur quis est. Illum error ullam omnis quia et reiciendis sunt sunt est. Non aliquid repellendus itaque accusamus eius et velit ipsa voluptates. Optio nesciunt eaque beatae accusamus lerode pakto madirna desera vafle de nideran pal</p>
                                     </div>
                                     <div class="col-lg-4 text-center order-1 order-lg-2">
-                                        <img src="Content/img/specials-2.png" alt="" class="img-fluid">
+                                        <img src="@Url.Content("~/Content/img/specials-2.png")" alt="" class="img-fluid">
                                     </div>
                                 </div>
                             </div>
@@ -363,7 +363,7 @@
                                         <p>Iure officiis odit rerum. Harum sequi eum illum corrupti culpa veritatis quisquam. Neque necessitatibus illo rerum eum ut. Commodi ipsam minima molestiae sed laboriosam a iste odio. Earum odit nesciunt fugiat sit ullam. Soluta et harum voluptatem optio quae</p>
                                     </div>
                                     <div class="col-lg-4 text-center order-1 order-lg-2">
-                                        <img src="Content/img/specials-3.png" alt="" class="img-fluid">
+                                        <img src="@Url.Content("~/Content/img/specials-3.png")" alt="" class="img-fluid">
                                     </div>
                                 </div>
                             </div>
@@ -375,7 +375,7 @@
                                         <p>Eaque consequuntur consequuntur libero expedita in voluptas. Nostrum ipsam necessitatibus aliquam fugiat debitis quis velit. Eum ex maxime error in consequatur corporis atque. Eligendi asperiores sed qui veritatis aperiam quia a laborum inventore</p>
                                     </div>
                                     <div class="col-lg-4 text-center order-1 order-lg-2">
-                                        <img src="Content/img/specials-4.png" alt="" class="img-fluid">
+                                        <img src="@Url.Content("~/Content/img/specials-4.png")" alt="" class="img-fluid">
                                     </div>
                                 </div>
                             </div>
@@ -387,7 +387,7 @@
                                         <p>Exercitationem nostrum omnis. Ut reiciendis repudiandae minus. Omnis recusandae ut non quam ut quod eius qui. Ipsum quia odit vero atque qui quibusdam amet. Occaecati sed est sint aut vitae molestiae voluptate vel</p>
                                     </div>
                                     <div class="col-lg-4 text-center order-1 order-lg-2">
-                                        <img src="Content/img/specials-5.png" alt="" class="img-fluid">
+                                        <img src="@Url.Content("~/Content/img/specials-5.png")" alt="" class="img-fluid">
                                     </div>
                                 </div>
                             </div>
@@ -400,7 +400,7 @@
         </section>
         <section id="events" class="events section">
 
-            <img class="slider-bg" src="Content/img/events-bg.jpg" alt="" data-aos="fade-in">
+            <img class="slider-bg" src="@Url.Content("~/Content/img/events-bg.jpg")" alt="" data-aos="fade-in">
 
             <div class="container">
 
@@ -425,7 +425,7 @@
                         <div class="swiper-slide">
                             <div class="row gy-4 event-item">
                                 <div class="col-lg-6">
-                                    <img src="Content/img/events-slider/events-slider-1.jpg" class="img-fluid" alt="">
+                                    <img src="@Url.Content("~/Content/img/events-slider/events-slider-1.jpg")" class="img-fluid" alt="">
                                 </div>
                                 <div class="col-lg-6 pt-4 pt-lg-0 content">
                                     <h3>Birthday Parties</h3>
@@ -452,7 +452,7 @@
                         <div class="swiper-slide">
                             <div class="row gy-4 event-item">
                                 <div class="col-lg-6">
-                                    <img src="Content/img/events-slider/events-slider-2.jpg" class="img-fluid" alt="">
+                                    <img src="@Url.Content("~/Content/img/events-slider/events-slider-2.jpg")" class="img-fluid" alt="">
                                 </div>
                                 <div class="col-lg-6 pt-4 pt-lg-0 content">
                                     <h3>Private Parties</h3>
@@ -479,7 +479,7 @@
                         <div class="swiper-slide">
                             <div class="row gy-4 event-item">
                                 <div class="col-lg-6">
-                                    <img src="Content/img/events-slider/events-slider-3.jpg" class="img-fluid" alt="">
+                                    <img src="@Url.Content("~/Content/img/events-slider/events-slider-3.jpg")" class="img-fluid" alt="">
                                 </div>
                                 <div class="col-lg-6 pt-4 pt-lg-0 content">
                                     <h3>Custom Parties</h3>
@@ -600,7 +600,7 @@
                                     <span>Proin iaculis purus consequat sem cure digni ssim donec porttitora entum suscipit rhoncus. Accusantium quam, ultricies eget id, aliquam eget nibh et. Maecen aliquam, risus at semper.</span>
                                     <i class="bi bi-quote quote-icon-right"></i>
                                 </p>
-                                <img src="Content/img/testimonials/testimonials-1.jpg" class="testimonial-img" alt="">
+                                <img src="@Url.Content("~/Content/img/testimonials/testimonials-1.jpg")" class="testimonial-img" alt="">
                                 <h3>Saul Goodman</h3>
                                 <h4>Ceo &amp; Founder</h4>
                             </div>
@@ -613,7 +613,7 @@
                                     <span>Export tempor illum tamen malis malis eram quae irure esse labore quem cillum quid malis quorum velit fore eram velit sunt aliqua noster fugiat irure amet legam anim culpa.</span>
                                     <i class="bi bi-quote quote-icon-right"></i>
                                 </p>
-                                <img src="Content/img/testimonials/testimonials-2.jpg" class="testimonial-img" alt="">
+                                <img src="@Url.Content("~/Content/img/testimonials/testimonials-2.jpg")" class="testimonial-img" alt="">
                                 <h3>Sara Wilsson</h3>
                                 <h4>Designer</h4>
                             </div>
@@ -626,7 +626,7 @@
                                     <span>Enim nisi quem export duis labore cillum quae magna enim sint quorum nulla quem veniam duis minim tempor labore quem eram duis noster aute amet eram fore quis sint minim.</span>
                                     <i class="bi bi-quote quote-icon-right"></i>
                                 </p>
-                                <img src="Content/img/testimonials/testimonials-3.jpg" class="testimonial-img" alt="">
+                                <img src="@Url.Content("~/Content/img/testimonials/testimonials-3.jpg")" class="testimonial-img" alt="">
                                 <h3>Jena Karlis</h3>
                                 <h4>Store Owner</h4>
                             </div>
@@ -639,7 +639,7 @@
                                     <span>Fugiat enim eram quae cillum dolore dolor amet nulla culpa multos export minim fugiat dolor enim duis veniam ipsum anim magna sunt elit fore quem dolore labore illum veniam.</span>
                                     <i class="bi bi-quote quote-icon-right"></i>
                                 </p>
-                                <img src="Content/img/testimonials/testimonials-4.jpg" class="testimonial-img" alt="">
+                                <img src="@Url.Content("~/Content/img/testimonials/testimonials-4.jpg")" class="testimonial-img" alt="">
                                 <h3>Matt Brandon</h3>
                                 <h4>Freelancer</h4>
                             </div>
@@ -652,7 +652,7 @@
                                     <span>Quis quorum aliqua sint quem legam fore sunt eram irure aliqua veniam tempor noster veniam sunt culpa nulla illum cillum fugiat legam esse veniam culpa fore nisi cillum quid.</span>
                                     <i class="bi bi-quote quote-icon-right"></i>
                                 </p>
-                                <img src="Content/img/testimonials/testimonials-5.jpg" class="testimonial-img" alt="">
+                                <img src="@Url.Content("~/Content/img/testimonials/testimonials-5.jpg")" class="testimonial-img" alt="">
                                 <h3>John Larson</h3>
                                 <h4>Entrepreneur</h4>
                             </div>
@@ -678,56 +678,56 @@
 
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
-                            <a href="Content/img/gallery/gallery-1.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-1.jpg" alt="" class="img-fluid">
+                            <a href="@Url.Content("~/Content/img/gallery/gallery-1.jpg")" class="glightbox" data-gallery="images-gallery">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-1.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
 
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
-                            <a href="Content/img/gallery/gallery-2.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-2.jpg" alt="" class="img-fluid">
+                            <a href="@Url.Content("~/Content/img/gallery/gallery-2.jpg")" class="glightbox" data-gallery="images-gallery">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-2.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
 
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
-                            <a href="Content/img/gallery/gallery-3.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-3.jpg" alt="" class="img-fluid">
+                            <a href="@Url.Content("~/Content/img/gallery/gallery-3.jpg")" class="glightbox" data-gallery="images-gallery">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-3.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
 
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
-                            <a href="Content/img/gallery/gallery-4.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-4.jpg" alt="" class="img-fluid">
+                            <a href="@Url.Content("~/Content/img/gallery/gallery-4.jpg")" class="glightbox" data-gallery="images-gallery">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-4.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
 
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
-                            <a href="Content/img/gallery/gallery-5.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-5.jpg" alt="" class="img-fluid">
+                            <a href="@Url.Content("~/Content/img/gallery/gallery-5.jpg")" class="glightbox" data-gallery="images-gallery">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-5.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
 
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
-                            <a href="Content/img/gallery/gallery-6.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-6.jpg" alt="" class="img-fluid">
+                            <a href="@Url.Content("~/Content/img/gallery/gallery-6.jpg")" class="glightbox" data-gallery="images-gallery">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-6.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
 
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
-                            <a href="Content/img/gallery/gallery-7.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-7.jpg" alt="" class="img-fluid">
+                            <a href="@Url.Content("~/Content/img/gallery/gallery-7.jpg")" class="glightbox" data-gallery="images-gallery">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-7.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
@@ -735,7 +735,7 @@
                     <div class="col-lg-3 col-md-4">
                         <div class="gallery-item">
                             <a href="Content/img/gallery/gallery-8.jpg" class="glightbox" data-gallery="images-gallery">
-                                <img src="Content/img/gallery/gallery-8.jpg" alt="" class="img-fluid">
+                                <img src="@Url.Content("~/Content/img/gallery/gallery-8.jpg")" alt="" class="img-fluid">
                             </a>
                         </div>
                     </div>
@@ -758,7 +758,7 @@
 
                     <div class="col-lg-4" data-aos="fade-up" data-aos-delay="100">
                         <div class="member">
-                            <img src="Content/img/chefs/chefs-1.jpg" class="img-fluid" alt="">
+                            <img src="@Url.Content("~/Content/img/chefs/chefs-1.jpg")" class="img-fluid" alt="">
                             <div class="member-info">
                                 <div class="member-info-content">
                                     <h4>Walter White</h4>
@@ -776,7 +776,7 @@
 
                     <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
                         <div class="member">
-                            <img src="Content/img/chefs/chefs-2.jpg" class="img-fluid" alt="">
+                            <img src="@Url.Content("~/Content/img/chefs/chefs-2.jpg")" class="img-fluid" alt="">
                             <div class="member-info">
                                 <div class="member-info-content">
                                     <h4>Sarah Jhonson</h4>
@@ -794,7 +794,7 @@
 
                     <div class="col-lg-4" data-aos="fade-up" data-aos-delay="300">
                         <div class="member">
-                            <img src="Content/img/chefs/chefs-3.jpg" class="img-fluid" alt="">
+                            <img src="@Url.Content("~/Content/img/chefs/chefs-3.jpg")" class="img-fluid" alt="">
                             <div class="member-info">
                                 <div class="member-info-content">
                                     <h4>William Anderson</h4>
@@ -976,16 +976,16 @@
     <div id="preloader"></div>
 
     <!-- Vendor JS Files -->
-    <script src="Content/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="Content/vendor/php-email-form/validate.js"></script>
-    <script src="Content/vendor/aos/aos.js"></script>
-    <script src="Content/vendor/glightbox/js/glightbox.min.js"></script>
-    <script src="Content/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
-    <script src="Content/vendor/isotope-layout/isotope.pkgd.min.js"></script>
-    <script src="Content/vendor/swiper/swiper-bundle.min.js"></script>
+    <script src="@Url.Content("~/Content/vendor/bootstrap/js/bootstrap.bundle.min.js")"></script>
+    <script src="@Url.Content("~/Content/vendor/php-email-form/validate.js")"></script>
+    <script src="@Url.Content("~/Content/vendor/aos/aos.js")"></script>
+    <script src="@Url.Content("~/Content/vendor/glightbox/js/glightbox.min.js")"></script>
+    <script src="@Url.Content("~/Content/vendor/imagesloaded/imagesloaded.pkgd.min.js")"></script>
+    <script src="@Url.Content("~/Content/vendor/isotope-layout/isotope.pkgd.min.js")"></script>
+    <script src="@Url.Content("~/Content/vendor/swiper/swiper-bundle.min.js")"></script>
 
     <!-- Main JS File -->
-    <script src="Content/js/main.js"></script>
+    <script src="@Url.Content("~/Content/js/main.js")"></script>
 
 </body>
 
