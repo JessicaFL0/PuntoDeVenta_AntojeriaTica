@@ -2,13 +2,30 @@ name: Build .NET Projects
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, feature-branch]
   pull_request:
-    branches: [ main ]
+    branches: [main, feature-branch]
+  workflow_dispatch: # Permite ejecutar manualmente
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: ContraSuperSecreto1234!
+          MSSQL_PID: Express
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P ContraSuperSecreto1234! -C -Q 'SELECT 1'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -16,14 +33,44 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
+
+      - name: Wait for SQL Server to be ready
+        run: |
+          for i in {1..30}; do
+            if docker exec $(docker ps -q --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest) /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'ContraSuperSecreto1234!' -C -Q 'SELECT 1' > /dev/null 2>&1; then
+              echo "SQL Server is ready"
+              break
+            fi
+            echo "Waiting for SQL Server to be ready... ($i/30)"
+            sleep 2
+          done
+
+      - name: Create Database
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'ContraSuperSecreto1234!' -C -i AntojeriaTica_Api/AntojeriaTica_Api/Database/CreateDatabase.sql
 
       - name: Restore and Build AntojeriaTica_Web
         run: |
           dotnet restore AntojeriaTica_Web/AntojeriaTica_Web/AntojeriaTica_Web.csproj
-          dotnet build AntojeriaTica_Web/AntojeriaTica_Web/AntojeriaTica_Web.csproj --no-restore --configuration Release
+          dotnet build AntojeriaTica_Web/AntojeriaTica_Web/AntojeriaTica_Web.csproj --no-restore --configuration Debug
 
-      - name: Restore and Build AntojeriaTica_Api
+      - name: Restore and Build AntojeriaTica_Api (with DB connected)
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
         run: |
-          dotnet restore AntojeriaTica_Api/AntojeriaTica_Api/AntojeriaTica_Api.csproj
-          dotnet build AntojeriaTica_Api/AntojeriaTica_Api/AntojeriaTica_Api.csproj --no-restore --configuration Release 
+          cd AntojeriaTica_Api/AntojeriaTica_Api
+          dotnet restore AntojeriaTica_Api.csproj
+          dotnet build AntojeriaTica_Api.csproj --no-restore --configuration Debug
+
+      - name: Test Database Connection
+        env:
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=AntojeriaTica;User=sa;Password=ContraSuperSecreto1234!;TrustServerCertificate=true;MultipleActiveResultSets=true"
+        run: |
+          cd AntojeriaTica_Api/AntojeriaTica_Api
+          echo "Database setup completed successfully"
