@@ -131,7 +131,7 @@ CREATE PROCEDURE sp_InsertarUsuario
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+
     BEGIN TRY
         -- Verificar si ya existe un usuario con la misma cédula o correo
         IF EXISTS (SELECT 1 FROM Usuario WHERE Cedula = @Cedula)
@@ -139,20 +139,20 @@ BEGIN
             RAISERROR('Ya existe un usuario con esta cédula', 16, 1);
             RETURN;
         END
-        
+
         IF EXISTS (SELECT 1 FROM Usuario WHERE Correo = @Correo)
         BEGIN
             RAISERROR('Ya existe un usuario con este correo', 16, 1);
             RETURN;
         END
-        
+
         -- Insertar el nuevo usuario
         INSERT INTO Usuario (NombreCompleto, Correo, Cedula, ContrasenaHash, Estado, IdRol)
         VALUES (@NombreCompleto, @Correo, @Cedula, @ContrasenaHash, @Estado, @IdRol);
-        
+
         -- Retornar el ID del usuario creado
         SELECT SCOPE_IDENTITY() AS IdUsuario;
-        
+
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
@@ -173,7 +173,6 @@ CREATE PROCEDURE sp_ActualizarUsuario
    @NombreCompleto VARCHAR(100),
    @Correo VARCHAR(100),
    @Cedula VARCHAR(20),
-   @ContrasenaHash VARCHAR(255),
    @Estado VARCHAR(20),
    @IdRol INT
 AS
@@ -182,7 +181,6 @@ BEGIN
    SET NombreCompleto = @NombreCompleto,
        Correo = @Correo,
        Cedula = @Cedula,
-       ContrasenaHash = @ContrasenaHash,
        Estado = @Estado,
        IdRol = @IdRol
    WHERE IdUsuario = @IdUsuario;
@@ -220,4 +218,22 @@ BEGIN
 END
 GO
 
-PRINT 'Base de datos y stored procedures creados exitosamente'; 
+-- Crear o actualizar el stored procedure para obtener usuario por ID
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuario')
+BEGIN
+    DROP PROCEDURE sp_ObtenerUsuario;
+END
+GO
+
+CREATE PROCEDURE sp_ObtenerUsuario
+   @IdUsuario INT
+AS
+BEGIN
+   SELECT u.IdUsuario, u.NombreCompleto, u.Correo, u.Cedula, u.Estado, u.IdRol, r.NombreRol
+   FROM Usuario u
+   INNER JOIN Rol r ON u.IdRol = r.IdRol
+   WHERE u.IdUsuario = @IdUsuario;
+END
+GO
+
+PRINT 'Base de datos y stored procedures creados exitosamente';
