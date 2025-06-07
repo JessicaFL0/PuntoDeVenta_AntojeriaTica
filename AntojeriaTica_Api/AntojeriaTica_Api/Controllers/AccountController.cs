@@ -1,6 +1,7 @@
 ﻿using AntojeriaTica_Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using System.Collections.Generic;
 
 namespace AntojeriaTica_Api.Controllers
 {
@@ -115,6 +116,128 @@ namespace AntojeriaTica_Api.Controllers
                                     message = "Usuario no encontrado"
                                 });
                             }
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error de base de datos",
+                    error = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error interno del servidor",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet]
+        [Route("GetAllUsers")]
+        public IActionResult GetAllUsers()
+        {
+            try
+            {
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+                using (var context = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand comando = new SqlCommand("sp_ObtenerUsuarios", context))
+                    {
+                        comando.CommandType = System.Data.CommandType.StoredProcedure;
+
+                        context.Open();
+                        using (var reader = comando.ExecuteReader())
+                        {
+                            var usuarios = new List<object>();
+
+                            while (reader.Read())
+                            {
+                                var usuario = new
+                                {
+                                    IdUsuario = reader["IdUsuario"],
+                                    NombreCompleto = reader["NombreCompleto"].ToString(),
+                                    Correo = reader["Correo"].ToString(),
+                                    Cedula = reader["Cedula"].ToString(),
+                                    Estado = reader["Estado"].ToString(),
+                                    IdRol = reader["IdRol"],
+                                    NombreRol = reader["NombreRol"].ToString()
+                                };
+                                usuarios.Add(usuario);
+                            }
+
+                            return Ok(new
+                            {
+                                success = true,
+                                message = "Usuarios obtenidos exitosamente",
+                                users = usuarios,
+                                count = usuarios.Count
+                            });
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error de base de datos",
+                    error = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error interno del servidor",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpDelete]
+        [Route("DeleteUser/{idUsuario}")]
+        public IActionResult DeleteUser(int idUsuario)
+        {
+            try
+            {
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+                using (var context = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand comando = new SqlCommand("sp_EliminarUsuario", context))
+                    {
+                        comando.CommandType = System.Data.CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("@IdUsuario", idUsuario);
+
+                        context.Open();
+                        var rowsAffected = comando.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
+                        {
+                            return Ok(new
+                            {
+                                success = true,
+                                message = "Usuario eliminado exitosamente"
+                            });
+                        }
+                        else
+                        {
+                            return NotFound(new
+                            {
+                                success = false,
+                                message = "Usuario no encontrado"
+                            });
                         }
                     }
                 }

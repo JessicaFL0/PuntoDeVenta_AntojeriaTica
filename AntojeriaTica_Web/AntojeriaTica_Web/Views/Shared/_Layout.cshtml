@@ -66,9 +66,8 @@
                         <li class="dropdown">
                             <a href="#"><span>Usuario</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
                             <ul>
+                                <li><a href="@Url.Action("ListarUsuarios", "Login")">Lista de Usuarios</a></li>
                                 <li><a href="@Url.Action("RegistrarCuenta", "Login")">Registrar Cuenta</a></li>
-                                <li><a href="@Url.Action("ActualizarUsuario", "Login", new { id = 1 })">Actualizar
-                                        Usuario</a></li>
                                 <li><a href="@Url.Action("RecuperarContrasena", "Login")">Recuperar Contraseña</a></li>
                                 <li class="dropdown">
                                     <a href="#"><span>Más Opciones</span> <i
@@ -92,6 +91,8 @@
         </div>
 
     </header>
+
+    @RenderBody()
 
     <main class="main">
 
@@ -1088,8 +1089,8 @@
     <!-- Main JS File -->
     <script src="@Url.Content("~/Content/js/main.js")"></script>
 
-</body>
+    @RenderSection("Scripts", required: false)
 
-@RenderBody()
+</body>
 
 </html>

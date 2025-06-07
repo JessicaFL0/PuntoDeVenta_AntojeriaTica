@@ -1,5 +1,6 @@
 ﻿using AntojeriaTica_Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace AntojeriaTica_Web.Controllers
 {
@@ -10,8 +11,6 @@ namespace AntojeriaTica_Web.Controllers
         {
             _httpClient = httpClient;
         }
-
-        #region Registrar Cuenta
 
         [HttpGet]
         public IActionResult RegistrarCuenta()
@@ -53,8 +52,6 @@ namespace AntojeriaTica_Web.Controllers
             return View();
         }
 
-        #endregion
-
         [HttpGet]
         public IActionResult IniciarSesion()
         {
@@ -92,30 +89,86 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        #region Actualizar Usuario
+        [HttpGet]
+        public IActionResult ListarUsuarios()
+        {
+            var usuarios = new List<UsuarioModel>();
+
+            using (var httpClient = new HttpClient())
+            {
+                var url = "http://localhost:5062/api/Account/GetAllUsers";
+                var result = httpClient.GetAsync(url).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    var responseContent = result.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine("API Response: " + responseContent);
+
+                    ViewBag.UsuariosJson = responseContent;
+                }
+                else
+                {
+                    var errorContent = result.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine("API Error: " + errorContent);
+                    ViewBag.Error = "Error al obtener los usuarios: " + errorContent;
+                }
+            }
+
+            return View(usuarios);
+        }
 
         [HttpGet]
         public IActionResult ActualizarUsuario(int? id)
         {
             if (id == null)
             {
-                return RedirectToAction("IniciarSesion");
+                return RedirectToAction("ListarUsuarios");
             }
+
+            var model = new UsuarioModel();
 
             using (var httpClient = new HttpClient())
             {
-                var url = "http://localhost:5062/api/Account/GetUserById";
+                var url = $"http://localhost:5062/api/Account/GetUser/{id}";
                 var result = httpClient.GetAsync(url).Result;
+
                 if (result.IsSuccessStatusCode)
                 {
-                    var user = result.Content.ReadFromJsonAsync<UsuarioModel>().Result;
-                    return View(user);
+                    var responseContent = result.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine("API Response: " + responseContent);
+
+                    try
+                    {
+                        var jsonResponse = System.Text.Json.JsonSerializer.Deserialize<dynamic>(responseContent);
+
+                        var userElement = ((System.Text.Json.JsonElement)jsonResponse).GetProperty("user");
+
+                        model.IdUsuario = userElement.GetProperty("idUsuario").GetInt32();
+                        model.NombreCompleto = userElement.GetProperty("nombreCompleto").GetString();
+                        model.Correo = userElement.GetProperty("correo").GetString();
+                        model.Cedula = userElement.GetProperty("cedula").GetString();
+                        model.Estado = userElement.GetProperty("estado").GetString();
+                        model.IdRol = userElement.GetProperty("idRol").GetInt32();
+
+                        Console.WriteLine($"Usuario cargado: {model.NombreCompleto} - {model.Correo}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Error al deserializar: " + ex.Message);
+                        model.IdUsuario = id;
+                    }
+                    ViewBag.UsuarioJson = responseContent;
                 }
                 else
                 {
-                    return RedirectToAction("IniciarSesion");
+                    var errorContent = result.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine("API Error: " + errorContent);
+                    ViewBag.Error = "Error al obtener los datos del usuario: " + errorContent;
+                    return RedirectToAction("ListarUsuarios");
                 }
             }
+
+            return View(model);
         }
 
         [HttpPost]
@@ -135,12 +188,12 @@ namespace AntojeriaTica_Web.Controllers
                     model.IdRol
                 };
 
-                var result = httpClient.PostAsJsonAsync(url, updateUserPayload).Result;
+                var result = httpClient.PutAsJsonAsync(url, updateUserPayload).Result;
 
                 if (result.IsSuccessStatusCode)
                 {
                     TempData["Mensaje"] = "Usuario actualizado correctamente";
-                    return RedirectToAction("Principal", "Login");
+                    return RedirectToAction("ListarUsuarios", "Login");
                 }
                 else
                 {
@@ -153,6 +206,42 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        #endregion
+        [HttpPost]
+        public IActionResult EliminarUsuario(int id)
+        {
+            Console.WriteLine($"Intentando eliminar usuario con ID: {id}");
+
+            using (var httpClient = new HttpClient())
+            {
+                var url = $"http://localhost:5062/api/Account/DeleteUser/{id}";
+                Console.WriteLine($"URL de eliminación: {url}");
+
+                var result = httpClient.DeleteAsync(url).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    var responseContent = result.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine("API Response: " + responseContent);
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Usuario eliminado correctamente"
+                    });
+                }
+                else
+                {
+                    var errorContent = result.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine("API Error: " + errorContent);
+
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Error al eliminar el usuario: " + errorContent
+                    });
+                }
+            }
+        }
+
     }
 }
