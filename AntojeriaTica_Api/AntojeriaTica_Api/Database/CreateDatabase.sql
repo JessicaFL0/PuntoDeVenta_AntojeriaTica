@@ -236,4 +236,13 @@ BEGIN
 END
 GO
 
+-- Crear  el stored procedure para obtener la lista de roles
+CREATE PROCEDURE sp_ListarRoles
+AS
+BEGIN
+    SELECT IdRol, NombreRol, Descripcion
+    FROM Rol;
+END
+
+
 PRINT 'Base de datos y stored procedures creados exitosamente';

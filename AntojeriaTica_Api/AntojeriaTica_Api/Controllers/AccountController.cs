@@ -1,7 +1,10 @@
 ﻿using AntojeriaTica_Web.Models;
+using AntojeriaTica_Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
+using System.Data;
+
 
 namespace AntojeriaTica_Api.Controllers
 {
@@ -323,5 +326,107 @@ namespace AntojeriaTica_Api.Controllers
                 });
             }
         }
+
+        // roles  
+        [HttpPost]
+        [Route("RegistrarRol")]
+        public IActionResult RegistrarRol(Rol model)
+        {
+            try
+            {
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+                using (var context = new SqlConnection(connectionString))
+                using (var comando = new SqlCommand("sp_InsertarRol", context))
+                {
+                    comando.CommandType = CommandType.StoredProcedure;
+                    comando.Parameters.AddWithValue("@NombreRol", model.Nombre);
+                    comando.Parameters.AddWithValue("@Descripcion", model.Descripcion ?? "");
+
+                    context.Open();
+                    comando.ExecuteNonQuery();
+
+                    return Ok(new { success = true, message = "Rol registrado correctamente" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Error al registrar el rol", error = ex.Message });
+            }
+        }
+
+        [HttpGet("GetAllRoles")]
+        public IActionResult GetAllRoles()
+        {
+            List<Rol> lista = new List<Rol>();
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                using (SqlCommand command = new SqlCommand("sp_ListarRoles", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+                    connection.Open();
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Rol rol = new Rol
+                            {
+                                IdRol = Convert.ToInt32(reader["IdRol"]),
+                                Nombre = reader["NombreRol"]?.ToString() ?? "",
+                                Descripcion = reader["Descripcion"]?.ToString() ?? ""
+                            };
+
+                            lista.Add(rol);
+                        }
+                    }
+                }
+
+                return Ok(lista);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error al obtener los roles", detalles = ex.Message });
+            }
+        }
+        [HttpDelete("EliminarRol/{id}")]
+        public IActionResult EliminarRol(int id)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    connection.Open();
+                   
+                    using (SqlCommand checkCommand = new SqlCommand("SELECT COUNT(*) FROM Usuario WHERE IdRol = @IdRol", connection))
+                    {
+                        checkCommand.Parameters.AddWithValue("@IdRol", id);
+                        int count = (int)checkCommand.ExecuteScalar();
+
+                        if (count > 0)
+                        {
+                            return BadRequest("No se puede eliminar el rol porque está en uso por usuarios.");
+                        }
+                    }
+                                        
+                    using (SqlCommand cmd = new SqlCommand("sp_EliminarRol", connection))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@IdRol", id);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    return Ok(new { mensaje = "Rol eliminado correctamente" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Error al eliminar el rol", detalle = ex.Message });
+            }
+        }
+        //termina rol 
+
     }
 }

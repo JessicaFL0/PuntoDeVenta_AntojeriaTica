@@ -1,12 +1,17 @@
 ﻿using AntojeriaTica_Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using System.Data.SqlClient;
+using System.Data;
 using System.Text.Json;
+
 
 namespace AntojeriaTica_Web.Controllers
 {
     public class LoginController : Controller
     {
         private readonly IHttpClientFactory _httpClient;
+       
         public LoginController(IHttpClientFactory httpClient)
         {
             _httpClient = httpClient;
@@ -242,6 +247,89 @@ namespace AntojeriaTica_Web.Controllers
                 }
             }
         }
+
+        // roles 
+        [HttpGet]
+        public IActionResult RegistrarRol()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult RegistrarRol(Rol model)
+        {
+            using (var httpClient = new HttpClient())
+            {
+                var url = "http://localhost:5062/api/Account/RegistrarRol";
+
+                var result = httpClient.PostAsJsonAsync(url, model).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    TempData["Mensaje"] = "Rol creado correctamente";
+                    return RedirectToAction("RegistrarRol");
+                }
+                else
+                {
+                    var error = result.Content.ReadAsStringAsync().Result;
+                    ViewBag.Error = "Error al registrar el rol: " + error;
+                }
+            }
+
+            return View(model);
+        }
+
+      
+        [HttpGet]
+        public IActionResult ListarRoles()
+        {
+            List<Rol> lista = new List<Rol>();
+
+            using (var httpClient = new HttpClient())
+            {
+                var url = "http://localhost:5062/api/Account/GetAllRoles"; 
+                var result = httpClient.GetAsync(url).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    var json = result.Content.ReadAsStringAsync().Result;
+
+                    lista = JsonSerializer.Deserialize<List<Rol>>(json, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }) ?? new List<Rol>(); 
+                }
+                else
+                {
+                    ViewBag.Error = "No se pueden cargar los roles.";
+                }
+            }
+
+            return View(lista);
+        }
+
+        [HttpGet]
+        public IActionResult EliminarRol(int id)
+        {
+            using (var httpClient = new HttpClient())
+            {
+                var url = $"http://localhost:5062/api/Account/EliminarRol/{id}";
+                var result = httpClient.DeleteAsync(url).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    TempData["Mensaje"] = "Rol eliminado correctamente.";
+                }
+                else
+                {
+                    var errorContent = result.Content.ReadAsStringAsync().Result;
+                    TempData["Error"] = "Error al eliminar el rol: " + errorContent;
+                }
+            }
+
+            return RedirectToAction("ListarRoles");
+        }
+    // roles     
 
     }
 }
