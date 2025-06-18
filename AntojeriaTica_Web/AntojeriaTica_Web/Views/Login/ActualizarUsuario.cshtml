@@ -60,9 +60,17 @@
 
                         <div class="form-group mb-3">
                             <label asp-for="IdRol" class="form-label">Rol</label>
-                            <select asp-for="IdRol" class="form-control">
-                                <option value="1">Administrador</option>
-                                <option value="2">Cliente</option>
+                            <select asp-for="IdRol" class="form-control" required>
+                                <option value="">-- Seleccione un rol --</option>
+                                @if (ViewBag.Roles != null)
+                                {
+                                    @foreach (var rol in (List<AntojeriaTica_Web.Models.Rol>)ViewBag.Roles)
+                                    {
+                                        <option value="@rol.IdRol" selected="@(rol.IdRol == Model.IdRol ? "selected" : null)">
+                                            @rol.Nombre
+                                        </option>
+                                    }
+                                }
                             </select>
                             <span asp-validation-for="IdRol" class="text-danger"></span>
                         </div>

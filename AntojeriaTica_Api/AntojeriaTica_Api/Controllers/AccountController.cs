@@ -1,5 +1,4 @@
-﻿using AntojeriaTica_Web.Models;
-using AntojeriaTica_Api.Models;
+﻿using AntojeriaTica_Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
@@ -53,7 +52,6 @@ namespace AntojeriaTica_Api.Controllers
             }
             catch (SqlException ex)
             {
-                // Log del error específico de SQL
                 return StatusCode(500, new
                 {
                     success = false,
@@ -63,7 +61,6 @@ namespace AntojeriaTica_Api.Controllers
             }
             catch (Exception ex)
             {
-                // Log del error general
                 return StatusCode(500, new
                 {
                     success = false,
@@ -327,7 +324,7 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // roles  
+        // roles
         [HttpPost]
         [Route("RegistrarRol")]
         public IActionResult RegistrarRol(Rol model)
@@ -399,7 +396,7 @@ namespace AntojeriaTica_Api.Controllers
                 using (SqlConnection connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
                 {
                     connection.Open();
-                   
+
                     using (SqlCommand checkCommand = new SqlCommand("SELECT COUNT(*) FROM Usuario WHERE IdRol = @IdRol", connection))
                     {
                         checkCommand.Parameters.AddWithValue("@IdRol", id);
@@ -410,7 +407,7 @@ namespace AntojeriaTica_Api.Controllers
                             return BadRequest("No se puede eliminar el rol porque está en uso por usuarios.");
                         }
                     }
-                                        
+
                     using (SqlCommand cmd = new SqlCommand("sp_EliminarRol", connection))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
@@ -426,7 +423,7 @@ namespace AntojeriaTica_Api.Controllers
                 return StatusCode(500, new { error = "Error al eliminar el rol", detalle = ex.Message });
             }
         }
-        //termina rol 
+        //termina rol
 
     }
 }

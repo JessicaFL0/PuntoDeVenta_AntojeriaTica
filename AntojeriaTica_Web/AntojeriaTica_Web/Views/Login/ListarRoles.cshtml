@@ -1,29 +1,62 @@
 ﻿@model List<AntojeriaTica_Web.Models.Rol>
 
-<h2>Lista de Roles</h2>
+<div class="container mt-4">
+    <h2>Lista de Roles</h2>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Nombre</th>
-            <th>Descripción</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var rol in Model)
-        {
-            <tr>
-                <td>@rol.Nombre</td>
-                <td>@rol.Descripcion</td>
-                <td>
-                    <a class="btn btn-danger" href="@Url.Action("EliminarRol", "Login", new { id = rol.IdRol })"
-                       onclick="return confirm('¿Estás seguro de eliminar este rol?')">
-                        Eliminar
-                    </a>
+    @if (TempData["Mensaje"] != null)
+    {
+        <div class="alert alert-success">@TempData["Mensaje"]</div>
+    }
 
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">@ViewBag.Error</div>
+    }
+
+    <div class="mb-3">
+        <a href="@Url.Action("RegistrarRol", "Login")" class="btn btn-primary">Agregar Nuevo Rol</a>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var rol in Model)
+                {
+                    <tr>
+                        <td>@rol.IdRol</td>
+                        <td>@rol.Nombre</td>
+                        <td>@(string.IsNullOrEmpty(rol.Descripcion) ? "Sin descripción" : rol.Descripcion)</td>
+                        <td>
+                            <a class="btn btn-danger btn-sm" href="@Url.Action("EliminarRol", "Login", new { id = rol.IdRol })"
+                                onclick="return confirm('¿Estás seguro de eliminar este rol?')">
+                                Eliminar
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <h4>No hay roles registrados</h4>
+            <p>No se encontraron roles en la base de datos. <a href="@Url.Action("RegistrarRol", "Login")">Haz clic aquí
+                    para agregar el primer rol</a>.</p>
+        </div>
+    }
+</div>

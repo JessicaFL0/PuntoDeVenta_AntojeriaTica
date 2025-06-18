@@ -11,7 +11,7 @@ namespace AntojeriaTica_Web.Controllers
     public class LoginController : Controller
     {
         private readonly IHttpClientFactory _httpClient;
-       
+
         public LoginController(IHttpClientFactory httpClient)
         {
             _httpClient = httpClient;
@@ -131,15 +131,16 @@ namespace AntojeriaTica_Web.Controllers
             }
 
             var model = new UsuarioModel();
+            List<Rol> roles = new List<Rol>();
 
             using (var httpClient = new HttpClient())
             {
-                var url = $"http://localhost:5062/api/Account/GetUser/{id}";
-                var result = httpClient.GetAsync(url).Result;
+                var userUrl = $"http://localhost:5062/api/Account/GetUser/{id}";
+                var userResult = httpClient.GetAsync(userUrl).Result;
 
-                if (result.IsSuccessStatusCode)
+                if (userResult.IsSuccessStatusCode)
                 {
-                    var responseContent = result.Content.ReadAsStringAsync().Result;
+                    var responseContent = userResult.Content.ReadAsStringAsync().Result;
                     Console.WriteLine("API Response: " + responseContent);
 
                     try
@@ -166,13 +167,35 @@ namespace AntojeriaTica_Web.Controllers
                 }
                 else
                 {
-                    var errorContent = result.Content.ReadAsStringAsync().Result;
+                    var errorContent = userResult.Content.ReadAsStringAsync().Result;
                     Console.WriteLine("API Error: " + errorContent);
                     ViewBag.Error = "Error al obtener los datos del usuario: " + errorContent;
                     return RedirectToAction("ListarUsuarios");
                 }
+
+                // Cargar lista de roles
+                var rolesUrl = "http://localhost:5062/api/Account/GetAllRoles";
+                var rolesResult = httpClient.GetAsync(rolesUrl).Result;
+
+                if (rolesResult.IsSuccessStatusCode)
+                {
+                    var rolesJson = rolesResult.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine("Roles API Response: " + rolesJson);
+
+                    roles = JsonSerializer.Deserialize<List<Rol>>(rolesJson, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }) ?? new List<Rol>();
+
+                    Console.WriteLine($"Roles cargados: {roles.Count}");
+                }
+                else
+                {
+                    Console.WriteLine("Error al cargar roles para el formulario");
+                }
             }
 
+            ViewBag.Roles = roles;
             return View(model);
         }
 
@@ -205,6 +228,20 @@ namespace AntojeriaTica_Web.Controllers
                     var errorContent = result.Content.ReadAsStringAsync().Result;
                     Console.WriteLine("API Response: " + errorContent);
                     ViewBag.Error = "Error al actualizar el usuario. El servidor respondió con: " + errorContent;
+
+                    List<Rol> roles = new List<Rol>();
+                    var rolesUrl = "http://localhost:5062/api/Account/GetAllRoles";
+                    var rolesResult = httpClient.GetAsync(rolesUrl).Result;
+
+                    if (rolesResult.IsSuccessStatusCode)
+                    {
+                        var rolesJson = rolesResult.Content.ReadAsStringAsync().Result;
+                        roles = JsonSerializer.Deserialize<List<Rol>>(rolesJson, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        }) ?? new List<Rol>();
+                    }
+                    ViewBag.Roles = roles;
                 }
             }
 
@@ -248,7 +285,7 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // roles 
+        // roles
         [HttpGet]
         public IActionResult RegistrarRol()
         {
@@ -279,30 +316,46 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-      
+
         [HttpGet]
         public IActionResult ListarRoles()
         {
             List<Rol> lista = new List<Rol>();
 
-            using (var httpClient = new HttpClient())
+            try
             {
-                var url = "http://localhost:5062/api/Account/GetAllRoles"; 
-                var result = httpClient.GetAsync(url).Result;
-
-                if (result.IsSuccessStatusCode)
+                using (var httpClient = new HttpClient())
                 {
-                    var json = result.Content.ReadAsStringAsync().Result;
+                    var url = "http://localhost:5062/api/Account/GetAllRoles";
+                    Console.WriteLine($"Intentando conectar a: {url}");
 
-                    lista = JsonSerializer.Deserialize<List<Rol>>(json, new JsonSerializerOptions
+                    var result = httpClient.GetAsync(url).Result;
+                    Console.WriteLine($"Status Code: {result.StatusCode}");
+
+                    if (result.IsSuccessStatusCode)
                     {
-                        PropertyNameCaseInsensitive = true
-                    }) ?? new List<Rol>(); 
+                        var json = result.Content.ReadAsStringAsync().Result;
+                        Console.WriteLine($"Respuesta de la API: {json}");
+
+                        lista = JsonSerializer.Deserialize<List<Rol>>(json, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        }) ?? new List<Rol>();
+
+                        Console.WriteLine($"Roles deserializados: {lista.Count}");
+                    }
+                    else
+                    {
+                        var errorContent = result.Content.ReadAsStringAsync().Result;
+                        Console.WriteLine($"Error de la API: {errorContent}");
+                        ViewBag.Error = $"Error al cargar roles. Status: {result.StatusCode}. Detalle: {errorContent}";
+                    }
                 }
-                else
-                {
-                    ViewBag.Error = "No se pueden cargar los roles.";
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Excepción: {ex.Message}");
+                ViewBag.Error = $"Error de conexión: {ex.Message}";
             }
 
             return View(lista);
@@ -329,7 +382,7 @@ namespace AntojeriaTica_Web.Controllers
 
             return RedirectToAction("ListarRoles");
         }
-    // roles     
+        // roles
 
     }
 }
