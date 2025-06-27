@@ -3,3 +3,23 @@
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Panel de Control</h4>
+                </div>
+                <div class="card-body">
+                    <p class="h5">Bienvenido, <strong>@ViewBag.Username</strong></p>
+                    @if (!string.IsNullOrEmpty(ViewBag.Role as string))
+                    {
+                        <p>Rol: <span class="badge bg-success">@ViewBag.Role</span></p>
+                    }
+                    <!-- Token eliminado de la interfaz por seguridad -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

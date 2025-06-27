@@ -4,17 +4,35 @@ using Microsoft.Extensions.Configuration;
 using System.Data.SqlClient;
 using System.Data;
 using System.Text.Json;
-
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
+using System.Text;
+using AntojeriaTica_Web.Filters;
 
 namespace AntojeriaTica_Web.Controllers
 {
     public class LoginController : Controller
     {
         private readonly IHttpClientFactory _httpClient;
+        private readonly ILogger<LoginController> _logger;
 
-        public LoginController(IHttpClientFactory httpClient)
+        public LoginController(IHttpClientFactory httpClient, ILogger<LoginController> logger)
         {
             _httpClient = httpClient;
+            _logger = logger;
+        }
+
+        private static string ComputeSha256Hash(string rawData)
+        {
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+                var builder = new StringBuilder();
+                foreach (var b in bytes)
+                    builder.Append(b.ToString("x2"));
+                return builder.ToString();
+            }
         }
 
         [HttpGet]
@@ -35,7 +53,7 @@ namespace AntojeriaTica_Web.Controllers
                     model.NombreCompleto,
                     model.Correo,
                     model.Cedula,
-                    model.ContrasenaHash,
+                    Contrasena = model.ContrasenaHash,
                     Estado = "Activo"
                 };
 
@@ -66,6 +84,16 @@ namespace AntojeriaTica_Web.Controllers
         [HttpGet]
         public IActionResult Principal()
         {
+            var token = HttpContext.Session.GetString("JWToken");
+            if (string.IsNullOrEmpty(token))
+            {
+                return RedirectToAction("IniciarSesion");
+            }
+
+            ViewBag.Username = HttpContext.Session.GetString("NombreCompleto") ?? "Usuario";
+            ViewBag.Token = token;
+            ViewBag.Role = HttpContext.Session.GetString("NombreRol") ?? string.Empty;
+
             return View();
         }
 
@@ -95,6 +123,7 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpGet]
+        [AdminOnly]
         public IActionResult ListarUsuarios()
         {
             var usuarios = new List<UsuarioModel>();
@@ -123,6 +152,7 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpGet]
+        [AdminOnly]
         public IActionResult ActualizarUsuario(int? id)
         {
             if (id == null)
@@ -200,6 +230,7 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpPost]
+        [AdminOnly]
         public IActionResult ActualizarUsuario(UsuarioModel model)
         {
             using (var httpClient = new HttpClient())
@@ -249,6 +280,7 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpPost]
+        [AdminOnly]
         public IActionResult EliminarUsuario(int id)
         {
             Console.WriteLine($"Intentando eliminar usuario con ID: {id}");
@@ -287,12 +319,14 @@ namespace AntojeriaTica_Web.Controllers
 
         // roles
         [HttpGet]
+        [AdminOnly]
         public IActionResult RegistrarRol()
         {
             return View();
         }
 
         [HttpPost]
+        [AdminOnly]
         public IActionResult RegistrarRol(Rol model)
         {
             using (var httpClient = new HttpClient())
@@ -318,6 +352,7 @@ namespace AntojeriaTica_Web.Controllers
 
 
         [HttpGet]
+        [AdminOnly]
         public IActionResult ListarRoles()
         {
             List<Rol> lista = new List<Rol>();
@@ -362,6 +397,7 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpGet]
+        [AdminOnly]
         public IActionResult EliminarRol(int id)
         {
             using (var httpClient = new HttpClient())
@@ -384,5 +420,71 @@ namespace AntojeriaTica_Web.Controllers
         }
         // roles
 
+        [HttpPost]
+        public IActionResult IniciarSesion(UsuarioModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            using (var httpClient = new HttpClient())
+            {
+                var url = "http://localhost:5062/api/Account/Login";
+
+                var payload = new
+                {
+                    correo = model.Correo,
+                    contrasena = model.ContrasenaHash
+                };
+
+                var response = httpClient.PostAsJsonAsync(url, payload).Result;
+
+                var responseContent = response.Content.ReadAsStringAsync().Result;
+                _logger.LogInformation($"Respuesta del API de login: {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var apiResponse = JsonSerializer.Deserialize<LoginApiResponse>(responseContent, options);
+
+                        if (apiResponse != null && apiResponse.Success)
+                        {
+                            _logger.LogInformation("Login exitoso para {Correo}. Token recibido.", model.Correo);
+                            _logger.LogDebug("JWT: {Token}", apiResponse.Token);
+
+                            HttpContext.Session.SetString("JWToken", apiResponse.Token);
+                            if (apiResponse.User != null)
+                            {
+                                HttpContext.Session.SetInt32("IdUsuario", apiResponse.User.IdUsuario);
+                                HttpContext.Session.SetInt32("IdRol", apiResponse.User.IdRol);
+                                HttpContext.Session.SetString("NombreRol", apiResponse.User.NombreRol ?? string.Empty);
+                                HttpContext.Session.SetString("NombreCompleto", apiResponse.User.NombreCompleto ?? string.Empty);
+                            }
+
+                            return RedirectToAction("Principal", "Login");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Login fallido para {Correo}. success=false en respuesta.", model.Correo);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error al deserializar la respuesta del login");
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Login fallido con status {StatusCode} para {Correo}", response.StatusCode, model.Correo);
+                }
+
+                ViewBag.Error = "Credenciales inválidas o error al iniciar sesión.";
+            }
+
+            return View(model);
+        }
     }
 }

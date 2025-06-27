@@ -236,6 +236,13 @@ BEGIN
 END
 GO
 
+-- Drop and recreate sp_ListarRoles safely
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ListarRoles')
+BEGIN
+    DROP PROCEDURE sp_ListarRoles;
+END
+GO
+
 -- Crear  el stored procedure para obtener la lista de roles
 CREATE PROCEDURE sp_ListarRoles
 AS
@@ -243,6 +250,146 @@ BEGIN
     SELECT IdRol, NombreRol, Descripcion
     FROM Rol;
 END
+GO
 
+-- Crear la tabla Producto si no existe
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Producto' AND xtype='U')
+BEGIN
+    CREATE TABLE Producto (
+        IdProducto INT PRIMARY KEY IDENTITY(1,1),
+        Codigo VARCHAR(50) UNIQUE NOT NULL,
+        Nombre VARCHAR(100) NOT NULL,
+        Descripcion TEXT NULL,
+        PrecioUnitario DECIMAL(18,2) NOT NULL,
+        Existencias INT NOT NULL
+    );
+END
+GO
+
+-- Crear la tabla HistorialProducto si no existe
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialProducto' AND xtype='U')
+BEGIN
+    CREATE TABLE HistorialProducto (
+        IdHistorial INT PRIMARY KEY IDENTITY(1,1),
+        IdProducto INT NOT NULL,
+        Fecha DATETIME NOT NULL DEFAULT(GETDATE()),
+        Usuario VARCHAR(100) NOT NULL,
+        Cambio TEXT NOT NULL,
+        FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
+    );
+END
+GO
+
+-- Stored procedures Producto
+
+-- Insertar
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProducto')
+BEGIN
+    DROP PROCEDURE sp_InsertarProducto;
+END
+GO
+CREATE PROCEDURE sp_InsertarProducto
+    @Codigo VARCHAR(50),
+    @Nombre VARCHAR(100),
+    @Descripcion TEXT,
+    @PrecioUnitario DECIMAL(18,2),
+    @Existencias INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM Producto WHERE Codigo = @Codigo)
+    BEGIN
+        RAISERROR('Ya existe un producto con este código',16,1);
+        RETURN;
+    END
+
+    INSERT INTO Producto (Codigo, Nombre, Descripcion, PrecioUnitario, Existencias)
+    VALUES (@Codigo, @Nombre, @Descripcion, @PrecioUnitario, @Existencias);
+
+    SELECT SCOPE_IDENTITY() AS IdProducto;
+END
+GO
+
+-- Actualizar
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ActualizarProducto')
+BEGIN
+    DROP PROCEDURE sp_ActualizarProducto;
+END
+GO
+CREATE PROCEDURE sp_ActualizarProducto
+    @IdProducto INT,
+    @Nombre VARCHAR(100),
+    @Descripcion TEXT,
+    @PrecioUnitario DECIMAL(18,2),
+    @Existencias INT
+AS
+BEGIN
+    UPDATE Producto
+    SET Nombre = @Nombre,
+        Descripcion = @Descripcion,
+        PrecioUnitario = @PrecioUnitario,
+        Existencias = @Existencias
+    WHERE IdProducto = @IdProducto;
+END
+GO
+
+-- Obtener productos
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerProductos')
+BEGIN
+    DROP PROCEDURE sp_ObtenerProductos;
+END
+GO
+CREATE PROCEDURE sp_ObtenerProductos
+AS
+BEGIN
+    SELECT * FROM Producto;
+END
+GO
+
+-- Obtener producto por id
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerProducto')
+BEGIN
+    DROP PROCEDURE sp_ObtenerProducto;
+END
+GO
+CREATE PROCEDURE sp_ObtenerProducto
+    @IdProducto INT
+AS
+BEGIN
+    SELECT * FROM Producto WHERE IdProducto = @IdProducto;
+END
+GO
+
+-- Insertar historial
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProductoHistorial')
+BEGIN
+    DROP PROCEDURE sp_InsertarProductoHistorial;
+END
+GO
+CREATE PROCEDURE sp_InsertarProductoHistorial
+    @IdProducto INT,
+    @Usuario VARCHAR(100),
+    @Cambio TEXT
+AS
+BEGIN
+    INSERT INTO HistorialProducto (IdProducto, Usuario, Cambio)
+    VALUES (@IdProducto, @Usuario, @Cambio);
+END
+GO
+
+-- Obtener historial producto
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
+BEGIN
+    DROP PROCEDURE sp_ObtenerHistorialProducto;
+END
+GO
+CREATE PROCEDURE sp_ObtenerHistorialProducto
+    @IdProducto INT
+AS
+BEGIN
+    SELECT * FROM HistorialProducto WHERE IdProducto = @IdProducto ORDER BY Fecha DESC;
+END
+GO
 
 PRINT 'Base de datos y stored procedures creados exitosamente';

@@ -3,7 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using System.Data;
-
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using BCryptNet = BCrypt.Net.BCrypt;
 
 namespace AntojeriaTica_Api.Controllers
 {
@@ -20,7 +24,7 @@ namespace AntojeriaTica_Api.Controllers
 
         [HttpPost]
         [Route("RegistrarCuenta")]
-        public IActionResult RegistrarCuenta(UsuarioModel model)
+        public IActionResult RegistrarCuenta(RegisterRequest model)
         {
             try
             {
@@ -34,7 +38,8 @@ namespace AntojeriaTica_Api.Controllers
                         comando.Parameters.AddWithValue("@NombreCompleto", model.NombreCompleto ?? "");
                         comando.Parameters.AddWithValue("@Correo", model.Correo ?? "");
                         comando.Parameters.AddWithValue("@Cedula", model.Cedula ?? "");
-                        comando.Parameters.AddWithValue("@ContrasenaHash", model.ContrasenaHash ?? "");
+                        var passwordHash = BCryptNet.HashPassword(model.Contrasena);
+                        comando.Parameters.AddWithValue("@ContrasenaHash", passwordHash);
                         comando.Parameters.AddWithValue("@Estado", model.Estado ?? "Activo");
                         comando.Parameters.AddWithValue("@IdRol", model.IdRol ?? 1);
 
@@ -321,6 +326,88 @@ namespace AntojeriaTica_Api.Controllers
                     message = "Error interno del servidor",
                     error = ex.Message
                 });
+            }
+        }
+
+        [HttpPost]
+        [Route("Login")]
+        public IActionResult Login([FromBody] LoginRequest request)
+        {
+            try
+            {
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    string query = @"SELECT u.IdUsuario, u.ContrasenaHash, u.NombreCompleto, u.IdRol, r.NombreRol
+                                      FROM Usuario u
+                                      INNER JOIN Rol r ON u.IdRol = r.IdRol
+                                      WHERE u.Correo = @Correo";
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Correo", request.Correo ?? string.Empty);
+
+                        connection.Open();
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                            {
+                                return Unauthorized(new { success = false, message = "Credenciales inválidas" });
+                            }
+
+                            int idUsuario = Convert.ToInt32(reader["IdUsuario"]);
+                            string storedHash = reader["ContrasenaHash"].ToString() ?? string.Empty;
+                            string nombreCompleto = reader["NombreCompleto"].ToString() ?? string.Empty;
+                            int idRol = Convert.ToInt32(reader["IdRol"]);
+                            string nombreRol = reader["NombreRol"].ToString() ?? string.Empty;
+
+                            if (!BCryptNet.Verify(request.Contrasena, storedHash))
+                            {
+                                return Unauthorized(new { success = false, message = "Credenciales inválidas" });
+                            }
+
+                            var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:SecretKey"] ?? string.Empty);
+
+                            var tokenDescriptor = new SecurityTokenDescriptor
+                            {
+                                Subject = new ClaimsIdentity(new[]
+                                {
+                                    new Claim(JwtRegisteredClaimNames.Sub, idUsuario.ToString()),
+                                    new Claim(JwtRegisteredClaimNames.Email, request.Correo ?? string.Empty),
+                                    new Claim(ClaimTypes.Name, nombreCompleto),
+                                    new Claim(ClaimTypes.Role, nombreRol)
+                                }),
+                                Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:ExpirationMinutes"] ?? "60")),
+                                Issuer = _configuration["JwtSettings:Issuer"],
+                                Audience = _configuration["JwtSettings:Audience"],
+                                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                            };
+
+                            var tokenHandler = new JwtSecurityTokenHandler();
+                            var token = tokenHandler.CreateToken(tokenDescriptor);
+                            var tokenString = tokenHandler.WriteToken(token);
+
+                            return Ok(new
+                            {
+                                success = true,
+                                token = tokenString,
+                                user = new
+                                {
+                                    idUsuario,
+                                    nombreCompleto,
+                                    correo = request.Correo,
+                                    idRol,
+                                    nombreRol
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Error interno del servidor", error = ex.Message });
             }
         }
 
