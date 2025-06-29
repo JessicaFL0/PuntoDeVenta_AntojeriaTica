@@ -18,5 +18,14 @@ namespace AntojeriaTica_Api.Models
         public string Cambio { get; set; } = string.Empty;
     }
 
+public class ProductoConEstado
+{
+    public int IdProducto { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string? Descripcion { get; set; }
+    public decimal PrecioUnitario { get; set; }
+    public int Existencias { get; set; }
+    public string EstadoStock { get; set; } = string.Empty;
+}
 
 }

@@ -1,6 +1,7 @@
-using AntojeriaTica_Web.Filters;
+﻿using AntojeriaTica_Web.Filters;
 using AntojeriaTica_Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Http;
 using System.Text.Json;
 
 namespace AntojeriaTica_Web.Controllers
@@ -131,7 +132,7 @@ namespace AntojeriaTica_Web.Controllers
         }
 
 
-        /// yendry 
+       
         [HttpPost]
         public IActionResult EliminarProducto(int id)
         {
@@ -172,14 +173,49 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpGet]
+        private List<ProductoModel> ObtenerProductos()
+        {
+            List<ProductoModel> productos = new();
+            using var client = new HttpClient();
+            var response = client.GetAsync("http://localhost:5062/api/Producto/ListarProductos").Result;
+            if (response.IsSuccessStatusCode)
+            {
+                var json = response.Content.ReadAsStringAsync().Result;
+                productos = JsonSerializer.Deserialize<List<ProductoModel>>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new();
+            }
+            return productos;
+        }
+
+        [HttpGet]
         public IActionResult RegistrarMovimiento()
         {
+            List<ProductoModel> productos = new();
+            using var client = new HttpClient();
+            var response = client.GetAsync("http://localhost:5062/api/Producto/ListarProductos").Result;
+            if (response.IsSuccessStatusCode)
+            {
+                var json = response.Content.ReadAsStringAsync().Result;
+                productos = JsonSerializer.Deserialize<List<ProductoModel>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+
+            ViewBag.Productos = productos;
             return View();
         }
 
         [HttpPost]
         public IActionResult RegistrarMovimiento(MovimientoInventario model)
         {
+            if (model.CantidadEsperada.HasValue && model.Cantidad != model.CantidadEsperada.Value)
+            {
+                ViewBag.Error = "La cantidad recibida no coincide con la esperada.";
+                ViewData["Titulo"] = "Registrar Movimiento";
+                ViewData["Productos"] = ObtenerProductos(); 
+                return View(model);
+            }
+
             using var client = new HttpClient();
             var response = client.PostAsJsonAsync("http://localhost:5062/api/Producto/RegistrarMovimiento", model).Result;
             var json = response.Content.ReadAsStringAsync().Result;
@@ -187,7 +223,7 @@ namespace AntojeriaTica_Web.Controllers
             if (response.IsSuccessStatusCode)
             {
                 TempData["Mensaje"] = "Movimiento registrado correctamente";
-                return RedirectToAction("ListarProductos");
+                return RedirectToAction("EstadoInventario");
             }
 
             try
@@ -200,8 +236,40 @@ namespace AntojeriaTica_Web.Controllers
                 ViewBag.Error = "Error al registrar el movimiento.";
             }
 
+            ViewData["Titulo"] = "Registrar Movimiento";
+            ViewData["Productos"] = ObtenerProductos();
             return View(model);
         }
+
+
+
+        [HttpGet]
+        public async Task<IActionResult> EstadoInventario(string filtro = "todos")
+        {
+            using var client = new HttpClient();
+            var response = await client.GetAsync("http://localhost:5062/api/Producto/ListarProductosConEstado");
+
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ViewBag.Error = "No se pudo obtener la información del inventario.";
+                return View(new List<ProductoConEstadoViewModel>());
+            }
+
+            var products = await response.Content.ReadFromJsonAsync<List<ProductoConEstadoViewModel>>();
+            if (products == null) products = new List<ProductoConEstadoViewModel>();
+
+            if (filtro == "bajo")
+            {
+                products = products
+                    .Where(p => p.EstadoStock == "Agotado" || p.EstadoStock == "Bajo stock")
+                    .ToList();
+            }
+
+            return View(products);
+        }
+
+
 
     }
 }

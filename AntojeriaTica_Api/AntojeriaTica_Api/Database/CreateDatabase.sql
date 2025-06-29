@@ -408,7 +408,7 @@ PRINT 'Base de datos y stored procedures creados exitosamente';
 
 IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
 BEGIN
-    DROP PROCEDURE sp_ObtenerHistorialProducto;
+    DROP PROCEDURE sp_EliminarProducto;
 END
 GO
 CREATE PROCEDURE sp_EliminarProducto
@@ -429,7 +429,7 @@ END
 
 IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
 BEGIN
-    DROP PROCEDURE sp_ObtenerHistorialProducto;
+    DROP PROCEDURE sp_RegistrarMovimientoInventarioo;
 END
 GO
 CREATE PROCEDURE sp_RegistrarMovimientoInventario
@@ -461,4 +461,28 @@ BEGIN
 
     INSERT INTO MovimientoInventario (IdProducto, TipoMovimiento, Cantidad)
     VALUES (@IdProducto, @TipoMovimiento, @Cantidad);
+END
+
+-- Productos con estado 
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
+BEGIN
+    DROP PROCEDURE sp_ObtenerProductosConEstado;
+END
+GO
+CREATE PROCEDURE  sp_ObtenerProductosConEstado
+AS
+BEGIN
+    SELECT 
+        IdProducto,
+        Nombre,
+        Descripcion,
+        PrecioUnitario,
+        Existencias,
+        CASE 
+            WHEN Existencias = 0 THEN 'Agotado'
+            WHEN Existencias <= 5 THEN 'Bajo stock'
+            ELSE 'Disponible'
+        END AS EstadoStock
+    FROM Producto
 END

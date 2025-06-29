@@ -238,6 +238,41 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
+        [HttpGet("ListarProductosConEstado")]
+        public IActionResult ListarProductosConEstado()
+        {
+            try
+            {
+                using var connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+                using var cmd = new SqlCommand("sp_ObtenerProductosConEstado", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                connection.Open();
+                using var reader = cmd.ExecuteReader();
+                var lista = new List<ProductoConEstado>();
+
+                while (reader.Read())
+                {
+                    lista.Add(new ProductoConEstado
+                    {
+                        IdProducto = (int)reader["IdProducto"],
+                        Nombre = reader["Nombre"].ToString() ?? string.Empty,
+                        Descripcion = reader["Descripcion"].ToString(),
+                        PrecioUnitario = (decimal)reader["PrecioUnitario"],
+                        Existencias = (int)reader["Existencias"],
+                        EstadoStock = reader["EstadoStock"].ToString() ?? string.Empty
+                    });
+                }
+
+                return Ok(lista);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Error interno", error = ex.Message });
+            }
+        }
 
 
     }
