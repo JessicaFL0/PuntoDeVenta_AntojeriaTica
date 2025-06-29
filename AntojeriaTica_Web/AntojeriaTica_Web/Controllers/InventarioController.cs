@@ -129,5 +129,79 @@ namespace AntojeriaTica_Web.Controllers
             }
             return View(model);
         }
+
+
+        /// yendry 
+        [HttpPost]
+        public IActionResult EliminarProducto(int id)
+        {
+            using var client = new HttpClient();
+            var url = $"http://localhost:5062/api/Producto/{id}";
+            var response = client.DeleteAsync(url).Result;
+
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["Mensaje"] = "Producto eliminado correctamente";
+            }
+            else
+            {
+                var json = response.Content.ReadAsStringAsync().Result;
+                try
+                {
+                    var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("message", out var msgEl))
+                    {
+                        TempData["Error"] = msgEl.GetString();
+                    }
+                    else if (doc.RootElement.TryGetProperty("error", out var errEl))
+                    {
+                        TempData["Error"] = errEl.GetString();
+                    }
+                    else
+                    {
+                        TempData["Error"] = $"Error ({response.StatusCode}) al eliminar el producto: {json}";
+                    }
+                }
+                catch
+                {
+                    TempData["Error"] = $"Error ({response.StatusCode}) al eliminar el producto: {json}";
+                }
+            }
+
+            return RedirectToAction("ListarProductos");
+        }
+
+        [HttpGet]
+        public IActionResult RegistrarMovimiento()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult RegistrarMovimiento(MovimientoInventario model)
+        {
+            using var client = new HttpClient();
+            var response = client.PostAsJsonAsync("http://localhost:5062/api/Producto/RegistrarMovimiento", model).Result;
+            var json = response.Content.ReadAsStringAsync().Result;
+
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["Mensaje"] = "Movimiento registrado correctamente";
+                return RedirectToAction("ListarProductos");
+            }
+
+            try
+            {
+                var doc = JsonDocument.Parse(json);
+                ViewBag.Error = doc.RootElement.GetProperty("message").GetString();
+            }
+            catch
+            {
+                ViewBag.Error = "Error al registrar el movimiento.";
+            }
+
+            return View(model);
+        }
+
     }
 }

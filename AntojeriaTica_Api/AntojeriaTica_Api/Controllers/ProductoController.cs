@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using System.Data;
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
 
 namespace AntojeriaTica_Api.Controllers
 {
@@ -178,5 +179,70 @@ namespace AntojeriaTica_Api.Controllers
                 return StatusCode(500, new { success = false, message = "Error interno", error = ex.Message });
             }
         }
+        //ELIMINAR PRODUCTO
+        [HttpDelete("{id}")]
+        public IActionResult EliminarProducto(int id)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+                using var cmd = new SqlCommand("sp_EliminarProducto", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue("@IdProducto", id);
+                connection.Open();
+                cmd.ExecuteNonQuery();
+
+                return Ok(new { success = true, message = "Producto eliminado correctamente" });
+            }
+            catch (SqlException ex) when (ex.Number == 50000)
+            {
+                
+                return Conflict(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Error interno", error = ex.Message });
+            }
+        }
+
+        // REGISTRAR MOVIMIENT
+        [HttpPost("RegistrarMovimiento")]
+        public IActionResult RegistrarMovimiento([FromBody] MovimientoInventario model)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+                using var cmd = new SqlCommand("sp_RegistrarMovimientoInventario", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                cmd.Parameters.AddWithValue("@IdProducto", model.IdProducto);
+                cmd.Parameters.AddWithValue("@TipoMovimiento", model.TipoMovimiento);
+                cmd.Parameters.AddWithValue("@Cantidad", model.Cantidad);
+
+                conn.Open();
+                cmd.ExecuteNonQuery();
+
+                return Ok(new { success = true, message = "Movimiento registrado correctamente" });
+            }
+            catch (SqlException ex) when (ex.Number == 50000)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Error interno", error = ex.Message });
+            }
+        }
+
+
+
     }
+
+
 }
+
+

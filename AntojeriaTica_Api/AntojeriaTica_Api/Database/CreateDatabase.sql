@@ -43,6 +43,16 @@ BEGIN
     INSERT INTO Rol (NombreRol, Descripcion) VALUES ('Usuario', 'Rol de usuario estándar');
 END
 GO
+-- TABLA MOVIMIENTOS 28/6
+CREATE TABLE MovimientoInventario (
+    IdMovimiento INT PRIMARY KEY IDENTITY,
+    IdProducto INT NOT NULL,
+    Fecha DATETIME NOT NULL DEFAULT GETDATE(),
+    TipoMovimiento VARCHAR(10) NOT NULL, -- 'Entrada' o 'Salida'
+    Cantidad INT NOT NULL,
+    FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
+);
+
 
 --STORED PROCEDURES - TABLE ROL
 
@@ -393,3 +403,62 @@ END
 GO
 
 PRINT 'Base de datos y stored procedures creados exitosamente';
+
+-- Elimianr productos 28/6
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
+BEGIN
+    DROP PROCEDURE sp_ObtenerHistorialProducto;
+END
+GO
+CREATE PROCEDURE sp_EliminarProducto
+    @IdProducto INT
+AS
+BEGIN
+    
+    IF EXISTS (SELECT 1 FROM HistorialProducto WHERE IdProducto = @IdProducto)
+    BEGIN
+        RAISERROR ('No se puede eliminar este producto porque tiene historial.', 16, 1)
+        RETURN
+    END
+
+    
+    DELETE FROM Producto WHERE IdProducto = @IdProducto
+END
+-- Regitsrar movimeintos 28/6
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
+BEGIN
+    DROP PROCEDURE sp_ObtenerHistorialProducto;
+END
+GO
+CREATE PROCEDURE sp_RegistrarMovimientoInventario
+    @IdProducto INT,
+    @TipoMovimiento VARCHAR(10),
+    @Cantidad INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM Producto WHERE IdProducto = @IdProducto)
+        THROW 50000, 'Producto no encontrado.', 1;
+
+    IF @TipoMovimiento = 'Salida'
+    BEGIN
+        DECLARE @StockActual INT;
+        SELECT @StockActual = Existencias FROM Producto WHERE IdProducto = @IdProducto;
+        IF @StockActual < @Cantidad
+            THROW 50000, 'No hay existencias suficientes.', 1;
+
+        UPDATE Producto SET Existencias = Existencias - @Cantidad WHERE IdProducto = @IdProducto;
+    END
+    ELSE IF @TipoMovimiento = 'Entrada'
+    BEGIN
+        UPDATE Producto SET Existencias = Existencias + @Cantidad WHERE IdProducto = @IdProducto;
+    END
+    ELSE
+        THROW 50000, 'Tipo de movimiento inválido.', 1;
+
+    INSERT INTO MovimientoInventario (IdProducto, TipoMovimiento, Cantidad)
+    VALUES (@IdProducto, @TipoMovimiento, @Cantidad);
+END

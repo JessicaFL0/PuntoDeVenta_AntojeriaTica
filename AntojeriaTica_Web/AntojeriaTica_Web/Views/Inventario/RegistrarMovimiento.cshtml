@@ -1,0 +1,36 @@
+@model AntojeriaTica_Web.Models.MovimientoInventario
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container pt-5 mt-5">
+    <h2>Registrar Movimiento</h2>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">@ViewBag.Error</div>
+    }
+
+    <form asp-action="RegistrarMovimiento" method="post">
+        <div class="mb-3">
+            <label for="IdProducto">ID Producto</label>
+            <input asp-for="IdProducto" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label for="TipoMovimiento">Tipo de Movimiento</label>
+            <select asp-for="TipoMovimiento" class="form-control">
+                <option value="Entrada">Entrada</option>
+                <option value="Salida">Salida</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="Cantidad">Cantidad</label>
+            <input asp-for="Cantidad" class="form-control" />
+        </div>
+
+        <button type="submit" class="btn btn-success">Registrar</button>
+    </form>
+</div>

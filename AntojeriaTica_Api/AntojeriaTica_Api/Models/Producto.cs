@@ -17,4 +17,6 @@ namespace AntojeriaTica_Api.Models
         public string Usuario { get; set; } = string.Empty;
         public string Cambio { get; set; } = string.Empty;
     }
+
+
 }

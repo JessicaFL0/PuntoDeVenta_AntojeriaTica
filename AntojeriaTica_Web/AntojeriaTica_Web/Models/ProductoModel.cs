@@ -9,4 +9,5 @@ namespace AntojeriaTica_Web.Models
         public decimal PrecioUnitario { get; set; }
         public int Existencias { get; set; }
     }
+
 }
