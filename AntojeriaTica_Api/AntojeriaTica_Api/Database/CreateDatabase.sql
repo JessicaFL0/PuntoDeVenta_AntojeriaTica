@@ -486,3 +486,67 @@ BEGIN
         END AS EstadoStock
     FROM Producto
 END
+
+-- Tabla principal de ventas
+CREATE TABLE Venta (
+    Id INT PRIMARY KEY IDENTITY(1,1),
+    Fecha DATETIME NOT NULL DEFAULT GETDATE(),
+    MetodoPago VARCHAR(50) NOT NULL  -- Efectivo, Tarjeta, Sinpe Móvil
+);
+
+-- Detalle de cada producto vendido
+CREATE TABLE DetalleVenta (
+    Id INT PRIMARY KEY IDENTITY(1,1),
+    VentaId INT NOT NULL,
+    ProductoId INT NOT NULL,
+    Cantidad INT NOT NULL,
+    PrecioUnitario DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (VentaId) REFERENCES Venta(Id),
+    FOREIGN KEY (ProductoId) REFERENCES Producto(IdProducto)
+);
+
+--------------------------------------------------------------Nuevo Agregar
+CREATE TYPE TipoDetalleVenta AS TABLE
+(
+    ProductoId INT,
+    Cantidad INT,
+    PrecioUnitario DECIMAL(10,2)
+);
+GO
+
+CREATE PROCEDURE RegistrarVenta
+    @MetodoPago VARCHAR(50),
+    @DetallesVenta TipoDetalleVenta READONLY 
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    
+    INSERT INTO Venta (Fecha, MetodoPago)
+    VALUES (GETDATE(), @MetodoPago);
+
+    DECLARE @VentaId INT = SCOPE_IDENTITY();
+
+    
+    INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario)
+    SELECT @VentaId, ProductoId, Cantidad, PrecioUnitario
+    FROM @DetallesVenta;
+
+    
+    UPDATE P
+    SET P.Existencias = P.Existencias - D.Cantidad
+    FROM Producto P
+    INNER JOIN @DetallesVenta D ON P.IdProducto = D.ProductoId;
+END
+GO
+
+----------------------------------------Agregar por si quieren hacer pruebas 
+
+INSERT INTO Producto (Codigo, Nombre, Descripcion, PrecioUnitario, Existencias)
+VALUES 
+('P001', 'Galleta Choco', 'Galleta con chispas', 1500.00, 20),
+('P002', 'Refresco Mango', 'Bebida natural de mango', 1200.00, 15);
+
+SELECT * FROM Venta;
+SELECT * FROM DetalleVenta;
+SELECT * FROM Producto;

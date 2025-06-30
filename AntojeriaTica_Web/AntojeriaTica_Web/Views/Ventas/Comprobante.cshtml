@@ -1,0 +1,21 @@
+﻿@{
+    ViewData["Title"] = "Comprobante";
+}
+
+<h2>Comprobante de Venta</h2>
+
+@if (ViewBag.Mensaje != null)
+{
+    <div class="alert alert-success">
+        @ViewBag.Mensaje
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        No hay información para mostrar.
+    </div>
+}
+
+<a class="btn btn-primary" asp-action="RegistrarVenta">Registrar otra venta</a>
+
