@@ -1,0 +1,44 @@
+@model List<AntojeriaTica_Web.Models.ProductoConEstadoViewModel>
+@{
+    ViewData["Title"] = "Estado del Inventario";
+}
+
+<div class="container pt-5 mt-4">
+    <h2 class="mb-4">Estado del Inventario</h2>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">@ViewBag.Error</div>
+    }
+
+    <div class="d-flex justify-content-start mb-3">
+        <a class="btn btn-dark me-2" href="@Url.Action("EstadoInventario", new { filtro = "todos" })">Ver Todos</a>
+        <a class="btn btn-danger me-2" href="@Url.Action("EstadoInventario", new { filtro = "bajo" })">Filtrar Bajo Stock</a>
+        <a class="btn btn-primary" href="@Url.Action("RegistrarMovimiento")">Registrar Movimiento</a>
+    </div>
+
+
+    <table class="table table-striped table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Precio Unitario</th>
+                <th>Existencias</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var producto in Model)
+            {
+                <tr class="@(producto.EstadoStock == "Agotado" || producto.EstadoStock == "Bajo stock" ? "table-warning" : "")">
+                    <td>@producto.Nombre</td>
+                    <td>@producto.Descripcion</td>
+                    <td>₡@producto.PrecioUnitario</td>
+                    <td>@producto.Existencias</td>
+                    <td>@producto.EstadoStock</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

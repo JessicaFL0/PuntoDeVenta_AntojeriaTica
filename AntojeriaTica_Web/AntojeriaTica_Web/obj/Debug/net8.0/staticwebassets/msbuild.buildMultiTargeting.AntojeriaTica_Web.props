@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\AntojeriaTica_Web.props" />
-</Project>

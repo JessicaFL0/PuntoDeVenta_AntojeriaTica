@@ -1,0 +1,109 @@
+﻿CREATE DATABASE AntojeriaTica;
+GO
+
+USE AntojeriaTica;
+GO
+
+CREATE TABLE Rol (
+	IdRol INT PRIMARY KEY IDENTITY(1,1),
+	NombreRol VARCHAR(50) UNIQUE NOT NULL,
+	Descripcion TEXT
+);
+
+CREATE TABLE Usuario (
+   IdUsuario INT PRIMARY KEY IDENTITY(1,1),
+   NombreCompleto VARCHAR(100) NOT NULL,
+   Correo VARCHAR(100) UNIQUE NOT NULL,
+   Cedula VARCHAR(20) UNIQUE NOT NULL,
+   ContrasenaHash VARCHAR(255) NOT NULL,
+   Estado VARCHAR(20) NOT NULL,
+   IdRol INT NOT NULL,
+   FOREIGN KEY (IdRol) REFERENCES Rol(IdRol)
+);
+
+--STORED PROCEDURES - TABLE ROL
+
+CREATE PROCEDURE sp_InsertarRol
+   @NombreRol VARCHAR(50),
+   @Descripcion TEXT
+AS
+BEGIN
+   INSERT INTO Rol (NombreRol, Descripcion)
+   VALUES (@NombreRol, @Descripcion);
+END
+GO
+--
+CREATE PROCEDURE sp_ActualizarRol
+   @IdRol INT,
+   @NombreRol VARCHAR(50),
+   @Descripcion TEXT
+AS
+BEGIN
+   UPDATE Rol
+   SET NombreRol = @NombreRol,
+       Descripcion = @Descripcion
+   WHERE IdRol = @IdRol;
+END
+--
+CREATE PROCEDURE sp_EliminarRol
+   @IdRol INT
+AS
+BEGIN
+   DELETE FROM Rol WHERE IdRol = @IdRol;
+END
+--
+CREATE PROCEDURE sp_ObtenerRoles
+AS
+BEGIN
+   SELECT * FROM Rol;
+END
+
+--STORED PROCEDURES - TABLE USUARIO
+
+CREATE PROCEDURE sp_InsertarUsuario
+   @NombreCompleto VARCHAR(100),
+   @Correo VARCHAR(100),
+   @Cedula VARCHAR(20),
+   @ContrasenaHash VARCHAR(255),
+   @Estado VARCHAR(20),
+   @IdRol INT
+AS
+BEGIN
+   INSERT INTO Usuario (NombreCompleto, Correo, Cedula, ContrasenaHash, Estado, IdRol)
+   VALUES (@NombreCompleto, @Correo, @Cedula, @ContrasenaHash, @Estado, @IdRol);
+END
+--
+CREATE PROCEDURE sp_ActualizarUsuario
+   @IdUsuario INT,
+   @NombreCompleto VARCHAR(100),
+   @Correo VARCHAR(100),
+   @Cedula VARCHAR(20),
+   @ContrasenaHash VARCHAR(255),
+   @Estado VARCHAR(20),
+   @IdRol INT
+AS
+BEGIN
+   UPDATE Usuario
+   SET NombreCompleto = @NombreCompleto,
+       Correo = @Correo,
+       Cedula = @Cedula,
+       ContrasenaHash = @ContrasenaHash,
+       Estado = @Estado,
+       IdRol = @IdRol
+   WHERE IdUsuario = @IdUsuario;
+END
+--
+CREATE PROCEDURE sp_EliminarUsuario
+   @IdUsuario INT
+AS
+BEGIN
+   DELETE FROM Usuario WHERE IdUsuario = @IdUsuario;
+END
+--
+CREATE PROCEDURE sp_ObtenerUsuarios
+AS
+BEGIN
+   SELECT u.*, r.Nombre AS NombreRol
+   FROM Usuario u
+   INNER JOIN Rol r ON u.IdRol = r.IdRol;
+END

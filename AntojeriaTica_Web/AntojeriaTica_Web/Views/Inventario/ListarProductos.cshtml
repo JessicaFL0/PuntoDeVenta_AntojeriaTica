@@ -1,0 +1,50 @@
+@model List<AntojeriaTica_Web.Models.ProductoModel>
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container pt-5 mt-5">
+    <h2>Lista de Productos</h2>
+
+    @if (TempData["Mensaje"] != null)
+    {
+        <div class="alert alert-success">@TempData["Mensaje"]</div>
+    }
+
+    <div class="d-flex justify-content-between mb-3">
+        <a asp-action="RegistrarProducto" class="btn btn-primary">Nuevo Producto</a>
+    </div>
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Precio</th>
+                <th>Existencias</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td>@p.IdProducto</td>
+                    <td>@p.Codigo</td>
+                    <td>@p.Nombre</td>
+                    <td>@p.PrecioUnitario</td>
+                    <td>@p.Existencias</td>
+                    <td>
+                        <a asp-action="EditarProducto" asp-route-id="@p.IdProducto" class="btn btn-sm btn-warning">Editar</a>
+                        <form asp-action="EliminarProducto" method="post" asp-route-id="@p.IdProducto"
+                              onsubmit="return confirm('¿Estás seguro de que deseas eliminar este producto?');"
+                              style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                       
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

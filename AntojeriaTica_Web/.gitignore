@@ -1,0 +1,62 @@
+﻿## Archivos generados por Visual Studio
+.vs/
+AntojeriaTica_Web/.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build
+[Bb]in/
+AntojeriaTica_Web/[Bb]in/
+obj/
+AntojeriaTica_Web/obj/
+[Dd]ebug*/
+[Rr]elease*/
+
+## Archivos de log y temporales
+*.log
+*.tlog
+*.tmp
+
+## Archivos de configuración local
+*.localhistory/
+*.dbmdl
+*.vscode/
+
+## Archivos de publicación
+.publish/
+
+## Archivos generados por paquetes NuGet
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+
+## Archivos de Rider/JetBrains (opcional si usás Rider)
+.idea/
+
+## Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+## Archivos de Web (opcional)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+## Ignorar archivos de configuración de IIS Express
+*.vspscc
+*.vssscc
+
+## Ignorar archivos del sistema de seguimiento
+*.orig
+*.rej
+
+# Personal
+*.swp
+*.bak
+*.tmp
+*.backup

@@ -1,0 +1,53 @@
+@model AntojeriaTica_Web.Models.MovimientoInventario
+
+@{
+    ViewData["Title"] = "Registrar Movimiento";
+    var productos = ViewBag.Productos as List<AntojeriaTica_Web.Models.ProductoModel>;
+}
+
+<div class="container pt-5 mt-4">
+    <h2>Registrar Movimiento</h2>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">@ViewBag.Error</div>
+    }
+
+    <form asp-action="RegistrarMovimiento" method="post">
+        <div class="mb-3">
+            <label for="IdProducto" class="form-label">ID Producto</label>
+            <select asp-for="IdProducto" class="form-control" required>
+                <option value="">-- Seleccionar --</option>
+                @if (productos != null)
+                {
+                    foreach (var p in productos)
+                    {
+                        <option value="@p.IdProducto">@p.Nombre</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="TipoMovimiento" class="form-label">Tipo de Movimiento</label>
+            <select asp-for="TipoMovimiento" class="form-control" required>
+                <option value="Entrada">Entrada</option>
+                <option value="Salida">Salida</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="Cantidad" class="form-label">Cantidad</label>
+            <input asp-for="Cantidad" class="form-control" type="number" required />
+        </div>
+
+
+        <div class="mb-3">
+            <label for="CantidadEsperada" class="form-label">Cantidad Esperada</label>
+            <input asp-for="CantidadEsperada" class="form-control" type="number" />
+        </div>
+
+        <button type="submit" class="btn btn-success">Registrar</button>
+        <a href="@Url.Action("EstadoInventario")" class="btn btn-secondary">Volver</a>
+    </form>
+</div>

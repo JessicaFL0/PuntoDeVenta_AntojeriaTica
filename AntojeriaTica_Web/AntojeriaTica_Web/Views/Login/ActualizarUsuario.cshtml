@@ -1,0 +1,93 @@
+@model AntojeriaTica_Web.Models.UsuarioModel
+
+@{
+    ViewData["Title"] = "Actualizar Usuario";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="text-center">Actualizar Usuario</h4>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger">
+                            @ViewBag.Error
+                        </div>
+                    }
+
+                    @if (TempData["Mensaje"] != null)
+                    {
+                        <div class="alert alert-success">
+                            @TempData["Mensaje"]
+                        </div>
+                    }
+
+                    <form asp-action="ActualizarUsuario" method="post">
+                        @Html.HiddenFor(model => model.IdUsuario)
+
+                        <div class="form-group mb-3">
+                            <label asp-for="NombreCompleto" class="form-label">Nombre Completo</label>
+                            <input asp-for="NombreCompleto" class="form-control"
+                                placeholder="Ingrese su nombre completo" required />
+                            <span asp-validation-for="NombreCompleto" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="Correo" class="form-label">Correo Electrónico</label>
+                            <input asp-for="Correo" type="email" class="form-control" placeholder="ejemplo@correo.com"
+                                required />
+                            <span asp-validation-for="Correo" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="Cedula" class="form-label">Cédula</label>
+                            <input asp-for="Cedula" class="form-control" placeholder="Ingrese su cédula" required />
+                            <span asp-validation-for="Cedula" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="Estado" class="form-label">Estado</label>
+                            <select asp-for="Estado" class="form-control">
+                                <option value="Activo">Activo</option>
+                                <option value="Inactivo">Inactivo</option>
+                            </select>
+                            <span asp-validation-for="Estado" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="IdRol" class="form-label">Rol</label>
+                            <select asp-for="IdRol" class="form-control" required>
+                                <option value="">-- Seleccione un rol --</option>
+                                @if (ViewBag.Roles != null)
+                                {
+                                    @foreach (var rol in (List<AntojeriaTica_Web.Models.Rol>)ViewBag.Roles)
+                                    {
+                                        <option value="@rol.IdRol" selected="@(rol.IdRol == Model.IdRol ? "selected" : null)">
+                                            @rol.Nombre
+                                        </option>
+                                    }
+                                }
+                            </select>
+                            <span asp-validation-for="IdRol" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Actualizar Usuario</button>
+                            <a asp-action="ListarUsuarios" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
