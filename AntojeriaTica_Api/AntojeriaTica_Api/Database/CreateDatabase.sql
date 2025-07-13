@@ -550,3 +550,87 @@ VALUES
 SELECT * FROM Venta;
 SELECT * FROM DetalleVenta;
 SELECT * FROM Producto;
+
+------------------------------------------------------------NUEVO 4 SPRINT
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MetodoPago' AND xtype='U')
+BEGIN
+    CREATE TABLE MetodoPago (
+        IdMetodoPago INT PRIMARY KEY IDENTITY(1,1),
+        Nombre NVARCHAR(50) NOT NULL,
+        EstaActivo BIT NOT NULL DEFAULT 1
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialMetodoPago' AND xtype='U')
+BEGIN
+    CREATE TABLE HistorialMetodoPago (
+        IdHistorial INT PRIMARY KEY IDENTITY(1,1),
+        IdMetodoPago INT NOT NULL,
+        FechaModificacion DATETIME NOT NULL DEFAULT GETDATE(),
+        Accion NVARCHAR(50) NOT NULL,
+        UsuarioModificador NVARCHAR(100) NOT NULL,
+        FOREIGN KEY (IdMetodoPago) REFERENCES MetodoPago(IdMetodoPago)
+    );
+END
+GO
+
+IF OBJECT_ID('TR_MetodoPago_Historial', 'TR') IS NOT NULL
+    DROP TRIGGER TR_MetodoPago_Historial;
+GO
+
+CREATE TRIGGER TR_MetodoPago_Historial
+ON MetodoPago
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Accion NVARCHAR(50);
+
+    -- inserción o una actualización
+    IF EXISTS (SELECT * FROM inserted EXCEPT SELECT * FROM deleted)
+        SET @Accion = 'INSERT';
+    ELSE
+        SET @Accion = 'UPDATE';
+
+    -- Insertar en el historial
+    INSERT INTO HistorialMetodoPago (IdMetodoPago, FechaModificacion, Accion, UsuarioModificador)
+    SELECT 
+        i.IdMetodoPago,
+        GETDATE(),
+        @Accion,
+        SYSTEM_USER
+    FROM inserted i;
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Descuento' AND xtype='U')
+BEGIN
+    CREATE TABLE Descuento (
+        IdDescuento INT PRIMARY KEY IDENTITY(1,1),
+        Nombre NVARCHAR(100) NOT NULL,
+        Tipo NVARCHAR(20) NOT NULL, -- 'Porcentaje', 'MontoFijo', 'Cupon'
+        Valor DECIMAL(10,2) NOT NULL,
+        CodigoCupon NVARCHAR(50) NULL,
+        FechaInicio DATETIME NOT NULL,
+        FechaFin DATETIME NOT NULL,
+        Estado NVARCHAR(20) NOT NULL, -- 'Activo', 'Inactivo', 'Vencido'
+        Restricciones NVARCHAR(MAX) NULL
+    );
+END
+GO
+
+CREATE TABLE Impuesto (
+    IdImpuesto INT PRIMARY KEY IDENTITY(1,1),
+    Nombre NVARCHAR(100),
+    Tipo NVARCHAR(50), -- IVA o ISC
+    Porcentaje DECIMAL(5,2),
+    AplicaEnRestaurante BIT,
+    EsExonerado BIT,
+    Estado BIT -- 1: Activo, 0: Inactivo
+);
+
+ALTER TABLE Producto
+ADD IdImpuesto INT FOREIGN KEY REFERENCES Impuesto(IdImpuesto);

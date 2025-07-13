@@ -15,6 +15,15 @@
             <option value="Tarjeta">Tarjeta</option>
             <option value="Sinpe Móvil">Sinpe Móvil</option>
         </select>
+        <div class="form-group mt-3">
+            <label for="CodigoCupon">Código de Cupón o Descuento</label>
+            <input asp-for="CodigoCupon" class="form-control" placeholder="Ingrese el código si aplica" />
+            <div class="input-group mt-2">
+                <button type="button" class="btn btn-outline-primary" onclick="validarCupon()">Validar Cupón</button>
+            </div>
+            <small id="mensajeCupon" class="form-text text-muted"></small>
+        </div>
+
     </div>
 
     <hr />
@@ -35,6 +44,11 @@
     </div>
 
     <button type="button" class="btn btn-secondary mb-3" onclick="agregarProducto()">+ Agregar Producto</button>
+
+    <div class="mb-3">
+    <label>Total (₡)</label>
+    <input type="text" id="totalVenta" class="form-control" readonly />
+</div>
 
     <div>
         <button type="submit" class="btn btn-primary">Registrar Venta</button>
@@ -67,5 +81,33 @@
             contador++;
         }
     </script>
+    <script>
+        async function validarCupon() {
+            const codigo = document.getElementById("CodigoCupon").value.trim();
+            const mensaje = document.getElementById("mensajeCupon");
+
+            if (!codigo) {
+                mensaje.innerText = "Por favor, ingrese un código.";
+                mensaje.className = "form-text text-danger";
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5062/api/Descuento/ValidarCupon/${codigo}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    mensaje.innerText = `Cupón válido: ${data.Tipo === 'porcentaje' ? data.Valor + '% de descuento' : '₡' + data.Valor}`;
+                    mensaje.className = "form-text text-success";
+                } else {
+                    mensaje.innerText = "Cupón inválido o expirado.";
+                    mensaje.className = "form-text text-danger";
+                }
+            } catch (err) {
+                mensaje.innerText = "Error al validar el cupón.";
+                mensaje.className = "form-text text-danger";
+            }
+        }
+    </script>
+
 }
 

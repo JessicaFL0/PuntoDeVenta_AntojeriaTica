@@ -78,12 +78,15 @@
                                 <li><a href="@Url.Action("RegistrarRol", "Login")">Registrar Rol</a></li>
                                 <li><a href="@Url.Action("ListarRoles", "Login")">Lista de Roles</a></li>
                                 <li class="dropdown">
-                                    <a href="#"><span>Más Opciones</span> <i
+                                    <a href="#"><span>Administrativo</span> <i
                                             class="bi bi-chevron-down toggle-dropdown"></i></a>
                                     <ul>
                                         <li><a href="@Url.Action("Principal", "Login")">Panel Principal</a></li>
                                         <li><a href="#">Perfil de Usuario</a></li>
                                         <li><a href="#">Configuración</a></li>
+                                        <li><a href="@Url.Action("GestionarDescuentos", "Ventas")">Gestión de Descuentos</a></li>
+                                        <li><a href="@Url.Action("ConfiguracionImpuestos", "Impuestos")">Configurar Impuestos</a></li>
+                                        <li><a href="@Url.Action("ConfiguracionPago", "Ventas")">Métodos de Pago</a></li>
                                         <li><a href="@Url.Action("RegistrarVenta", "Ventas")">Registrar Venta</a></li>
                                         <li><a href="@Url.Action("ListarProductos", "Inventario")">Inventario</a></li>
                                         <li><a href="@Url.Action("EstadoInventario", "Inventario")">Estado de Inventario</a></li>
