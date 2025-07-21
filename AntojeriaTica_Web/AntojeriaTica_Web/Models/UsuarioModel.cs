@@ -9,5 +9,7 @@
         public string? ContrasenaHash { get; set; }
         public string? Estado { get; set; }
         public int? IdRol { get; set; }
+        public string? NombreRol { get; set; } 
+
     }
 }

@@ -72,125 +72,77 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            @if (ViewBag.UsuariosJson != null)
-                {
-                    <text>
-                        try {
-                                                                                                                                                                                                                                                                                    var usuariosData = @Html.Raw(ViewBag.UsuariosJson);
-                        var usuarios = usuariosData.users || usuariosData;
+            try {
+                var usuariosData = @Html.Raw(ViewBag.UsuariosJson ?? "[]");
+                var usuarios = usuariosData.users || usuariosData;
 
-                        var tbody = document.getElementById('usuariosTableBody');
-                        tbody.innerHTML = '';
+                var tbody = document.getElementById('usuariosTableBody');
+                tbody.innerHTML = '';
 
-                        if (Array.isArray(usuarios)) {
-                            usuarios.forEach(function (usuario) {
-                                console.log('Usuario:', usuario);
-                                console.log('ID del usuario:', usuario.idUsuario);
+                if (Array.isArray(usuarios)) {
+                    usuarios.forEach(function (usuario) {
+                        var userId = usuario.idUsuario || usuario.IdUsuario || 'N/A';
+                        var row = document.createElement('tr');
 
-                                var userId = usuario.idUsuario || usuario.IdUsuario;
-                                console.log('ID final a usar:', userId);
-
-                                var row = document.createElement('tr');
-                                var tdId = document.createElement('td');
-                                tdId.textContent = userId || 'N/A';
-
-                                var tdNombre = document.createElement('td');
-                                tdNombre.textContent = usuario.nombreCompleto || usuario.NombreCompleto || 'N/A';
-
-                                var tdCorreo = document.createElement('td');
-                                tdCorreo.textContent = usuario.correo || usuario.Correo || 'N/A';
-
-                                var tdCedula = document.createElement('td');
-                                tdCedula.textContent = usuario.cedula || usuario.Cedula || 'N/A';
-
-                                var tdEstado = document.createElement('td');
-                                var spanEstado = document.createElement('span');
-                                var estado = usuario.estado || usuario.Estado || 'N/A';
-                                spanEstado.className = estado === 'Activo' ? 'badge bg-success' : 'badge bg-danger';
-                                spanEstado.textContent = estado;
-                                tdEstado.appendChild(spanEstado);
-
-                                var tdRol = document.createElement('td');
-                                tdRol.textContent = usuario.nombreRol || usuario.NombreRol || usuario.idRol || usuario.IdRol || 'N/A';
-
-                                var tdAcciones = document.createElement('td');
-
-                                var btnEditar = document.createElement('a');
-                                btnEditar.href = '@Url.Action("ActualizarUsuario", "Login")?id=' + userId;
-                                btnEditar.className = 'btn btn-sm btn-primary me-1';
-                                btnEditar.innerHTML = '<i class="bi bi-pencil"></i> Editar';
-
-                                var btnEliminar = document.createElement('button');
-                                btnEliminar.className = 'btn btn-sm btn-danger';
-                                btnEliminar.id = 'btnEliminar' + userId;
-                                btnEliminar.innerHTML = '<i class="bi bi-trash"></i> Eliminar';
-
-                                btnEliminar.addEventListener('click', function () {
-                                    console.log('Click en eliminar, userId:', userId);
-                                    eliminarUsuario(userId);
-                                });
-
-                                tdAcciones.appendChild(btnEditar);
-                                tdAcciones.appendChild(btnEliminar);
-
-                                row.appendChild(tdId);
-                                row.appendChild(tdNombre);
-                                row.appendChild(tdCorreo);
-                                row.appendChild(tdCedula);
-                                row.appendChild(tdEstado);
-                                row.appendChild(tdRol);
-                                row.appendChild(tdAcciones);
-                                tbody.appendChild(row);
-                            });
-                                                                                                                                                                                                                                                                                    } else {
-                            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No se pudieron cargar los usuarios</td></tr>';
-                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                } catch (e) {
-                            console.error('Error al procesar usuarios:', e);
-                        document.getElementById('usuariosTableBody').innerHTML =
-                        '<tr><td colspan="7" class="text-center text-danger">Error al cargar los datos</td></tr>';
-                                                                                                                                                                                                                                                                                }
-                    </text>
+                        row.innerHTML = `
+                            <td>${userId}</td>
+                            <td>${usuario.nombreCompleto || usuario.NombreCompleto || 'N/A'}</td>
+                            <td>${usuario.correo || usuario.Correo || 'N/A'}</td>
+                            <td>${usuario.cedula || usuario.Cedula || 'N/A'}</td>
+                            <td><span class="badge ${usuario.estado === 'Activo' ? 'bg-success' : 'bg-danger'}">${usuario.estado || 'N/A'}</span></td>
+                            <td>${usuario.nombreRol || usuario.NombreRol || usuario.idRol || usuario.IdRol || 'N/A'}</td>
+                            <td>
+                                <a href='@Url.Action("ActualizarUsuario", "Login")?id=${userId}' class='btn btn-sm btn-primary me-1'>
+                                    <i class='bi bi-pencil'></i> Editar
+                                </a>
+                                <button class='btn btn-sm btn-danger' onclick='eliminarUsuario(${userId})'>
+                                    <i class='bi bi-trash'></i> Eliminar
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No se pudieron cargar los usuarios</td></tr>';
+                }
+            } catch (e) {
+                console.error('Error al procesar usuarios:', e);
+                document.getElementById('usuariosTableBody').innerHTML =
+                    '<tr><td colspan="7" class="text-center text-danger">Error al cargar los datos</td></tr>';
             }
-                                                                                                                                        });
+        });
 
         function eliminarUsuario(id) {
-            console.log('Función eliminarUsuario llamada con ID:', id);
-            console.log('Tipo de ID:', typeof id);
-
             if (confirm('¿Está seguro de que desea eliminar este usuario?')) {
                 const button = document.getElementById(`btnEliminar${id}`);
                 const originalText = button.innerHTML;
                 button.innerHTML = '<i class="bi bi-hourglass-split"></i> Eliminando...';
                 button.disabled = true;
 
-                var formData = new FormData();
+                const formData = new FormData();
                 formData.append('id', id);
 
                 fetch('@Url.Action("EliminarUsuario", "Login")', {
                     method: 'POST',
                     body: formData
                 })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert('Usuario eliminado exitosamente');
-
-                            window.location.reload();
-                        } else {
-                            alert('Error: ' + data.message);
-
-                            button.innerHTML = originalText;
-                            button.disabled = false;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Error de conexión. Inténtelo de nuevo.');
-
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Usuario eliminado exitosamente');
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
                         button.innerHTML = originalText;
                         button.disabled = false;
-                    });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error de conexión. Inténtelo de nuevo.');
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                });
             }
         }
     </script>

@@ -1,0 +1,78 @@
+﻿@model AntojeriaTica_Web.Models.UsuarioModel
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@{
+    ViewData["Title"] = "Registrar Empleado";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <h2 class="mb-3 text-center">Registrar Nuevo Empleado</h2> @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger mb-3">@ViewBag.Error</div>
+            }
+
+            @if (TempData["Mensaje"] != null)
+            {
+                <div class="alert alert-success mb-3">@TempData["Mensaje"]</div>
+            }
+
+            <form asp-action="RegistrarEmpleado" method="post">
+                <div class="form-group mb-2"> <label asp-for="NombreCompleto" class="form-label">Nombre Completo</label> <input asp-for="NombreCompleto" class="form-control form-control-sm" /> <span asp-validation-for="NombreCompleto" class="text-danger small"></span> </div>
+
+                <div class="form-group mb-2">
+                    <label asp-for="Correo" class="form-label">Correo</label>
+                    <input asp-for="Correo" class="form-control form-control-sm" />
+                    <span asp-validation-for="Correo" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group mb-2">
+                    <label asp-for="Cedula" class="form-label">Cédula</label>
+                    <input asp-for="Cedula" class="form-control form-control-sm" />
+                    <span asp-validation-for="Cedula" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group mb-2">
+                    <label asp-for="ContrasenaHash" class="form-label">Contraseña</label>
+                    <input asp-for="ContrasenaHash" type="password" class="form-control form-control-sm" />
+                    <span asp-validation-for="ContrasenaHash" class="text-danger small"></span>
+                </div>
+
+                <div class="form-group mb-2">
+                    <label asp-for="Estado" class="form-label">Estado</label>
+                    <select asp-for="Estado" class="form-control form-control-sm">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                    </select>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label asp-for="IdRol" class="form-label">Rol</label>
+                    <select asp-for="IdRol" class="form-control form-control-sm">
+                        <option value="">Seleccione un rol</option>
+                        @if (ViewBag.Roles is List<AntojeriaTica_Web.Models.Rol> roles)
+                        {
+                            foreach (var rol in roles)
+                            {
+                                <option value="@rol.IdRol">@rol.Nombre</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="IdRol" class="text-danger small"></span>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <button type="submit" class="btn btn-primary me-md-2">Registrar</button> <a asp-action="ListarUsuarios" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
