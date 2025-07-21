@@ -1,0 +1,53 @@
+﻿@model List<AntojeriaTica_Web.Models.MovimientoDiario>
+@{
+    ViewData["Title"] = "Movimientos Diarios";
+}
+
+<h2 class="mt-3">Listado de Movimientos</h2>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<table class="table table-bordered table-striped mt-3">
+    <thead class="thead-dark">
+        <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Categoría</th>
+            <th>Monto</th>
+            <th>Descripción</th>
+            <th>Registrado por</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.IdMovimiento</td>
+                <td>@item.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@item.TipoMovimiento</td>
+                <td>@item.Categoria</td>
+                <td>₡@item.Monto.ToString("N2")</td>
+                <td>@item.Descripcion</td>
+                <td>@item.NombreUsuario</td>
+                <td>
+                    <a asp-action="Editar" asp-route-id="@item.IdMovimiento" class="btn btn-sm btn-warning">Editar</a>
+                    <form asp-action="Eliminar" method="post" style="display:inline;">
+                        <input type="hidden" name="id" value="@item.IdMovimiento" />
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Está seguro de eliminar este movimiento?')">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-action="Registrar" class="btn btn-primary mt-3">Registrar Nuevo Movimiento</a>

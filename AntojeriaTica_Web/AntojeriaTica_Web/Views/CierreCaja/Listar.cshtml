@@ -1,0 +1,44 @@
+﻿@model List<AntojeriaTica_Web.Models.CierreCaja>
+
+@{
+    ViewData["Title"] = "Cierres de Caja";
+}
+
+<h2 class="text-center mt-4">Cierres de Caja Realizados</h2>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+else if (!Model.Any())
+{
+    <div class="alert alert-info">No hay cierres de caja registrados.</div>
+}
+else
+{
+    <table class="table table-bordered table-striped mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>Total Ingresos</th>
+                <th>Total Egresos</th>
+                <th>Monto Físico</th>
+                <th>Justificación</th>
+                <th>Registrado Por</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>₡@item.TotalIngresos</td>
+                    <td>₡@item.TotalEgresos</td>
+                    <td>₡@item.MontoFisico</td>
+                    <td>@item.NotaJustificativa</td>
+                    <td>@item.NombreUsuario</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
