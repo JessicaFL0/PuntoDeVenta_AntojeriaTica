@@ -1,0 +1,45 @@
+﻿@model AntojeriaTica_Web.Models.CierreCaja
+
+@{
+    ViewData["Title"] = "Cierre de Caja";
+}
+
+<h2 class="mt-4">Cierre de Caja Diario</h2>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+
+<form asp-action="Index" method="post">
+    <div class="mb-3">
+        <label>Total Ingresos:</label>
+        <input type="text" class="form-control" value="₡@Model.TotalIngresos" readonly />
+    </div>
+    <div class="mb-3">
+        <label>Total Egresos:</label>
+        <input type="text" class="form-control" value="₡@Model.TotalEgresos" readonly />
+    </div>
+    <div class="mb-3">
+        <label>Dinero en Caja (Monto físico):</label>
+        <input asp-for="MontoFisico" class="form-control" type="number" step="0.01" />
+        <span asp-validation-for="MontoFisico" class="text-danger"></span>
+    </div>
+
+    @if (Model.HayDiferencias)
+    {
+        <div class="alert alert-warning">
+            Se detecta una diferencia entre el monto registrado y el dinero físico.
+        </div>
+        <div class="mb-3">
+            <label>Nota Justificativa:</label>
+            <textarea asp-for="NotaJustificativa" class="form-control"></textarea>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Cerrar Día</button>
+</form>

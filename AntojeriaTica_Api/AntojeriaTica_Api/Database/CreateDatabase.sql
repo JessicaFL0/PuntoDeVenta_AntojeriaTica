@@ -634,3 +634,115 @@ CREATE TABLE Impuesto (
 
 ALTER TABLE Producto
 ADD IdImpuesto INT FOREIGN KEY REFERENCES Impuesto(IdImpuesto);
+=======
+
+----movimientos
+CREATE TABLE MovimientoDiario (
+    IdMovimiento INT IDENTITY(1,1) PRIMARY KEY,
+    FechaHora DATETIME NOT NULL DEFAULT GETDATE(),
+    TipoMovimiento VARCHAR(20) NOT NULL, -- 'Ingreso' o 'Egreso'
+    Categoria VARCHAR(50) NOT NULL, -- 'Ventas', 'Compras', 'Gastos Operativos', etc.
+    Monto DECIMAL(10,2) NOT NULL,
+    Descripcion NVARCHAR(255),
+    IdUsuario INT NOT NULL,
+    FOREIGN KEY (IdUsuario) REFERENCES Usuario(IdUsuario)
+);
+------
+CREATE PROCEDURE InsertarMovimientoDiario
+    @TipoMovimiento VARCHAR(20),
+    @Categoria VARCHAR(50),
+    @Monto DECIMAL(10,2),
+    @Descripcion NVARCHAR(255),
+    @IdUsuario INT
+AS
+BEGIN
+    INSERT INTO MovimientoDiario (TipoMovimiento, Categoria, Monto, Descripcion, IdUsuario)
+    VALUES (@TipoMovimiento, @Categoria, @Monto, @Descripcion, @IdUsuario);
+END;
+----
+
+CREATE PROCEDURE sp_ListarMovimientosConNombre
+AS
+BEGIN
+    SELECT 
+        md.IdMovimiento,
+        md.FechaHora,
+        md.TipoMovimiento,
+        md.Categoria,
+        md.Monto,
+        md.Descripcion,
+        md.IdUsuario,
+        u.NombreCompleto AS NombreUsuario
+    FROM MovimientoDiario md
+    INNER JOIN Usuario u ON md.IdUsuario = u.IdUsuario
+    ORDER BY md.FechaHora DESC
+END
+-----
+
+CREATE PROCEDURE EliminarMovimientoDiario
+    @IdMovimiento INT
+AS
+BEGIN
+    DELETE FROM MovimientoDiario WHERE IdMovimiento = @IdMovimiento;
+END;
+-------
+CREATE PROCEDURE ActualizarMovimientoDiario
+    @IdMovimiento INT,
+    @TipoMovimiento VARCHAR(20),
+    @Categoria VARCHAR(50),
+    @Monto DECIMAL(10,2),
+    @Descripcion NVARCHAR(255)
+AS
+BEGIN
+    UPDATE MovimientoDiario
+    SET TipoMovimiento = @TipoMovimiento,
+        Categoria = @Categoria,
+        Monto = @Monto,
+        Descripcion = @Descripcion
+    WHERE IdMovimiento = @IdMovimiento;
+END;
+----
+CREATE PROCEDURE ActualizarMovimientoDiario
+    @IdMovimiento INT,
+    @TipoMovimiento VARCHAR(20),
+    @Categoria VARCHAR(50),
+    @Monto DECIMAL(10,2),
+    @Descripcion NVARCHAR(255)
+AS
+BEGIN
+    UPDATE MovimientoDiario
+    SET TipoMovimiento = @TipoMovimiento,
+        Categoria = @Categoria,
+        Monto = @Monto,
+        Descripcion = @Descripcion
+    WHERE IdMovimiento = @IdMovimiento;
+END;
+
+
+
+
+------- CIERRE DE CAJA
+CREATE PROCEDURE sp_CierreCajaDiario
+AS
+BEGIN
+    SELECT 
+        SUM(CASE WHEN TipoMovimiento = 'Ingreso' THEN Monto ELSE 0 END) AS TotalIngresos,
+        SUM(CASE WHEN TipoMovimiento = 'Egreso' THEN Monto ELSE 0 END) AS TotalEgresos
+    FROM MovimientoDiario
+    WHERE CAST(FechaHora AS DATE) = CAST(GETDATE() AS DATE)
+END
+---------
+CREATE PROCEDURE sp_ListarCierresDeCaja
+AS
+BEGIN
+    SELECT 
+        IdMovimiento,
+        FechaHora,
+        TotalIngresos,
+        TotalEgresos,
+        MontoFisico,
+        NotaJustificativa,
+        NombreUsuario
+    FROM CierreCaja
+    ORDER BY FechaHora DESC
+END
