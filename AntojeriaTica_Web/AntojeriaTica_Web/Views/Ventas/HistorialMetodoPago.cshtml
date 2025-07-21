@@ -1,0 +1,28 @@
+﻿@model List<AntojeriaTica_Web.Models.HistorialMetodoPago>
+
+@{
+    ViewData["Title"] = "Historial de Cambios - Método de Pago";
+}
+
+<h2>@ViewData["Title"]</h2>
+<a href="@Url.Action("ConfiguracionPago", "Ventas")" class="btn btn-secondary mb-3">← Volver</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Acción</th>
+            <th>Usuario</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var h in Model)
+        {
+            <tr>
+                <td>@h.FechaModificacion.ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@h.Accion</td>
+                <td>@h.UsuarioModificador</td>
+            </tr>
+        }
+    </tbody>
+</table>
