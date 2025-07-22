@@ -1,0 +1,66 @@
+﻿@model List<AntojeriaTica_Web.Models.CierreFinancieroMensual>
+
+@{
+    ViewData["Title"] = "Cierres Mensuales";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div style="margin-top: 100px; text-align: center;">
+    <h2 style="font-size: 2em;">Lista de Cierres Mensuales</h2>
+
+    @if (ViewBag.Error != null)
+    {
+        <p style="color:red">@ViewBag.Error</p>
+    }
+
+    <div style="margin: 20px;">
+        <a href="@Url.Action("Registrar")"
+           style="padding: 15px 25px; background-color: #28a745; color: white; border-radius: 8px; text-decoration: none; font-size: 1.2em;">
+            ➕ Generar Nuevo Cierre Mensual
+        </a>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table border="1" cellpadding="8" cellspacing="0"
+               style="margin: auto; background-color: white; color: black; border-collapse: collapse;">
+            <thead style="background-color: #343a40; color: white;">
+                <tr>
+                    <th>Mes</th>
+                    <th>Año</th>
+                    <th>Total Ingresos</th>
+                    <th>Total Egresos</th>
+                    <th>Utilidad Neta</th>
+                    <th>Fecha Generación</th>
+                    <th>Generado Por</th>
+                    <th>Comentario</th>
+                    <th>Acción</th> 
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.Mes</td>
+                        <td>@item.Anio</td>
+                        <td>@("₡" + string.Format("{0:N2}", item.TotalIngresos))</td>
+                        <td>@("₡" + string.Format("{0:N2}", item.TotalEgresos))</td>
+                        <td>@("₡" + string.Format("{0:N2}", item.UtilidadNeta))</td>
+                        <td>@item.FechaGeneracion.ToString("g")</td>
+                        <td>@item.GeneradoPor</td>
+                        <td>@(string.IsNullOrEmpty(item.ComentarioJustificativo) ? "Ninguno" : item.ComentarioJustificativo)</td>
+                        <td>
+                            <form asp-action="Eliminar" method="post" onsubmit="return confirm('¿Estás seguro que deseas eliminar este cierre?');">
+                                <input type="hidden" name="mes" value="@item.Mes" />
+                                <input type="hidden" name="anio" value="@item.Anio" />
+                                <button type="submit"
+                                        style="background-color: #dc3545; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer;">
+                                     Eliminar
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

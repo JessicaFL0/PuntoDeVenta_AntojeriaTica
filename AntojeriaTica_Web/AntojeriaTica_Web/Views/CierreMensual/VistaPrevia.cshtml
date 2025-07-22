@@ -1,0 +1,25 @@
+﻿@model AntojeriaTica_Web.Models.CierreFinancieroMensual
+
+<h2>Vista Previa del Cierre Mensual</h2>
+
+@if (ViewBag.Error != null)
+{
+    <p style="color:red">@ViewBag.Error</p>
+}
+else if (Model == null)
+{
+    <p>No hay datos para el mes y año seleccionados.</p>
+}
+else
+{
+    <table border="1" cellpadding="5" cellspacing="0">
+        <tr><th>Mes</th><td>@Model.Mes</td></tr>
+        <tr><th>Año</th><td>@Model.Anio</td></tr>
+        <tr><th>Total Ingresos</th><td>@Model.TotalIngresos.ToString("C")</td></tr>
+        <tr><th>Total Egresos</th><td>@Model.TotalEgresos.ToString("C")</td></tr>
+        <tr><th>Utilidad Neta</th><td>@Model.UtilidadNeta.ToString("C")</td></tr>
+        <tr><th>Fecha Generación</th><td>@Model.FechaGeneracion.ToString("g")</td></tr>
+        <tr><th>Generado Por</th><td>@Model.GeneradoPor</td></tr>
+        <tr><th>Comentario</th><td>@Model.ComentarioJustificativo ?? "Ninguno"</td></tr>
+    </table>
+}

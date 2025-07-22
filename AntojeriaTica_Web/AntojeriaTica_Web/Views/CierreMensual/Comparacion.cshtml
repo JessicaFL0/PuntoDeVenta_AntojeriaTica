@@ -1,0 +1,188 @@
+﻿@model List<AntojeriaTica_Web.Models.CierreFinancieroMensual>
+
+@{
+    ViewData["Title"] = "Análisis Comparativo";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div style="margin-top: 100px; text-align: center;">
+    <h2 style="font-size: 2em;">Análisis Financiero Mensual</h2>
+
+    @if (ViewBag.Error != null)
+    {
+        <p style="color:red">@ViewBag.Error</p>
+    }
+
+    <div style="width: 90%; max-width: 900px; margin: auto;">
+        <canvas id="graficoCierre"></canvas>
+    </div>
+</div>
+
+<hr style="margin: 40px 0;">
+
+<div style="text-align: center;">
+    <h3>⚠ Posibles Anomalías Detectadas</h3>
+    <p style="font-size: 0.9em; color: gray;">Ingresos o egresos en cero, o utilidad negativa</p>
+</div>
+
+<div style="overflow-x: auto;">
+    <table class="table table-bordered" style="width: 85%; margin: auto;">
+        <thead style="background-color: #ffc107; text-align: center;">
+            <tr>
+                <th>Mes/Año</th>
+                <th>Total Ingresos</th>
+                <th>Total Egresos</th>
+                <th>Utilidad Neta</th>
+                <th>Comentario</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                var anomalias = Model.Where(item => item.TotalIngresos == 0 || item.TotalEgresos == 0 || item.UtilidadNeta < 0).ToList();
+                if (!anomalias.Any())
+                {
+                    <tr>
+                        <td colspan="5" style="text-align:center; font-style: italic; color: gray;">
+                            No se detectaron anomalías en los cierres mensuales.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in anomalias)
+                    {
+                        <tr style="text-align: center;">
+                            <td>@item.Mes/@item.Anio</td>
+                            <td>@("₡" + string.Format("{0:N2}", item.TotalIngresos))</td>
+                            <td>@("₡" + string.Format("{0:N2}", item.TotalEgresos))</td>
+                            <td style="color:@(item.UtilidadNeta < 0 ? "red" : "black")">
+                                @("₡" + string.Format("{0:N2}", item.UtilidadNeta))
+                            </td>
+                            <td>
+                                @if (string.IsNullOrEmpty(item.ComentarioJustificativo))
+                                {
+                                    <button class="btn btn-sm btn-warning" onclick="editarComentario(@item.Mes, @item.Anio, '')">
+                                        Añadir comentario
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span>@item.ComentarioJustificativo</span>
+                                    <br />
+                                    <button class="btn btn-sm btn-link" onclick="editarComentario(@item.Mes, @item.Anio, '@item.ComentarioJustificativo.Replace("'", "\\'")')">
+                                        ✏️ Editar
+                                    </button>
+                                }
+                            </td>
+
+                        </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+</div>
+<!-- Modal para editar comentario -->
+<div class="modal fade" id="comentarioModal" tabindex="-1" aria-labelledby="comentarioModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="comentarioForm" method="post" action="/CierreMensual/ActualizarComentario">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="comentarioModalLabel"> Editar Comentario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="Mes" id="mesInput" />
+                    <input type="hidden" name="Anio" id="anioInput" />
+                    <textarea name="Comentario" id="comentarioInput" class="form-control" rows="4" placeholder="Escriba su comentario..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editarComentario(mes, anio, comentario) {
+        document.getElementById('mesInput').value = mes;
+        document.getElementById('anioInput').value = anio;
+        document.getElementById('comentarioInput').value = comentario;
+        var modal = new bootstrap.Modal(document.getElementById('comentarioModal'));
+        modal.show();
+    }
+</script>
+
+
+@section Scripts {
+    @using Newtonsoft.Json
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const datos = @Html.Raw(JsonConvert.SerializeObject(Model));
+    console.log("Datos del gráfico:", datos);
+
+        const nombresMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
+                            "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+        const meses = datos.map(item => nombresMes[item.Mes - 1] + " " + item.Anio);
+        const ingresos = datos.map(item => item.TotalIngresos);
+        const egresos = datos.map(item => item.TotalEgresos);
+        const utilidad = datos.map(item => item.UtilidadNeta);
+
+        const ctx = document.getElementById('graficoCierre').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: meses,
+                datasets: [
+                    {
+                        label: 'Ingresos',
+                        data: ingresos,
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0,128,0,0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Egresos',
+                        data: egresos,
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255,0,0,0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Utilidad Neta',
+                        data: utilidad,
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0,0,255,0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Comparación de Ingresos, Egresos y Utilidad por Mes',
+                        font: {
+                            size: 18
+                        }
+                    },
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+}

@@ -1,0 +1,147 @@
+﻿@model List<AntojeriaTica_Web.Models.HistorialVenta>
+
+<style>
+    .container {
+        max-width: 90%;
+        margin: 20px auto;
+        font-family: Arial, sans-serif;
+        color: #ccc;
+        text-align: center;
+    }
+
+    form label {
+        margin: 0 10px;
+        font-weight: bold;
+    }
+
+    form input, form select {
+        padding: 4px 6px;
+        margin-left: 5px;
+        border-radius: 4px;
+        border: 1px solid #4CAF50;
+    }
+
+    form button {
+        margin-left: 10px;
+        padding: 6px 12px;
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+        form button:hover {
+            background-color: #45a049;
+        }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px auto;
+        text-align: center;
+    }
+
+    th, td {
+        padding: 10px;
+        border: 1px solid #999;
+    }
+
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+
+<div class="container">
+    <h2>Historial de Ventas</h2>
+
+    <form id="filtroForm">
+        <label>Fecha inicio: <input type="date" id="fechaInicio" name="fechaInicio" /></label>
+        <label>Fecha fin: <input type="date" id="fechaFin" name="fechaFin" /></label>
+        <label>
+            Tipo operación:
+            <select id="tipoOperacion" name="tipoOperacion">
+                <option value="">Todos</option>
+                <option value="INSERT">INSERT</option>
+                <option value="UPDATE">UPDATE</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+        </label>
+        <label>Usuario: <input type="text" id="usuario" name="usuario" /></label>
+        <button type="submit">Filtrar</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Id Historial</th>
+                <th>Id Venta</th>
+                <th>Fecha Modificación</th>
+                <th>Tipo Operación</th>
+                <th>Usuario Modificador</th>
+                <th>Datos Antes</th>
+                <th>Datos Después</th>
+            </tr>
+        </thead>
+        <tbody id="historialBody">
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.IdHistorial</td>
+                    <td>@item.IdVenta</td>
+                    <td>@item.FechaModificacion.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@item.TipoOperacion</td>
+                    <td>@item.UsuarioModificador</td>
+                    <td>@item.DatosAntes</td>
+                    <td>@item.DatosDespues</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<script>
+    document.getElementById("filtroForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const filtro = {
+            FechaInicio: document.getElementById("fechaInicio").value || null,
+            FechaFin: document.getElementById("fechaFin").value || null,
+            TipoOperacion: document.getElementById("tipoOperacion").value || null,
+            Usuario: document.getElementById("usuario").value.trim() || null
+        };
+
+        const response = await fetch("http://localhost:5062/api/Historial/FiltrarHistorialVentas", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(filtro)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const tbody = document.getElementById("historialBody");
+            tbody.innerHTML = "";
+
+            data.forEach(item => {
+                const tr = document.createElement("tr");
+
+                tr.innerHTML = `
+                    <td>${item.idHistorial}</td>
+                    <td>${item.idVenta}</td>
+                    <td>${new Date(item.fechaModificacion).toLocaleString()}</td>
+                    <td>${item.tipoOperacion}</td>
+                    <td>${item.usuarioModificador}</td>
+                    <td>${item.datosAntes ?? ""}</td>
+                    <td>${item.datosDespues ?? ""}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        } else {
+            alert("Error al obtener datos del historial");
+        }
+    });
+</script>

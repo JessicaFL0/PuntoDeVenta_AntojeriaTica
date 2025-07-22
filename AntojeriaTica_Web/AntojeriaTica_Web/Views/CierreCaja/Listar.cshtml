@@ -1,44 +1,107 @@
-﻿@model List<AntojeriaTica_Web.Models.CierreCaja>
+﻿@model List<AntojeriaTica_Web.Models.CierreFinancieroMensual>
 
 @{
-    ViewData["Title"] = "Cierres de Caja";
+    ViewData["Title"] = "Lista de Cierres Mensuales";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2 class="text-center mt-4">Cierres de Caja Realizados</h2>
+<style>
+    .contenedor-centro {
+        margin-top: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
 
-@if (ViewBag.Error != null)
-{
-    <div class="alert alert-danger">@ViewBag.Error</div>
-}
-else if (!Model.Any())
-{
-    <div class="alert alert-info">No hay cierres de caja registrados.</div>
-}
-else
-{
-    <table class="table table-bordered table-striped mt-3">
-        <thead class="table-dark">
+    .tabla-cierre {
+        border-collapse: collapse;
+        width: 90%;
+        max-width: 1200px;
+        text-align: center;
+        background-color: white;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+        .tabla-cierre th, .tabla-cierre td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            color: black;
+        }
+
+        .tabla-cierre th {
+            background-color: #f8f8f8;
+            font-weight: bold;
+        }
+
+    .mensaje-error {
+        color: red;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    h2 {
+        color: black;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .boton-grande {
+        display: inline-block;
+        margin-top: 30px;
+        padding: 15px 30px;
+        font-size: 18px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+
+        .boton-grande:hover {
+            background-color: #218838;
+            cursor: pointer;
+        }
+</style>
+
+<div class="contenedor-centro">
+    <h2>@ViewData["Title"]</h2>
+
+    @if (ViewBag.Error != null)
+    {
+        <p class="mensaje-error">@ViewBag.Error</p>
+    }
+
+    <table class="tabla-cierre">
+        <thead>
             <tr>
-                <th>Fecha</th>
+                <th>Mes</th>
+                <th>Año</th>
                 <th>Total Ingresos</th>
                 <th>Total Egresos</th>
-                <th>Monto Físico</th>
-                <th>Justificación</th>
-                <th>Registrado Por</th>
+                <th>Utilidad Neta</th>
+                <th>Fecha Generación</th>
+                <th>Generado Por</th>
+                <th>Comentario</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var item in Model)
             {
                 <tr>
-                    <td>@item.Fecha.ToString("dd/MM/yyyy")</td>
-                    <td>₡@item.TotalIngresos</td>
-                    <td>₡@item.TotalEgresos</td>
-                    <td>₡@item.MontoFisico</td>
-                    <td>@item.NotaJustificativa</td>
-                    <td>@item.NombreUsuario</td>
+                    <td>@item.Mes</td>
+                    <td>@item.Anio</td>
+                    <td>@item.TotalIngresos.ToString("C")</td>
+                    <td>@item.TotalEgresos.ToString("C")</td>
+                    <td>@item.UtilidadNeta.ToString("C")</td>
+                    <td>@item.FechaGeneracion.ToString("g")</td>
+                    <td>@item.GeneradoPor</td>
+                    <td>@item.ComentarioJustificativo ?? "Ninguno"</td>
                 </tr>
             }
         </tbody>
     </table>
-}
+
+    <a href="@Url.Action("Registrar")" class="boton-grande">📄 Registrar Nuevo Cierre Mensual</a>
+</div>

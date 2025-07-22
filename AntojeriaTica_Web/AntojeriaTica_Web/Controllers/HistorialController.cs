@@ -1,0 +1,67 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using AntojeriaTica_Web.Models;
+using System.Collections.Generic;
+
+public class HistorialController : Controller
+{
+    private readonly HttpClient _httpClient;
+
+    public HistorialController(IHttpClientFactory httpClientFactory)
+    {
+        _httpClient = httpClientFactory.CreateClient();
+        _httpClient.BaseAddress = new System.Uri("http://localhost:5062/");
+    }
+
+    public async Task<IActionResult> Index()
+    {
+        var filtroVacio = new
+        {
+            FechaInicio = (DateTime?)null,
+            FechaFin = (DateTime?)null,
+            TipoOperacion = (string)null,
+            Usuario = (string)null
+        };
+
+        var response = await _httpClient.PostAsJsonAsync("api/Historial/FiltrarHistorialVentas", filtroVacio);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            var historial = JsonConvert.DeserializeObject<List<HistorialVenta>>(json);
+            return View(historial);
+        }
+        else
+        {
+            ViewBag.Error = "No se pudo obtener el historial";
+            return View(new List<HistorialVenta>());
+        }
+    }
+
+    public async Task<IActionResult> HistorialDetalle()
+    {
+        var filtroVacio = new
+        {
+            FechaInicio = (DateTime?)null,
+            FechaFin = (DateTime?)null,
+            TipoOperacion = (string)null,
+            Usuario = (string)null
+        };
+
+        var response = await _httpClient.PostAsJsonAsync("api/Historial/FiltrarHistorialDetalleVentas", filtroVacio);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            var historialDetalle = JsonConvert.DeserializeObject<List<HistorialDetalleVenta>>(json);
+            return View(historialDetalle);
+        }
+        else
+        {
+            ViewBag.Error = "No se pudo obtener el historial detalle";
+            return View(new List<HistorialDetalleVenta>());
+        }
+    }
+}
