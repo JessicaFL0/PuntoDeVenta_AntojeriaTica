@@ -634,7 +634,7 @@ CREATE TABLE Impuesto (
 
 ALTER TABLE Producto
 ADD IdImpuesto INT FOREIGN KEY REFERENCES Impuesto(IdImpuesto);
-=======
+
 
 ----movimientos
 CREATE TABLE MovimientoDiario (
@@ -746,3 +746,346 @@ BEGIN
     FROM CierreCaja
     ORDER BY FechaHora DESC
 END
+
+--------- Cierre mensual 
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CierreFinancieroMensual' AND xtype='U')
+BEGIN
+    CREATE TABLE CierreFinancieroMensual (
+        IdCierre INT IDENTITY(1,1) PRIMARY KEY,
+        Mes INT NOT NULL,
+        Anio INT NOT NULL,
+        TotalIngresos DECIMAL(10,2) NOT NULL,
+        TotalEgresos DECIMAL(10,2) NOT NULL,
+        UtilidadNeta DECIMAL(10,2) NOT NULL,
+        FechaGeneracion DATETIME NOT NULL DEFAULT GETDATE(),
+        GeneradoPor NVARCHAR(100) NOT NULL,
+        ComentarioJustificativo NVARCHAR(MAX) NULL
+    );
+END
+GO
+
+
+IF NOT EXISTS (
+    SELECT * 
+    FROM sys.columns 
+    WHERE Name = N'ComentarioJustificativo' 
+      AND Object_ID = Object_ID(N'CierreFinancieroMensual')
+)
+BEGIN
+    ALTER TABLE CierreFinancieroMensual
+    ADD ComentarioJustificativo NVARCHAR(MAX) NULL;
+END
+GO
+
+-- Procedimiento para registrar cierre mensual
+CREATE OR ALTER PROCEDURE sp_RegistrarCierreMensual
+    @Mes INT,
+    @Anio INT,
+    @Usuario NVARCHAR(100),
+    @Comentario NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Verificar si ya existe un cierre para el mes y año indicados
+    IF EXISTS (
+        SELECT 1 FROM CierreFinancieroMensual WHERE Mes = @Mes AND Anio = @Anio
+    )
+    BEGIN
+       
+        RETURN 1;
+    END
+
+    -- Variables para totales
+    DECLARE @TotalIngresos DECIMAL(10,2);
+    DECLARE @TotalEgresos DECIMAL(10,2);
+
+    -- Calcular totales desde la tabla de movimientos diarios
+    SELECT
+        @TotalIngresos = ISNULL(SUM(CASE WHEN TipoMovimiento = 'Ingreso' THEN Monto ELSE 0 END), 0),
+        @TotalEgresos = ISNULL(SUM(CASE WHEN TipoMovimiento = 'Egreso' THEN Monto ELSE 0 END), 0)
+    FROM MovimientoDiario
+    WHERE MONTH(FechaHora) = @Mes AND YEAR(FechaHora) = @Anio;
+
+    
+    INSERT INTO CierreFinancieroMensual (
+        Mes,
+        Anio,
+        TotalIngresos,
+        TotalEgresos,
+        UtilidadNeta,
+        FechaGeneracion,
+        GeneradoPor,
+        ComentarioJustificativo
+    ) VALUES (
+        @Mes,
+        @Anio,
+        @TotalIngresos,
+        @TotalEgresos,
+        @TotalIngresos - @TotalEgresos,
+        GETDATE(),
+        @Usuario,
+        @Comentario
+    );
+    RETURN 0;
+END;
+GO
+
+--  Procedimiento para listar cierres mensuales ya guardados
+CREATE OR ALTER PROCEDURE sp_ListarCierresFinancieros
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        Mes,
+        Anio,
+        TotalIngresos,
+        TotalEgresos,
+        UtilidadNeta,
+        FechaGeneracion,
+        GeneradoPor,
+        ComentarioJustificativo
+    FROM CierreFinancieroMensual
+    ORDER BY Anio DESC, Mes DESC;
+END;
+GO
+
+-- Procedimiento para obtener el cierre financiero calculado "en vivo" desde movimientos diarios
+CREATE OR ALTER PROCEDURE sp_CierreFinancieroMensual
+    @Mes INT,
+    @Anio INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @TotalIngresos DECIMAL(10,2);
+    DECLARE @TotalEgresos DECIMAL(10,2);
+
+    SELECT
+        @TotalIngresos = ISNULL(SUM(CASE WHEN TipoMovimiento = 'Ingreso' THEN Monto ELSE 0 END), 0),
+        @TotalEgresos = ISNULL(SUM(CASE WHEN TipoMovimiento = 'Egreso' THEN Monto ELSE 0 END), 0)
+    FROM MovimientoDiario
+    WHERE MONTH(FechaHora) = @Mes AND YEAR(FechaHora) = @Anio;
+
+    SELECT 
+        @Mes AS Mes,
+        @Anio AS Anio,
+        @TotalIngresos AS TotalIngresos,
+        @TotalEgresos AS TotalEgresos,
+        (@TotalIngresos - @TotalEgresos) AS UtilidadNeta;
+END;
+GO
+-- Procedimiento para borrar algun cierre
+CREATE OR ALTER PROCEDURE sp_EliminarCierreMensual
+    @Mes INT,
+    @Anio INT
+AS
+BEGIN
+    DELETE FROM CierreFinancieroMensual
+    WHERE Mes = @Mes AND Anio = @Anio;
+END;
+
+-- MDC-004
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialVenta' AND xtype='U')
+BEGIN
+    CREATE TABLE HistorialVenta (
+        IdHistorial INT IDENTITY(1,1) PRIMARY KEY,
+        IdVenta INT NOT NULL,
+        FechaModificacion DATETIME NOT NULL DEFAULT GETDATE(),
+        TipoOperacion NVARCHAR(10) NOT NULL, -- 'INSERT', 'UPDATE', 'DELETE'
+        UsuarioModificador NVARCHAR(100) NOT NULL,
+        DatosAntes NVARCHAR(MAX) NULL,
+        DatosDespues NVARCHAR(MAX) NULL
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialDetalleVenta' AND xtype='U')
+BEGIN
+    CREATE TABLE HistorialDetalleVenta (
+        IdHistorial INT IDENTITY(1,1) PRIMARY KEY,
+        IdDetalleVenta INT NOT NULL,
+        FechaModificacion DATETIME NOT NULL DEFAULT GETDATE(),
+        TipoOperacion NVARCHAR(10) NOT NULL,
+        UsuarioModificador NVARCHAR(100) NOT NULL,
+        DatosAntes NVARCHAR(MAX) NULL,
+        DatosDespues NVARCHAR(MAX) NULL
+    );
+END
+GO
+
+IF OBJECT_ID('TR_Venta_Auditoria', 'TR') IS NOT NULL
+    DROP TRIGGER TR_Venta_Auditoria;
+GO
+
+CREATE TRIGGER TR_Venta_Auditoria
+ON Venta
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @UsuarioActual NVARCHAR(100) = SYSTEM_USER;
+
+    -- INSERT
+    INSERT INTO HistorialVenta (IdVenta, TipoOperacion, UsuarioModificador, DatosDespues)
+    SELECT 
+        i.Id,
+        'INSERT',
+        @UsuarioActual,
+        CONCAT('Fecha:', CONVERT(NVARCHAR(30), i.Fecha, 121), ', MetodoPago:', i.MetodoPago)
+    FROM inserted i
+    LEFT JOIN deleted d ON i.Id = d.Id
+    WHERE d.Id IS NULL;
+
+    -- DELETE
+    INSERT INTO HistorialVenta (IdVenta, TipoOperacion, UsuarioModificador, DatosAntes)
+    SELECT 
+        d.Id,
+        'DELETE',
+        @UsuarioActual,
+        CONCAT('Fecha:', CONVERT(NVARCHAR(30), d.Fecha, 121), ', MetodoPago:', d.MetodoPago)
+    FROM deleted d
+    LEFT JOIN inserted i ON d.Id = i.Id
+    WHERE i.Id IS NULL;
+
+    -- UPDATE
+    INSERT INTO HistorialVenta (IdVenta, TipoOperacion, UsuarioModificador, DatosAntes, DatosDespues)
+    SELECT 
+        d.Id,
+        'UPDATE',
+        @UsuarioActual,
+        CONCAT('Fecha:', CONVERT(NVARCHAR(30), d.Fecha, 121), ', MetodoPago:', d.MetodoPago),
+        CONCAT('Fecha:', CONVERT(NVARCHAR(30), i.Fecha, 121), ', MetodoPago:', i.MetodoPago)
+    FROM deleted d
+    INNER JOIN inserted i ON d.Id = i.Id;
+END;
+GO
+
+
+IF OBJECT_ID('TR_DetalleVenta_Auditoria', 'TR') IS NOT NULL
+    DROP TRIGGER TR_DetalleVenta_Auditoria;
+GO
+
+CREATE TRIGGER TR_DetalleVenta_Auditoria
+ON DetalleVenta
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @UsuarioActual NVARCHAR(100) = SYSTEM_USER;
+
+    -- INSERT
+    INSERT INTO HistorialDetalleVenta (IdDetalleVenta, TipoOperacion, UsuarioModificador, DatosDespues)
+    SELECT 
+        i.Id,
+        'INSERT',
+        @UsuarioActual,
+        CONCAT('VentaId:', i.VentaId, ', ProductoId:', i.ProductoId, ', Cantidad:', i.Cantidad, ', PrecioUnitario:', i.PrecioUnitario)
+    FROM inserted i
+    LEFT JOIN deleted d ON i.Id = d.Id
+    WHERE d.Id IS NULL;
+
+    -- DELETE
+    INSERT INTO HistorialDetalleVenta (IdDetalleVenta, TipoOperacion, UsuarioModificador, DatosAntes)
+    SELECT 
+        d.Id,
+        'DELETE',
+        @UsuarioActual,
+        CONCAT('VentaId:', d.VentaId, ', ProductoId:', d.ProductoId, ', Cantidad:', d.Cantidad, ', PrecioUnitario:', d.PrecioUnitario)
+    FROM deleted d
+    LEFT JOIN inserted i ON d.Id = i.Id
+    WHERE i.Id IS NULL;
+
+    -- UPDATE
+    INSERT INTO HistorialDetalleVenta (IdDetalleVenta, TipoOperacion, UsuarioModificador, DatosAntes, DatosDespues)
+    SELECT 
+        d.Id,
+        'UPDATE',
+        @UsuarioActual,
+        CONCAT('VentaId:', d.VentaId, ', ProductoId:', d.ProductoId, ', Cantidad:', d.Cantidad, ', PrecioUnitario:', d.PrecioUnitario),
+        CONCAT('VentaId:', i.VentaId, ', ProductoId:', i.ProductoId, ', Cantidad:', i.Cantidad, ', PrecioUnitario:', i.PrecioUnitario)
+    FROM deleted d
+    INNER JOIN inserted i ON d.Id = i.Id;
+END;
+GO
+
+
+CREATE OR ALTER PROCEDURE sp_ListarHistorialVenta
+    @FechaInicio DATETIME = NULL,
+    @FechaFin DATETIME = NULL,
+    @TipoOperacion NVARCHAR(10) = NULL, -- 'INSERT', 'UPDATE', 'DELETE'
+    @Usuario NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        IdHistorial,
+        IdVenta,
+        FechaModificacion,
+        TipoOperacion,
+        UsuarioModificador,
+        DatosAntes,
+        DatosDespues
+    FROM HistorialVenta
+    WHERE (@FechaInicio IS NULL OR FechaModificacion >= @FechaInicio)
+      AND (@FechaFin IS NULL OR FechaModificacion <= @FechaFin)
+      AND (@TipoOperacion IS NULL OR TipoOperacion = @TipoOperacion)
+      AND (@Usuario IS NULL OR UsuarioModificador = @Usuario)
+    ORDER BY FechaModificacion DESC;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE sp_ListarHistorialDetalleVenta
+    @FechaInicio DATETIME = NULL,
+    @FechaFin DATETIME = NULL,
+    @TipoOperacion NVARCHAR(10) = NULL,
+    @Usuario NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        IdHistorial,
+        IdDetalleVenta,
+        FechaModificacion,
+        TipoOperacion,
+        UsuarioModificador,
+        DatosAntes,
+        DatosDespues
+    FROM HistorialDetalleVenta
+    WHERE (@FechaInicio IS NULL OR FechaModificacion >= @FechaInicio)
+      AND (@FechaFin IS NULL OR FechaModificacion <= @FechaFin)
+      AND (@TipoOperacion IS NULL OR TipoOperacion = @TipoOperacion)
+      AND (@Usuario IS NULL OR UsuarioModificador = @Usuario)
+    ORDER BY FechaModificacion DESC;
+END;
+GO
+EXEC sp_ListarHistorialVenta @FechaInicio = '2025-01-01', @FechaFin = '2025-07-01', @TipoOperacion = 'UPDATE';
+
+-- registra una venta
+CREATE OR ALTER PROCEDURE RegistrarVenta
+    @MetodoPago VARCHAR(50),
+    @DetallesVenta TipoDetalleVenta READONLY 
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO Venta (Fecha, MetodoPago)
+    VALUES (GETDATE(), @MetodoPago);
+
+    DECLARE @VentaId INT = SCOPE_IDENTITY();
+
+    INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario)
+    SELECT @VentaId, ProductoId, Cantidad, PrecioUnitario
+    FROM @DetallesVenta;
+
+    UPDATE P
+    SET P.Existencias = P.Existencias - D.Cantidad
+    FROM Producto P
+    INNER JOIN @DetallesVenta D ON P.IdProducto = D.ProductoId;
+END;
+GO
