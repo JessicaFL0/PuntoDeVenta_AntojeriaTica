@@ -122,34 +122,139 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
+        //RegistrarEmpleado
         [HttpGet]
-        [AdminOnly]
-        public IActionResult ListarUsuarios()
+        [AdminOnly] 
+        public async Task<IActionResult> RegistrarEmpleado()
         {
-            var usuarios = new List<UsuarioModel>();
-
-            using (var httpClient = new HttpClient())
+            try
             {
-                var url = "http://localhost:5062/api/Account/GetAllUsers";
-                var result = httpClient.GetAsync(url).Result;
-
-                if (result.IsSuccessStatusCode)
-                {
-                    var responseContent = result.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine("API Response: " + responseContent);
-
-                    ViewBag.UsuariosJson = responseContent;
-                }
-                else
-                {
-                    var errorContent = result.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine("API Error: " + errorContent);
-                    ViewBag.Error = "Error al obtener los usuarios: " + errorContent;
-                }
+                var roles = await CargarRoles();
+                ViewBag.Roles = roles; 
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Error = "Error al cargar roles para el formulario: " + ex.Message;
+                _logger.LogError(ex, "Error al cargar roles en GET RegistrarEmpleado");
             }
 
-            return View(usuarios);
+            return View(); 
         }
+
+        [HttpPost]
+        [AdminOnly]
+        public async Task<IActionResult> RegistrarEmpleado(UsuarioModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                var roles = await CargarRoles();
+                ViewBag.Roles = roles;
+                return View(model);
+            }
+
+            try
+            {
+                using (var httpClient = new HttpClient())
+                {
+                    var url = "https://localhost:7243/api/Account/RegistrarCuenta";
+
+                    var payload = new
+                    {
+                        model.NombreCompleto,
+                        model.Correo,
+                        model.Cedula,
+                        Contrasena = model.ContrasenaHash ?? "",
+                        Estado = model.Estado ?? "Activo",
+                        model.IdRol
+                    };
+
+                    var response = await httpClient.PostAsJsonAsync(url, payload);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        TempData["Mensaje"] = "Empleado registrado correctamente";
+                        return RedirectToAction("ListarUsuarios");
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        ViewBag.Error = "Error al registrar empleado: " + errorContent;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Error = "Error de conexión: " + ex.Message;
+            }
+
+            var rolesFallback = await CargarRoles();
+            ViewBag.Roles = rolesFallback;
+            return View(model);
+        }
+
+        private async Task<List<Rol>> CargarRoles()
+        {
+            List<Rol> roles = new List<Rol>();
+
+            try
+            {
+                using (var httpClient = new HttpClient())
+                {
+                    var rolesUrl = "https://localhost:7243/api/Account/GetAllRoles";
+                    var result = await httpClient.GetAsync(rolesUrl);
+
+                    if (result.IsSuccessStatusCode)
+                    {
+                        var json = await result.Content.ReadAsStringAsync();
+                        roles = JsonSerializer.Deserialize<List<Rol>>(json, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        }) ?? new List<Rol>();
+                    }
+                    else
+                    {
+                        ViewBag.Error = "Error al cargar roles desde la API.";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Error = "Error de conexión al cargar roles: " + ex.Message;
+            }
+
+            return roles;
+        }
+
+
+        //Listar Usuarios
+        [HttpGet]
+            [AdminOnly]
+            public IActionResult ListarUsuarios()
+            {
+                var usuarios = new List<UsuarioModel>();
+
+                using (var httpClient = new HttpClient())
+                {
+                    var url = "http://localhost:5062/api/Account/GetAllUsers";
+                    var result = httpClient.GetAsync(url).Result;
+
+                    if (result.IsSuccessStatusCode)
+                    {
+                        var responseContent = result.Content.ReadAsStringAsync().Result;
+                        Console.WriteLine("API Response: " + responseContent);
+
+                        ViewBag.UsuariosJson = responseContent;
+                    }
+                    else
+                    {
+                        var errorContent = result.Content.ReadAsStringAsync().Result;
+                        Console.WriteLine("API Error: " + errorContent);
+                        ViewBag.Error = "Error al obtener los usuarios: " + errorContent;
+                    }
+                }
+
+                return View(usuarios);
+            }
 
         [HttpGet]
         [AdminOnly]
@@ -227,264 +332,266 @@ namespace AntojeriaTica_Web.Controllers
 
             ViewBag.Roles = roles;
             return View(model);
+
         }
-
-        [HttpPost]
-        [AdminOnly]
-        public IActionResult ActualizarUsuario(UsuarioModel model)
-        {
-            using (var httpClient = new HttpClient())
-            {
-                var url = "http://localhost:5062/api/Account/UpdateUser";
-
-                var updateUserPayload = new
+                [HttpPost]
+                [AdminOnly]
+                public IActionResult ActualizarUsuario(UsuarioModel model)
                 {
-                    model.IdUsuario,
-                    model.NombreCompleto,
-                    model.Correo,
-                    model.Cedula,
-                    model.Estado,
-                    model.IdRol
-                };
-
-                var result = httpClient.PutAsJsonAsync(url, updateUserPayload).Result;
-
-                if (result.IsSuccessStatusCode)
-                {
-                    TempData["Mensaje"] = "Usuario actualizado correctamente";
-                    return RedirectToAction("ListarUsuarios", "Login");
-                }
-                else
-                {
-                    var errorContent = result.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine("API Response: " + errorContent);
-                    ViewBag.Error = "Error al actualizar el usuario. El servidor respondió con: " + errorContent;
-
-                    List<Rol> roles = new List<Rol>();
-                    var rolesUrl = "http://localhost:5062/api/Account/GetAllRoles";
-                    var rolesResult = httpClient.GetAsync(rolesUrl).Result;
-
-                    if (rolesResult.IsSuccessStatusCode)
+                    using (var httpClient = new HttpClient())
                     {
-                        var rolesJson = rolesResult.Content.ReadAsStringAsync().Result;
-                        roles = JsonSerializer.Deserialize<List<Rol>>(rolesJson, new JsonSerializerOptions
+                        var url = "http://localhost:5062/api/Account/UpdateUser";
+
+                        var updateUserPayload = new
                         {
-                            PropertyNameCaseInsensitive = true
-                        }) ?? new List<Rol>();
-                    }
-                    ViewBag.Roles = roles;
-                }
-            }
+                            model.IdUsuario,
+                            model.NombreCompleto,
+                            model.Correo,
+                            model.Cedula,
+                            model.Estado,
+                            model.IdRol
+                        };
 
-            return View(model);
-        }
+                        var result = httpClient.PutAsJsonAsync(url, updateUserPayload).Result;
 
-        [HttpPost]
-        [AdminOnly]
-        public IActionResult EliminarUsuario(int id)
-        {
-            Console.WriteLine($"Intentando eliminar usuario con ID: {id}");
-
-            using (var httpClient = new HttpClient())
-            {
-                var url = $"http://localhost:5062/api/Account/DeleteUser/{id}";
-                Console.WriteLine($"URL de eliminación: {url}");
-
-                var result = httpClient.DeleteAsync(url).Result;
-
-                if (result.IsSuccessStatusCode)
-                {
-                    var responseContent = result.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine("API Response: " + responseContent);
-
-                    return Json(new
-                    {
-                        success = true,
-                        message = "Usuario eliminado correctamente"
-                    });
-                }
-                else
-                {
-                    var errorContent = result.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine("API Error: " + errorContent);
-
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Error al eliminar el usuario: " + errorContent
-                    });
-                }
-            }
-        }
-
-        // roles
-        [HttpGet]
-        [AdminOnly]
-        public IActionResult RegistrarRol()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        [AdminOnly]
-        public IActionResult RegistrarRol(Rol model)
-        {
-            using (var httpClient = new HttpClient())
-            {
-                var url = "http://localhost:5062/api/Account/RegistrarRol";
-
-                var result = httpClient.PostAsJsonAsync(url, model).Result;
-
-                if (result.IsSuccessStatusCode)
-                {
-                    TempData["Mensaje"] = "Rol creado correctamente";
-                    return RedirectToAction("RegistrarRol");
-                }
-                else
-                {
-                    var error = result.Content.ReadAsStringAsync().Result;
-                    ViewBag.Error = "Error al registrar el rol: " + error;
-                }
-            }
-
-            return View(model);
-        }
-
-
-        [HttpGet]
-        [AdminOnly]
-        public IActionResult ListarRoles()
-        {
-            List<Rol> lista = new List<Rol>();
-
-            try
-            {
-                using (var httpClient = new HttpClient())
-                {
-                    var url = "http://localhost:5062/api/Account/GetAllRoles";
-                    Console.WriteLine($"Intentando conectar a: {url}");
-
-                    var result = httpClient.GetAsync(url).Result;
-                    Console.WriteLine($"Status Code: {result.StatusCode}");
-
-                    if (result.IsSuccessStatusCode)
-                    {
-                        var json = result.Content.ReadAsStringAsync().Result;
-                        Console.WriteLine($"Respuesta de la API: {json}");
-
-                        lista = JsonSerializer.Deserialize<List<Rol>>(json, new JsonSerializerOptions
+                        if (result.IsSuccessStatusCode)
                         {
-                            PropertyNameCaseInsensitive = true
-                        }) ?? new List<Rol>();
-
-                        Console.WriteLine($"Roles deserializados: {lista.Count}");
-                    }
-                    else
-                    {
-                        var errorContent = result.Content.ReadAsStringAsync().Result;
-                        Console.WriteLine($"Error de la API: {errorContent}");
-                        ViewBag.Error = $"Error al cargar roles. Status: {result.StatusCode}. Detalle: {errorContent}";
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Excepción: {ex.Message}");
-                ViewBag.Error = $"Error de conexión: {ex.Message}";
-            }
-
-            return View(lista);
-        }
-
-        [HttpGet]
-        [AdminOnly]
-        public IActionResult EliminarRol(int id)
-        {
-            using (var httpClient = new HttpClient())
-            {
-                var url = $"http://localhost:5062/api/Account/EliminarRol/{id}";
-                var result = httpClient.DeleteAsync(url).Result;
-
-                if (result.IsSuccessStatusCode)
-                {
-                    TempData["Mensaje"] = "Rol eliminado correctamente.";
-                }
-                else
-                {
-                    var errorContent = result.Content.ReadAsStringAsync().Result;
-                    TempData["Error"] = "Error al eliminar el rol: " + errorContent;
-                }
-            }
-
-            return RedirectToAction("ListarRoles");
-        }
-        // roles
-
-        [HttpPost]
-        public IActionResult IniciarSesion(UsuarioModel model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return View(model);
-            }
-
-            using (var httpClient = new HttpClient())
-            {
-                var url = "http://localhost:5062/api/Account/Login";
-
-                var payload = new
-                {
-                    correo = model.Correo,
-                    contrasena = model.ContrasenaHash
-                };
-
-                var response = httpClient.PostAsJsonAsync(url, payload).Result;
-
-                var responseContent = response.Content.ReadAsStringAsync().Result;
-                _logger.LogInformation($"Respuesta del API de login: {responseContent}");
-
-                if (response.IsSuccessStatusCode)
-                {
-                    try
-                    {
-                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                        var apiResponse = JsonSerializer.Deserialize<LoginApiResponse>(responseContent, options);
-
-                        if (apiResponse != null && apiResponse.Success)
-                        {
-                            _logger.LogInformation("Login exitoso para {Correo}. Token recibido.", model.Correo);
-                            _logger.LogDebug("JWT: {Token}", apiResponse.Token);
-
-                            HttpContext.Session.SetString("JWToken", apiResponse.Token);
-                            if (apiResponse.User != null)
-                            {
-                                HttpContext.Session.SetInt32("IdUsuario", apiResponse.User.IdUsuario);
-                                HttpContext.Session.SetInt32("IdRol", apiResponse.User.IdRol);
-                                HttpContext.Session.SetString("NombreRol", apiResponse.User.NombreRol ?? string.Empty);
-                                HttpContext.Session.SetString("NombreCompleto", apiResponse.User.NombreCompleto ?? string.Empty);
-                            }
-
-                            return RedirectToAction("Principal", "Login");
+                            TempData["Mensaje"] = "Usuario actualizado correctamente";
+                            return RedirectToAction("ListarUsuarios", "Login");
                         }
                         else
                         {
-                            _logger.LogWarning("Login fallido para {Correo}. success=false en respuesta.", model.Correo);
+                            var errorContent = result.Content.ReadAsStringAsync().Result;
+                            Console.WriteLine("API Response: " + errorContent);
+                            ViewBag.Error = "Error al actualizar el usuario. El servidor respondió con: " + errorContent;
+
+                            List<Rol> roles = new List<Rol>();
+                            var rolesUrl = "http://localhost:5062/api/Account/GetAllRoles";
+                            var rolesResult = httpClient.GetAsync(rolesUrl).Result;
+
+                            if (rolesResult.IsSuccessStatusCode)
+                            {
+                                var rolesJson = rolesResult.Content.ReadAsStringAsync().Result;
+                                roles = JsonSerializer.Deserialize<List<Rol>>(rolesJson, new JsonSerializerOptions
+                                {
+                                    PropertyNameCaseInsensitive = true
+                                }) ?? new List<Rol>();
+                            }
+                            ViewBag.Roles = roles;
+                        }
+                    }
+
+                    return View(model);
+                }
+
+                [HttpPost]
+                [AdminOnly]
+                public IActionResult EliminarUsuario(int id)
+                {
+                    Console.WriteLine($"Intentando eliminar usuario con ID: {id}");
+
+                    using (var httpClient = new HttpClient())
+                    {
+                        var url = $"http://localhost:5062/api/Account/DeleteUser/{id}";
+                        Console.WriteLine($"URL de eliminación: {url}");
+
+                        var result = httpClient.DeleteAsync(url).Result;
+
+                        if (result.IsSuccessStatusCode)
+                        {
+                            var responseContent = result.Content.ReadAsStringAsync().Result;
+                            Console.WriteLine("API Response: " + responseContent);
+
+                            return Json(new
+                            {
+                                success = true,
+                                message = "Usuario eliminado correctamente"
+                            });
+                        }
+                        else
+                        {
+                            var errorContent = result.Content.ReadAsStringAsync().Result;
+                            Console.WriteLine("API Error: " + errorContent);
+
+                            return Json(new
+                            {
+                                success = false,
+                                message = "Error al eliminar el usuario: " + errorContent
+                            });
+                        }
+                    }
+                }
+
+                // roles
+                [HttpGet]
+                [AdminOnly]
+                public IActionResult RegistrarRol()
+                {
+                    return View();
+                }
+
+                [HttpPost]
+                [AdminOnly]
+                public IActionResult RegistrarRol(Rol model)
+                {
+                    using (var httpClient = new HttpClient())
+                    {
+                        var url = "http://localhost:5062/api/Account/RegistrarRol";
+
+                        var result = httpClient.PostAsJsonAsync(url, model).Result;
+
+                        if (result.IsSuccessStatusCode)
+                        {
+                            TempData["Mensaje"] = "Rol creado correctamente";
+                            return RedirectToAction("RegistrarRol");
+                        }
+                        else
+                        {
+                            var error = result.Content.ReadAsStringAsync().Result;
+                            ViewBag.Error = "Error al registrar el rol: " + error;
+                        }
+                    }
+
+                    return View(model);
+                }
+
+
+                [HttpGet]
+                [AdminOnly]
+                public IActionResult ListarRoles()
+                {
+                    List<Rol> lista = new List<Rol>();
+
+                    try
+                    {
+                        using (var httpClient = new HttpClient())
+                        {
+                            var url = "http://localhost:5062/api/Account/GetAllRoles";
+                            Console.WriteLine($"Intentando conectar a: {url}");
+
+                            var result = httpClient.GetAsync(url).Result;
+                            Console.WriteLine($"Status Code: {result.StatusCode}");
+
+                            if (result.IsSuccessStatusCode)
+                            {
+                                var json = result.Content.ReadAsStringAsync().Result;
+                                Console.WriteLine($"Respuesta de la API: {json}");
+
+                                lista = JsonSerializer.Deserialize<List<Rol>>(json, new JsonSerializerOptions
+                                {
+                                    PropertyNameCaseInsensitive = true
+                                }) ?? new List<Rol>();
+
+                                Console.WriteLine($"Roles deserializados: {lista.Count}");
+                            }
+                            else
+                            {
+                                var errorContent = result.Content.ReadAsStringAsync().Result;
+                                Console.WriteLine($"Error de la API: {errorContent}");
+                                ViewBag.Error = $"Error al cargar roles. Status: {result.StatusCode}. Detalle: {errorContent}";
+                            }
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error al deserializar la respuesta del login");
+                        Console.WriteLine($"Excepción: {ex.Message}");
+                        ViewBag.Error = $"Error de conexión: {ex.Message}";
                     }
-                }
-                else
-                {
-                    _logger.LogWarning("Login fallido con status {StatusCode} para {Correo}", response.StatusCode, model.Correo);
+
+                    return View(lista);
                 }
 
-                ViewBag.Error = "Credenciales inválidas o error al iniciar sesión.";
+                [HttpGet]
+                [AdminOnly]
+                public IActionResult EliminarRol(int id)
+                {
+                    using (var httpClient = new HttpClient())
+                    {
+                        var url = $"http://localhost:5062/api/Account/EliminarRol/{id}";
+                        var result = httpClient.DeleteAsync(url).Result;
+
+                        if (result.IsSuccessStatusCode)
+                        {
+                            TempData["Mensaje"] = "Rol eliminado correctamente.";
+                        }
+                        else
+                        {
+                            var errorContent = result.Content.ReadAsStringAsync().Result;
+                            TempData["Error"] = "Error al eliminar el rol: " + errorContent;
+                        }
+                    }
+
+                    return RedirectToAction("ListarRoles");
+                }
+                // roles
+
+                [HttpPost]
+                public IActionResult IniciarSesion(UsuarioModel model)
+                {
+                    if (!ModelState.IsValid)
+                    {
+                        return View(model);
+                    }
+
+                    using (var httpClient = new HttpClient())
+                    {
+                        var url = "http://localhost:5062/api/Account/Login";
+
+                        var payload = new
+                        {
+                            correo = model.Correo,
+                            contrasena = model.ContrasenaHash
+                        };
+
+                        var response = httpClient.PostAsJsonAsync(url, payload).Result;
+
+                        var responseContent = response.Content.ReadAsStringAsync().Result;
+                        _logger.LogInformation($"Respuesta del API de login: {responseContent}");
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            try
+                            {
+                                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                                var apiResponse = JsonSerializer.Deserialize<LoginApiResponse>(responseContent, options);
+
+                                if (apiResponse != null && apiResponse.Success)
+                                {
+                                    _logger.LogInformation("Login exitoso para {Correo}. Token recibido.", model.Correo);
+                                    _logger.LogDebug("JWT: {Token}", apiResponse.Token);
+
+                                    HttpContext.Session.SetString("JWToken", apiResponse.Token);
+                                    if (apiResponse.User != null)
+                                    {
+                                        HttpContext.Session.SetInt32("IdUsuario", apiResponse.User.IdUsuario);
+                                        HttpContext.Session.SetInt32("IdRol", apiResponse.User.IdRol);
+                                        HttpContext.Session.SetString("NombreRol", apiResponse.User.NombreRol ?? string.Empty);
+                                        HttpContext.Session.SetString("NombreCompleto", apiResponse.User.NombreCompleto ?? string.Empty);
+                                    }
+
+                                    return RedirectToAction("Principal", "Login");
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Login fallido para {Correo}. success=false en respuesta.", model.Correo);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error al deserializar la respuesta del login");
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Login fallido con status {StatusCode} para {Correo}", response.StatusCode, model.Correo);
+                        }
+
+                        ViewBag.Error = "Credenciales inválidas o error al iniciar sesión.";
+                    }
+
+                    return View(model);
+                }
             }
 
-            return View(model);
         }
-    }
-}
+   

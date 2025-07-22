@@ -1,0 +1,58 @@
+﻿@model List<AntojeriaTica_Web.Models.MetodoPago>
+
+@{
+    ViewData["Title"] = "Configuración de Métodos de Pago";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Activo</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var metodo in Model)
+        {
+            <tr>
+                <td>@metodo.Nombre</td>
+                <td>
+                    @if (metodo.Activo)
+                    {
+                        <span class="badge bg-success">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Inactivo</span>
+                    }
+                </td>
+                <td>
+                    <form asp-action="CambiarEstado" asp-controller="Ventas" method="post">
+                        <input type="hidden" name="idMetodo" value="@metodo.IdMetodoPago" />
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            @(metodo.Activo ? "Desactivar" : "Activar")
+                        </button>
+                    </form>
+                    <form asp-action="VerHistorial" asp-controller="Ventas" method="post" style="display:inline">
+                        <input type="hidden" name="idMetodo" value="@metodo.IdMetodoPago" />
+                        <button type="submit" class="btn btn-sm btn-info">Ver historial</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<hr />
+
+<h4>Agregar nuevo método de pago</h4>
+<form asp-action="AgregarMetodoPago" asp-controller="Ventas" method="post">
+    <div class="mb-3">
+        <label for="nombre" class="form-label">Nombre del método</label>
+        <input type="text" class="form-control" name="nombre" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Agregar</button>
+</form>

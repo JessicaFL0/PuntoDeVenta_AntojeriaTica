@@ -1,0 +1,90 @@
+﻿@model List<AntojeriaTica_Web.Models.Impuesto>
+
+@{
+    ViewData["Title"] = "Configuración de Impuestos";
+}
+
+<h2 class="mb-4">@ViewData["Title"]</h2>
+
+@if (!string.IsNullOrEmpty(ViewBag.Error))
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Porcentaje</th>
+            <th>Restaurante</th>
+            <th>Exonerado</th>
+            <th>Estado</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var impuesto in Model)
+        {
+            <tr>
+                <td>@impuesto.Nombre</td>
+                <td>@impuesto.Tipo</td>
+                <td>@impuesto.Porcentaje %</td>
+                <td>@(impuesto.AplicaEnRestaurante ? "Sí" : "No")</td>
+                <td>@(impuesto.EsExonerado ? "Sí" : "No")</td>
+                <td>
+                    <span class="badge bg-@(impuesto.Estado ? "success" : "secondary")">
+                        @(impuesto.Estado ? "Activo" : "Inactivo")
+                    </span>
+                </td>
+                <td>
+                    <form asp-action="CambiarEstado" asp-controller="Impuestos" method="post">
+                        <input type="hidden" name="id" value="@impuesto.IdImpuesto" />
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            @(impuesto.Estado ? "Desactivar" : "Activar")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<hr />
+
+<h4>Agregar Nuevo Impuesto</h4>
+<form asp-action="AgregarImpuesto" asp-controller="Impuestos" method="post" class="row g-3 mt-3">
+    <div class="col-md-4">
+        <label class="form-label">Nombre</label>
+        <input type="text" name="Nombre" class="form-control" required />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Tipo</label>
+        <select name="Tipo" class="form-control" required>
+            <option value="">-- Seleccione --</option>
+            <option value="IVA">IVA</option>
+            <option value="ISC">ISC</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Porcentaje</label>
+        <input type="number" step="0.01" name="Porcentaje" class="form-control" required />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">En Restaurante</label>
+        <select name="AplicaEnRestaurante" class="form-control" required>
+            <option value="true">Sí</option>
+            <option value="false">No</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Exonerado</label>
+        <select name="EsExonerado" class="form-control" required>
+            <option value="false">No</option>
+            <option value="true">Sí</option>
+        </select>
+    </div>
+    <div class="col-12 mt-3">
+        <button type="submit" class="btn btn-primary">Agregar Impuesto</button>
+    </div>
+</form>
