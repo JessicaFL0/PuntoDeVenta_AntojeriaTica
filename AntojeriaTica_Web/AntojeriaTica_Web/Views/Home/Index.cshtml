@@ -1,8 +1,266 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Panel Principal - Antojería Tica";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Bienvenidos Soda Antojeria Tica</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container-fluid">
+    <!-- Header Principal -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="jumbotron bg-primary text-white rounded p-4">
+                <h1 class="display-4 text-center">
+                    <i class="fas fa-store me-3"></i>
+                    Bienvenido a Antojería Tica
+                </h1>
+                <p class="lead text-center">Sistema de Punto de Venta - Panel de Control Principal</p>
+                <hr class="my-4 bg-white">
+                <p class="text-center">Seleccione la operación que desea realizar</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Acceso Rápido -->
+    <div class="row g-4">
+        <!-- Ventas -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-success text-white text-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cash-register me-2"></i>
+                        Gestión de Ventas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a asp-controller="Ventas" asp-action="RegistrarVenta" class="list-group-item list-group-item-action">
+                            <i class="fas fa-plus-circle text-success me-2"></i>
+                            <strong>Nueva Venta</strong>
+                            <br><small class="text-muted">Registrar una venta nueva</small>
+                        </a>
+                        <a asp-controller="Ventas" asp-action="BuscarVentas" class="list-group-item list-group-item-action">
+                            <i class="fas fa-search text-info me-2"></i>
+                            <strong>Buscar Ventas</strong>
+                            <br><small class="text-muted">Consultar ventas anteriores</small>
+                        </a>
+                        <a asp-controller="Ventas" asp-action="ReporteVentasDia" class="list-group-item list-group-item-action">
+                            <i class="fas fa-chart-line text-primary me-2"></i>
+                            <strong>Reporte del Día</strong>
+                            <br><small class="text-muted">Estadísticas de ventas</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Devoluciones -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-warning text-dark text-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-undo-alt me-2"></i>
+                        Devoluciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a asp-controller="Ventas" asp-action="ProcesarDevoluciones" class="list-group-item list-group-item-action">
+                            <i class="fas fa-exchange-alt text-warning me-2"></i>
+                            <strong>Procesar Devolución</strong>
+                            <br><small class="text-muted">Devolver productos o dinero</small>
+                        </a>
+                        <a asp-controller="Ventas" asp-action="HistorialDevoluciones" class="list-group-item list-group-item-action">
+                            <i class="fas fa-history text-secondary me-2"></i>
+                            <strong>Historial</strong>
+                            <br><small class="text-muted">Ver devoluciones realizadas</small>
+                        </a>
+                        <a asp-controller="Ventas" asp-action="GestionarCreditos" class="list-group-item list-group-item-action">
+                            <i class="fas fa-piggy-bank text-info me-2"></i>
+                            <strong>Gestionar Créditos</strong>
+                            <br><small class="text-muted">Créditos de clientes</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventario -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-info text-white text-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-boxes me-2"></i>
+                        Inventario
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a asp-controller="Inventario" asp-action="ListarProductos" class="list-group-item list-group-item-action">
+                            <i class="fas fa-list text-info me-2"></i>
+                            <strong>Ver Productos</strong>
+                            <br><small class="text-muted">Lista completa de productos</small>
+                        </a>
+                        <a asp-controller="Inventario" asp-action="EstadoInventario" class="list-group-item list-group-item-action">
+                            <i class="fas fa-chart-bar text-success me-2"></i>
+                            <strong>Estado Inventario</strong>
+                            <br><small class="text-muted">Existencias y alertas</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Administración -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-secondary text-white text-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Administración
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a asp-controller="MovimientoDiario" asp-action="Listar" class="list-group-item list-group-item-action">
+                            <i class="fas fa-exchange-alt text-primary me-2"></i>
+                            <strong>Movimientos Diarios</strong>
+                            <br><small class="text-muted">Ingresos y egresos</small>
+                        </a>
+                        <a asp-controller="CierreCaja" asp-action="Index" class="list-group-item list-group-item-action">
+                            <i class="fas fa-calculator text-success me-2"></i>
+                            <strong>Cierre de Caja</strong>
+                            <br><small class="text-muted">Arqueo de caja</small>
+                        </a>
+                        <a asp-controller="Ventas" asp-action="ConfiguracionPago" class="list-group-item list-group-item-action">
+                            <i class="fas fa-credit-card text-info me-2"></i>
+                            <strong>Métodos de Pago</strong>
+                            <br><small class="text-muted">Configurar pagos</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuración -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-dark text-white text-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-cog me-2"></i>
+                        Configuración
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <a asp-controller="Login" asp-action="ListarUsuarios" class="list-group-item list-group-item-action">
+                            <i class="fas fa-users text-primary me-2"></i>
+                            <strong>Gestión Usuarios</strong>
+                            <br><small class="text-muted">Administrar usuarios</small>
+                        </a>
+                        <a asp-controller="Impuestos" asp-action="ConfiguracionImpuestos" class="list-group-item list-group-item-action">
+                            <i class="fas fa-percentage text-warning me-2"></i>
+                            <strong>Configurar Impuestos</strong>
+                            <br><small class="text-muted">IVA y otros impuestos</small>
+                        </a>
+                        <a asp-controller="Ventas" asp-action="GestionarDescuentos" class="list-group-item list-group-item-action">
+                            <i class="fas fa-tags text-success me-2"></i>
+                            <strong>Descuentos</strong>
+                            <br><small class="text-muted">Gestionar promociones</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas Rápidas -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-gradient-primary text-white text-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Accesos Rápidos
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <a asp-controller="Ventas" asp-action="RegistrarVenta" class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-plus-circle mb-1"></i><br>
+                                <small>Nueva Venta</small>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a asp-controller="Ventas" asp-action="ProcesarDevoluciones" class="btn btn-warning btn-lg w-100">
+                                <i class="fas fa-undo-alt mb-1"></i><br>
+                                <small>Devolución</small>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a asp-controller="Ventas" asp-action="BuscarVentas" class="btn btn-info btn-lg w-100">
+                                <i class="fas fa-search mb-1"></i><br>
+                                <small>Buscar</small>
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a asp-controller="CierreCaja" asp-action="Index" class="btn btn-secondary btn-lg w-100">
+                                <i class="fas fa-calculator mb-1"></i><br>
+                                <small>Cierre</small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer con información del sistema -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="alert alert-light text-center">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Sistema de Punto de Venta - Antojería Tica</strong>
+                <br>
+                <small class="text-muted">
+                    Funcionalidades disponibles: Ventas, Devoluciones, Inventario, Reportes y más.
+                </small>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <style>
+        .jumbotron {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border-radius: 15px !important;
+        }
+        
+        .card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            border-radius: 10px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+        }
+        
+        .list-group-item {
+            border-left: none;
+            border-right: none;
+            transition: background-color 0.2s ease;
+        }
+        
+        .list-group-item:hover {
+            background-color: rgba(0,123,255,0.1);
+            transform: translateX(5px);
+        }
+        
+        .btn-lg {
+            border-radius: 10px;
+        }
+        
+        .card-header {
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+    </style>
+}

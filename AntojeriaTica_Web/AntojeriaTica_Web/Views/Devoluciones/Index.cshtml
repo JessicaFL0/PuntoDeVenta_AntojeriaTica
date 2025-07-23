@@ -1,0 +1,188 @@
+@{
+    ViewData["Title"] = "Devoluciones y Reembolsos";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h3 class="card-title text-white">
+                        <i class="fas fa-undo-alt"></i>
+                        Devoluciones y Reembolsos
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Error:</strong> @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Éxito:</strong> @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <!-- Sección para validar venta -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="fas fa-search text-primary"></i>
+                                Buscar Venta para Devolución
+                            </h5>
+                            <form method="post" asp-action="ValidarVenta" class="border rounded p-4 bg-light">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label for="ventaId" class="form-label">
+                                                <i class="fas fa-hashtag"></i> ID de Venta
+                                            </label>
+                                            <input type="number" class="form-control" id="ventaId" name="ventaId" 
+                                                   placeholder="Ej: 123" required min="1" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label for="tipoDevolucion" class="form-label">
+                                                <i class="fas fa-list"></i> Tipo de Devolución
+                                            </label>
+                                            <select class="form-control" id="tipoDevolucion" name="tipoDevolucion" required>
+                                                <option value="total">Devolución Total</option>
+                                                <option value="parcial">Devolución Parcial</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            <i class="fas fa-search"></i> Validar y Continuar
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Acciones rápidas -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="fas fa-bolt text-warning"></i>
+                                Acciones Rápidas
+                            </h5>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Buscar créditos de cliente -->
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="card h-100 shadow-sm border-info">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-credit-card fa-3x text-info"></i>
+                                    </div>
+                                    <h6 class="card-title">Créditos de Cliente</h6>
+                                    <p class="card-text text-muted">
+                                        Buscar y consultar créditos disponibles de un cliente
+                                    </p>
+                                    <a asp-action="BuscarCreditos" class="btn btn-info">
+                                        <i class="fas fa-search"></i> Buscar Créditos
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Historial de devoluciones -->
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="card h-100 shadow-sm border-secondary">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-history fa-3x text-secondary"></i>
+                                    </div>
+                                    <h6 class="card-title">Historial de Devoluciones</h6>
+                                    <p class="card-text text-muted">
+                                        Consultar historial completo de devoluciones procesadas
+                                    </p>
+                                    <a asp-action="Historial" class="btn btn-secondary">
+                                        <i class="fas fa-list"></i> Ver Historial
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Buscar ventas -->
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="card h-100 shadow-sm border-success">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-receipt fa-3x text-success"></i>
+                                    </div>
+                                    <h6 class="card-title">Buscar Ventas</h6>
+                                    <p class="card-text text-muted">
+                                        Ir al módulo de búsqueda de ventas anteriores
+                                    </p>
+                                    <a asp-controller="Ventas" asp-action="BuscarVentas" class="btn btn-success">
+                                        <i class="fas fa-external-link-alt"></i> Buscar Ventas
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información importante -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Información Importante sobre Devoluciones
+                                </h6>
+                                <hr>
+                                <ul class="mb-0">
+                                    <li><strong>Devolución Total:</strong> Devuelve todos los productos de una venta y el monto completo.</li>
+                                    <li><strong>Devolución Parcial:</strong> Permite seleccionar qué productos devolver.</li>
+                                    <li><strong>Métodos de Reembolso:</strong>
+                                        <ul>
+                                            <li><em>Efectivo:</em> Devuelve el dinero en efectivo</li>
+                                            <li><em>Tarjeta:</em> Procesa reembolso a la tarjeta original</li>
+                                            <li><em>Crédito:</em> Genera crédito en cuenta para futuras compras</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Importante:</strong> Una vez procesada una devolución, no se puede revertir.</li>
+                                    <li><strong>Créditos:</strong> Los créditos en cuenta tienen una validez de 90 días por defecto.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-focus en el campo de ID de venta
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('ventaId').focus();
+        });
+
+        // Validación del formulario
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const ventaId = document.getElementById('ventaId').value;
+            if (!ventaId || parseInt(ventaId) <= 0) {
+                e.preventDefault();
+                alert('Por favor ingrese un ID de venta válido');
+                return false;
+            }
+        });
+    </script>
+}

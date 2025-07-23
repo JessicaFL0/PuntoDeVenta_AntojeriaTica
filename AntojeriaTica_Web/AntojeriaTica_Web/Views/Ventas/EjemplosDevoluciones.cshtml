@@ -1,0 +1,264 @@
+@{
+    ViewData["Title"] = "Ejemplos de Devoluciones";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-undo text-warning"></i> Ejemplos de Devoluciones</h2>
+            <p class="text-muted">Aprende cómo usar el sistema de devoluciones con estos ejemplos prácticos</p>
+        </div>
+    </div>
+
+    <!-- Escenarios de Devoluciones -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card border-success mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-check-circle"></i> Escenario 1: Devolución Total por Producto Defectuoso</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Situación:</strong> Un cliente compró 2 refrescos y 1 empanada. La empanada estaba en mal estado.</p>
+                    
+                    <h6>Datos de la Venta Original:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>ID Venta:</strong> 150</li>
+                        <li><strong>Fecha:</strong> 22/07/2025 14:30</li>
+                        <li><strong>Total:</strong> ₡3,500</li>
+                        <li><strong>Método de Pago:</strong> Tarjeta</li>
+                    </ul>
+
+                    <h6>Proceso de Devolución:</h6>
+                    <div class="alert alert-info">
+                        <ol>
+                            <li>Ir a <strong>Ventas → Devolución Total</strong></li>
+                            <li>Ingresar ID de Venta: <code>150</code></li>
+                            <li>Tipo de Reembolso: <strong>Tarjeta</strong> (mismo método)</li>
+                            <li>Motivo: <strong>"Producto defectuoso - empanada en mal estado"</strong></li>
+                            <li>Cliente: <strong>María González</strong></li>
+                            <li>Identificación: <strong>1-1234-5678</strong></li>
+                        </ol>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <strong>Resultado:</strong> Se devuelven ₡3,500 a la tarjeta del cliente.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-warning mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Escenario 2: Devolución Parcial</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Situación:</strong> Un cliente compró 5 productos pero solo quiere devolver 2 de ellos.</p>
+                    
+                    <h6>Datos de la Venta Original:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>ID Venta:</strong> 148</li>
+                        <li><strong>Fecha:</strong> 22/07/2025 13:15</li>
+                        <li><strong>Total:</strong> ₡8,750</li>
+                        <li><strong>Método de Pago:</strong> Efectivo</li>
+                    </ul>
+
+                    <h6>Productos a Devolver:</h6>
+                    <ul class="list-unstyled">
+                        <li>✅ 2x Gaseosas (₡1,200 c/u) = ₡2,400</li>
+                        <li>✅ 1x Sandwich (₡2,500) = ₡2,500</li>
+                        <li class="text-muted">❌ 2x Churros (mantener)</li>
+                    </ul>
+
+                    <h6>Proceso:</h6>
+                    <div class="alert alert-info">
+                        <ol>
+                            <li>Ir a <strong>Ventas → Devolución Parcial</strong></li>
+                            <li>Ingresar ID: <code>148</code></li>
+                            <li>Seleccionar productos y cantidades</li>
+                            <li>Tipo: <strong>Efectivo</strong></li>
+                            <li>Total a devolver: <strong>₡4,900</strong></li>
+                        </ol>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <strong>Resultado:</strong> Se devuelven ₡4,900 en efectivo.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Más Escenarios -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card border-info mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-credit-card"></i> Escenario 3: Reembolso a Crédito</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Situación:</strong> Cliente pagó con tarjeta pero quiere crédito en tienda para comprar después.</p>
+                    
+                    <h6>Proceso:</h6>
+                    <div class="alert alert-info">
+                        <ol>
+                            <li>En devolución, seleccionar <strong>Tipo: Crédito</strong></li>
+                            <li>Ingresar datos del cliente</li>
+                            <li>El sistema genera un crédito válido por 90 días</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <strong>Resultado:</strong> Cliente recibe crédito de ₡5,200 para usar en futuras compras.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-danger mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5><i class="fas fa-times-circle"></i> Escenario 4: Validación de Recibo Inválido</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Situación:</strong> Cliente presenta un recibo que no existe o ya fue devuelto.</p>
+                    
+                    <h6>Casos de Error:</h6>
+                    <ul class="list-unstyled">
+                        <li>❌ <strong>ID 999:</strong> "Venta no encontrada"</li>
+                        <li>❌ <strong>ID 145:</strong> "Esta venta ya fue devuelta completamente"</li>
+                        <li>❌ <strong>ID 142:</strong> "Venta de hace más de 30 días"</li>
+                    </ul>
+
+                    <div class="alert alert-danger">
+                        <strong>El sistema automáticamente:</strong>
+                        <ul class="mb-0">
+                            <li>Valida la existencia de la venta</li>
+                            <li>Verifica si ya fue devuelta</li>
+                            <li>Confirma que esté dentro del período permitido</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gestión de Créditos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-primary mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-wallet"></i> Escenario 5: Usar Crédito Existente</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Situación:</strong> Cliente tiene crédito de una devolución anterior y quiere usarlo en una nueva compra.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Créditos Disponibles:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Cliente</th>
+                                            <th>Saldo</th>
+                                            <th>Vence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="table-success">
+                                            <td>Ana López<br><small>2-0987-6543</small></td>
+                                            <td>₡5,200</td>
+                                            <td>20/10/2025</td>
+                                        </tr>
+                                        <tr class="table-success">
+                                            <td>Carlos Mora<br><small>1-2345-6789</small></td>
+                                            <td>₡3,750</td>
+                                            <td>15/09/2025</td>
+                                        </tr>
+                                        <tr class="table-warning">
+                                            <td>Luis Jiménez<br><small>1-9876-5432</small></td>
+                                            <td>₡1,500</td>
+                                            <td>30/07/2025</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Proceso de Aplicación:</h6>
+                            <div class="alert alert-info">
+                                <ol>
+                                    <li>Ir a <strong>Ventas → Gestionar Créditos</strong></li>
+                                    <li>Buscar cliente por identificación</li>
+                                    <li>Seleccionar crédito a aplicar</li>
+                                    <li>Ingresar monto a usar (puede ser parcial)</li>
+                                    <li>Confirmar aplicación</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enlaces Rápidos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-header">
+                    <h5><i class="fas fa-link"></i> Enlaces Rápidos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="/Ventas/DevolucionTotal" class="btn btn-outline-danger btn-block mb-2">
+                                <i class="fas fa-undo"></i> Devolución Total
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="/Ventas/DevolucionParcial" class="btn btn-outline-warning btn-block mb-2">
+                                <i class="fas fa-undo-alt"></i> Devolución Parcial
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="/Ventas/HistorialDevoluciones" class="btn btn-outline-info btn-block mb-2">
+                                <i class="fas fa-history"></i> Historial
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="/Ventas/GestionarCreditos" class="btn btn-outline-success btn-block mb-2">
+                                <i class="fas fa-wallet"></i> Gestionar Créditos
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.alert ol li {
+    margin-bottom: 5px;
+}
+
+.table-success {
+    background-color: #d4edda !important;
+}
+
+.table-warning {
+    background-color: #fff3cd !important;
+}
+</style>

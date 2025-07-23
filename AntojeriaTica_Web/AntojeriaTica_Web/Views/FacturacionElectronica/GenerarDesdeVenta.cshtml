@@ -1,0 +1,176 @@
+@model AntojeriaTica_Web.Models.GenerarFacturaElectronicaViewModel
+@{
+    ViewData["Title"] = "Generar Factura Electrónica";
+}
+
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="@Url.Action("BuscarVentas", "Ventas")">Buscar Ventas</a></li>
+                    <li class="breadcrumb-item active">Generar Factura</li>
+                </ol>
+            </nav>
+            <h2><i class="fas fa-file-invoice-dollar text-primary"></i> Generar Factura Electrónica</h2>
+            <p class="text-muted">Complete los datos del cliente para generar la factura electrónica de la venta #@Model.VentaId</p>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-user"></i> Datos del Cliente</h5>
+        </div>
+        <div class="card-body">
+            @using (Html.BeginForm("GenerarDesdeVenta", "FacturacionElectronica", FormMethod.Post, new { @class = "needs-validation", @novalidate = "novalidate" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.VentaId)
+
+                <div class="row g-3">
+                    <!-- Nombre del Cliente -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.ClienteNombre, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.ClienteNombre, new { @class = "form-control", @required = "required", @placeholder = "Ingrese el nombre completo del cliente" })
+                        @Html.ValidationMessageFor(m => m.ClienteNombre, "", new { @class = "invalid-feedback" })
+                        <div class="valid-feedback">
+                            ¡Se ve bien!
+                        </div>
+                    </div>
+
+                    <!-- Identificación del Cliente -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.ClienteIdentificacion, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.ClienteIdentificacion, new { @class = "form-control", @placeholder = "Cédula, pasaporte o identificación tributaria" })
+                        @Html.ValidationMessageFor(m => m.ClienteIdentificacion, "", new { @class = "invalid-feedback" })
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> Opcional: Cédula, pasaporte o identificación tributaria
+                        </div>
+                    </div>
+
+                    <!-- Email del Cliente -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.ClienteEmail, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.ClienteEmail, new { 
+                            @class = "form-control", 
+                            @type = "email",
+                            @placeholder = "correo@ejemplo.com" 
+                        })
+                        @Html.ValidationMessageFor(m => m.ClienteEmail, "", new { @class = "invalid-feedback" })
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> Se enviará la factura electrónica a este correo
+                        </div>
+                    </div>
+
+                    <!-- Teléfono del Cliente -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.ClienteTelefono, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.ClienteTelefono, new { @class = "form-control", @placeholder = "8888-8888", @pattern = "[0-9-+() ]+" })
+                        @Html.ValidationMessageFor(m => m.ClienteTelefono, "", new { @class = "invalid-feedback" })
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> Opcional: Número de contacto del cliente
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Summary -->
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger mt-3" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Por favor corrija los siguientes errores:</strong>
+                        @Html.ValidationSummary(false, "", new { @class = "mb-0" })
+                    </div>
+                }
+
+                <!-- Action Buttons -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index", "FacturacionElectronica")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-file-invoice-dollar"></i> Generar Factura Electrónica
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="card mt-4">
+        <div class="card-body bg-light">
+            <h6><i class="fas fa-info-circle text-info"></i> Información Importante</h6>
+            <ul class="mb-0 small">
+                <li>La factura electrónica será generada automáticamente con los datos de la venta #@Model.VentaId</li>
+                <li>Se enviará a Hacienda para su aprobación (proceso simulado)</li>
+                <li>Si proporciona un email, se enviará una copia de la factura al cliente</li>
+                <li>Podrá descargar el PDF de la factura una vez generada</li>
+                <li>El proceso puede tomar unos segundos, por favor espere</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+// Bootstrap validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Format phone number
+document.getElementById('ClienteTelefono').addEventListener('input', function (e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 4) {
+        value = value.replace(/(\d{4})(\d{4})/, '$1-$2');
+    }
+    e.target.value = value;
+});
+
+// Format identification
+document.getElementById('ClienteIdentificacion').addEventListener('input', function (e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length === 9) {
+        // Formato cédula costarricense: 1-1234-1234
+        value = value.replace(/(\d{1})(\d{4})(\d{4})/, '$1-$2-$3');
+    }
+    e.target.value = value;
+});
+</script>
+
+<style>
+.was-validated .form-control:valid {
+    border-color: #198754;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='m2.3 6.73.94-.94 1.44 1.44-2.38 2.38-1.44-1.44.94-.94z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.was-validated .form-control:invalid {
+    border-color: #dc3545;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+</style>

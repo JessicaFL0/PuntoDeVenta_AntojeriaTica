@@ -1,748 +1,851 @@
--- Para usar ejecutar en sql server: sqlcmd -S "{nombre_servidor}" -E -i "AntojeriaTica_Api\Database\CreateDatabase.sql"
+-- =============================================
+-- Base de datos AntojeriaTica - Script Consolidado
+-- Incluye todas las funcionalidades: básica + facturación electrónica
+-- =============================================
 
 -- Crear la base de datos si no existe
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'AntojeriaTica')
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'AntojeriaTicaBD')
 BEGIN
-    CREATE DATABASE AntojeriaTica;
+    CREATE DATABASE AntojeriaTicaBD;
+    PRINT 'Base de datos AntojeriaTicaBD creada';
+END
+ELSE
+BEGIN
+    PRINT 'Base de datos AntojeriaTicaBD ya existe';
 END
 GO
 
-USE AntojeriaTica;
+USE AntojeriaTicaBD;
 GO
 
--- Crear la tabla Rol si no existe
+-- =============================================
+-- TABLAS BÁSICAS
+-- =============================================
+
+-- 1. Tabla Rol
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Rol' AND xtype='U')
 BEGIN
     CREATE TABLE Rol (
-        IdRol INT PRIMARY KEY IDENTITY(1,1),
-        NombreRol VARCHAR(50) UNIQUE NOT NULL,
-        Descripcion TEXT
+        Id int IDENTITY(1,1) NOT NULL,
+        Nombre nvarchar(50) NOT NULL,
+        Descripcion nvarchar(200) NULL,
+        Activo bit NOT NULL DEFAULT 1,
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT PK_Rol PRIMARY KEY (Id)
     );
+
+    -- Insertar roles por defecto
+    INSERT INTO Rol (Nombre, Descripcion) VALUES 
+    ('Admin', 'Administrador del sistema'),
+    ('Vendedor', 'Personal de ventas'),
+    ('Contador', 'Personal contable');
+    
+    PRINT 'Tabla Rol creada con datos iniciales';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla Rol ya existe';
 END
 GO
 
--- Crear la tabla Usuario si no existe
+-- 2. Tabla Usuario
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Usuario' AND xtype='U')
 BEGIN
     CREATE TABLE Usuario (
-        IdUsuario INT PRIMARY KEY IDENTITY(1,1),
-        NombreCompleto VARCHAR(100) NOT NULL,
-        Correo VARCHAR(100) UNIQUE NOT NULL,
-        Cedula VARCHAR(20) UNIQUE NOT NULL,
-        ContrasenaHash VARCHAR(255) NOT NULL,
-        Estado VARCHAR(20) NOT NULL,
-        IdRol INT NOT NULL,
-        FOREIGN KEY (IdRol) REFERENCES Rol(IdRol)
+        Id int IDENTITY(1,1) NOT NULL,
+        Nombre nvarchar(100) NOT NULL,
+        Email nvarchar(255) NOT NULL,
+        Password nvarchar(255) NOT NULL,
+        RolId int NOT NULL,
+        Activo bit NOT NULL DEFAULT 1,
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        UltimoAcceso datetime NULL,
+        CONSTRAINT PK_Usuario PRIMARY KEY (Id),
+        CONSTRAINT FK_Usuario_Rol FOREIGN KEY (RolId) REFERENCES Rol(Id),
+        CONSTRAINT UQ_Usuario_Email UNIQUE (Email)
     );
+    PRINT 'Tabla Usuario creada';
 END
-GO
-
--- Insertar rol por defecto si no existe
-IF NOT EXISTS (SELECT 1 FROM Rol WHERE NombreRol = 'Usuario')
+ELSE
 BEGIN
-    INSERT INTO Rol (NombreRol, Descripcion) VALUES ('Usuario', 'Rol de usuario estándar');
+    PRINT 'Tabla Usuario ya existe';
 END
 GO
--- TABLA MOVIMIENTOS 28/6
-CREATE TABLE MovimientoInventario (
-    IdMovimiento INT PRIMARY KEY IDENTITY,
-    IdProducto INT NOT NULL,
-    Fecha DATETIME NOT NULL DEFAULT GETDATE(),
-    TipoMovimiento VARCHAR(10) NOT NULL, -- 'Entrada' o 'Salida'
-    Cantidad INT NOT NULL,
-    FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
-);
 
-
---STORED PROCEDURES - TABLE ROL
-
--- Crear o actualizar el stored procedure para insertar rol
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarRol')
+-- 3. Tabla Producto
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Producto' AND xtype='U')
 BEGIN
-    DROP PROCEDURE sp_InsertarRol;
+    CREATE TABLE Producto (
+        Id int IDENTITY(1,1) NOT NULL,
+        Codigo nvarchar(50) NOT NULL,
+        Nombre nvarchar(200) NOT NULL,
+        Descripcion nvarchar(500) NULL,
+        Precio decimal(10,2) NOT NULL,
+        Categoria nvarchar(100) NULL,
+        Stock int NOT NULL DEFAULT 0,
+        StockMinimo int NOT NULL DEFAULT 5,
+        Gravado bit NOT NULL DEFAULT 1, -- Para facturación electrónica
+        Activo bit NOT NULL DEFAULT 1,
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT PK_Producto PRIMARY KEY (Id),
+        CONSTRAINT UQ_Producto_Codigo UNIQUE (Codigo)
+    );
+    PRINT 'Tabla Producto creada con campo Gravado';
 END
-GO
-
-CREATE PROCEDURE sp_InsertarRol
-   @NombreRol VARCHAR(50),
-   @Descripcion TEXT
-AS
+ELSE
 BEGIN
-   INSERT INTO Rol (NombreRol, Descripcion)
-   VALUES (@NombreRol, @Descripcion);
+    -- Agregar columna Gravado si no existe
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Producto') AND name = 'Gravado')
+    BEGIN
+        ALTER TABLE Producto ADD Gravado BIT NOT NULL DEFAULT 1;
+        -- Marcar algunos productos como exentos
+        UPDATE Producto SET Gravado = 0 WHERE Nombre LIKE '%Medicina%' OR Nombre LIKE '%Leche%' OR Nombre LIKE '%Arroz%';
+        PRINT 'Columna Gravado agregada a tabla Producto';
+    END
+    PRINT 'Tabla Producto ya existe';
 END
 GO
 
--- Crear o actualizar el stored procedure para actualizar rol
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ActualizarRol')
+-- 4. Tabla MetodoPago
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MetodoPago' AND xtype='U')
 BEGIN
-    DROP PROCEDURE sp_ActualizarRol;
-END
-GO
+    CREATE TABLE MetodoPago (
+        Id int IDENTITY(1,1) NOT NULL,
+        Nombre nvarchar(50) NOT NULL,
+        Descripcion nvarchar(200) NULL,
+        RequiereCambio bit NOT NULL DEFAULT 0,
+        Activo bit NOT NULL DEFAULT 1,
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT PK_MetodoPago PRIMARY KEY (Id)
+    );
 
-CREATE PROCEDURE sp_ActualizarRol
-   @IdRol INT,
-   @NombreRol VARCHAR(50),
-   @Descripcion TEXT
-AS
+    -- Insertar métodos de pago por defecto
+    INSERT INTO MetodoPago (Nombre, Descripcion, RequiereCambio) VALUES 
+    ('Efectivo', 'Pago en efectivo', 1),
+    ('Tarjeta', 'Tarjeta de crédito/débito', 0),
+    ('Transferencia', 'Transferencia bancaria', 0),
+    ('SINPE Móvil', 'SINPE Móvil', 0);
+    
+    PRINT 'Tabla MetodoPago creada con datos iniciales';
+END
+ELSE
 BEGIN
-   UPDATE Rol
-   SET NombreRol = @NombreRol,
-       Descripcion = @Descripcion
-   WHERE IdRol = @IdRol;
+    PRINT 'Tabla MetodoPago ya existe';
 END
 GO
 
--- Crear o actualizar el stored procedure para eliminar rol
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_EliminarRol')
+-- 5. Tabla Impuesto
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Impuesto' AND xtype='U')
 BEGIN
-    DROP PROCEDURE sp_EliminarRol;
-END
-GO
+    CREATE TABLE Impuesto (
+        Id int IDENTITY(1,1) NOT NULL,
+        Nombre nvarchar(50) NOT NULL,
+        Porcentaje decimal(5,2) NOT NULL,
+        Activo bit NOT NULL DEFAULT 1,
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT PK_Impuesto PRIMARY KEY (Id)
+    );
 
-CREATE PROCEDURE sp_EliminarRol
-   @IdRol INT
-AS
+    -- Insertar impuestos por defecto
+    INSERT INTO Impuesto (Nombre, Porcentaje) VALUES 
+    ('IVA', 13.00),
+    ('Exento', 0.00);
+    
+    PRINT 'Tabla Impuesto creada con datos iniciales';
+END
+ELSE
 BEGIN
-   DELETE FROM Rol WHERE IdRol = @IdRol;
+    PRINT 'Tabla Impuesto ya existe';
 END
 GO
 
--- Crear o actualizar el stored procedure para obtener roles
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerRoles')
+-- 6. Tabla Descuento
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Descuento' AND xtype='U')
 BEGIN
-    DROP PROCEDURE sp_ObtenerRoles;
+    CREATE TABLE Descuento (
+        Id int IDENTITY(1,1) NOT NULL,
+        Nombre nvarchar(100) NOT NULL,
+        TipoDescuento nvarchar(20) NOT NULL, -- Porcentaje o Monto
+        ValorDescuento decimal(10,2) NOT NULL,
+        FechaInicio datetime NOT NULL,
+        FechaFin datetime NOT NULL,
+        Activo bit NOT NULL DEFAULT 1,
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT PK_Descuento PRIMARY KEY (Id)
+    );
+    PRINT 'Tabla Descuento creada';
 END
-GO
-
-CREATE PROCEDURE sp_ObtenerRoles
-AS
+ELSE
 BEGIN
-   SELECT * FROM Rol;
+    PRINT 'Tabla Descuento ya existe';
 END
 GO
 
---STORED PROCEDURES - TABLE USUARIO
-
--- Crear o actualizar el stored procedure para insertar usuario
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarUsuario')
+-- 7. Tabla Venta
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Venta' AND xtype='U')
 BEGIN
-    DROP PROCEDURE sp_InsertarUsuario;
+    CREATE TABLE Venta (
+        Id int IDENTITY(1,1) NOT NULL,
+        Fecha datetime NOT NULL DEFAULT GETDATE(),
+        UsuarioId int NOT NULL,
+        Cliente nvarchar(255) NULL,
+        Subtotal decimal(10,2) NOT NULL DEFAULT 0,
+        Impuesto decimal(10,2) NOT NULL DEFAULT 0,
+        Descuento decimal(10,2) NOT NULL DEFAULT 0,
+        Total decimal(10,2) NOT NULL DEFAULT 0,
+        MetodoPago nvarchar(50) NOT NULL,
+        Estado nvarchar(20) NOT NULL DEFAULT 'Completada',
+        Observaciones nvarchar(500) NULL,
+        CONSTRAINT PK_Venta PRIMARY KEY (Id),
+        CONSTRAINT FK_Venta_Usuario FOREIGN KEY (UsuarioId) REFERENCES Usuario(Id)
+    );
+    PRINT 'Tabla Venta creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla Venta ya existe';
 END
 GO
 
-CREATE PROCEDURE sp_InsertarUsuario
-    @NombreCompleto VARCHAR(100),
-    @Correo VARCHAR(100),
-    @Cedula VARCHAR(20),
-    @ContrasenaHash VARCHAR(255),
-    @Estado VARCHAR(20),
-    @IdRol INT
+-- 8. Tabla DetalleVenta
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DetalleVenta' AND xtype='U')
+BEGIN
+    CREATE TABLE DetalleVenta (
+        Id int IDENTITY(1,1) NOT NULL,
+        VentaId int NOT NULL,
+        ProductoId int NOT NULL,
+        Cantidad int NOT NULL,
+        PrecioUnitario decimal(10,2) NOT NULL,
+        Descuento decimal(10,2) NOT NULL DEFAULT 0,
+        Impuesto decimal(10,2) NOT NULL DEFAULT 0,
+        Subtotal decimal(10,2) NOT NULL DEFAULT 0,
+        CONSTRAINT PK_DetalleVenta PRIMARY KEY (Id),
+        CONSTRAINT FK_DetalleVenta_Venta FOREIGN KEY (VentaId) REFERENCES Venta(Id),
+        CONSTRAINT FK_DetalleVenta_Producto FOREIGN KEY (ProductoId) REFERENCES Producto(Id)
+    );
+    PRINT 'Tabla DetalleVenta creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla DetalleVenta ya existe';
+END
+GO
+
+-- 9. Tabla MovimientoDiario
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MovimientoDiario' AND xtype='U')
+BEGIN
+    CREATE TABLE MovimientoDiario (
+        Id int IDENTITY(1,1) NOT NULL,
+        Fecha datetime NOT NULL DEFAULT GETDATE(),
+        TipoMovimiento nvarchar(50) NOT NULL, -- Entrada, Salida, Venta, Devolucion
+        Descripcion nvarchar(500) NOT NULL,
+        Monto decimal(10,2) NOT NULL,
+        UsuarioId int NOT NULL,
+        VentaId int NULL,
+        CONSTRAINT PK_MovimientoDiario PRIMARY KEY (Id),
+        CONSTRAINT FK_MovimientoDiario_Usuario FOREIGN KEY (UsuarioId) REFERENCES Usuario(Id),
+        CONSTRAINT FK_MovimientoDiario_Venta FOREIGN KEY (VentaId) REFERENCES Venta(Id)
+    );
+    PRINT 'Tabla MovimientoDiario creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla MovimientoDiario ya existe';
+END
+GO
+
+-- 10. Tabla MovimientoInventario
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MovimientoInventario' AND xtype='U')
+BEGIN
+    CREATE TABLE MovimientoInventario (
+        Id int IDENTITY(1,1) NOT NULL,
+        ProductoId int NOT NULL,
+        TipoMovimiento nvarchar(50) NOT NULL, -- Entrada, Salida, Ajuste
+        Cantidad int NOT NULL,
+        StockAnterior int NOT NULL,
+        StockActual int NOT NULL,
+        Motivo nvarchar(500) NULL,
+        Fecha datetime NOT NULL DEFAULT GETDATE(),
+        UsuarioId int NOT NULL,
+        VentaId int NULL,
+        CONSTRAINT PK_MovimientoInventario PRIMARY KEY (Id),
+        CONSTRAINT FK_MovimientoInventario_Producto FOREIGN KEY (ProductoId) REFERENCES Producto(Id),
+        CONSTRAINT FK_MovimientoInventario_Usuario FOREIGN KEY (UsuarioId) REFERENCES Usuario(Id),
+        CONSTRAINT FK_MovimientoInventario_Venta FOREIGN KEY (VentaId) REFERENCES Venta(Id)
+    );
+    PRINT 'Tabla MovimientoInventario creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla MovimientoInventario ya existe';
+END
+GO
+
+-- 11. Tabla CierreCaja
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CierreCaja' AND xtype='U')
+BEGIN
+    CREATE TABLE CierreCaja (
+        Id int IDENTITY(1,1) NOT NULL,
+        Fecha datetime NOT NULL DEFAULT GETDATE(),
+        UsuarioId int NOT NULL,
+        MontoInicial decimal(10,2) NOT NULL DEFAULT 0,
+        TotalVentas decimal(10,2) NOT NULL DEFAULT 0,
+        TotalEfectivo decimal(10,2) NOT NULL DEFAULT 0,
+        TotalTarjeta decimal(10,2) NOT NULL DEFAULT 0,
+        TotalOtros decimal(10,2) NOT NULL DEFAULT 0,
+        MontoFinal decimal(10,2) NOT NULL DEFAULT 0,
+        Diferencia decimal(10,2) NOT NULL DEFAULT 0,
+        Observaciones nvarchar(500) NULL,
+        Estado nvarchar(20) NOT NULL DEFAULT 'Abierto',
+        FechaCierre datetime NULL,
+        CONSTRAINT PK_CierreCaja PRIMARY KEY (Id),
+        CONSTRAINT FK_CierreCaja_Usuario FOREIGN KEY (UsuarioId) REFERENCES Usuario(Id)
+    );
+    PRINT 'Tabla CierreCaja creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla CierreCaja ya existe';
+END
+GO
+
+-- 12. Tabla HistorialMetodoPago
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialMetodoPago' AND xtype='U')
+BEGIN
+    CREATE TABLE HistorialMetodoPago (
+        Id int IDENTITY(1,1) NOT NULL,
+        VentaId int NOT NULL,
+        MetodoPagoId int NOT NULL,
+        Monto decimal(10,2) NOT NULL,
+        FechaPago datetime NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT PK_HistorialMetodoPago PRIMARY KEY (Id),
+        CONSTRAINT FK_HistorialMetodoPago_Venta FOREIGN KEY (VentaId) REFERENCES Venta(Id),
+        CONSTRAINT FK_HistorialMetodoPago_MetodoPago FOREIGN KEY (MetodoPagoId) REFERENCES MetodoPago(Id)
+    );
+    PRINT 'Tabla HistorialMetodoPago creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla HistorialMetodoPago ya existe';
+END
+GO
+
+-- =============================================
+-- TABLAS DE FACTURACIÓN ELECTRÓNICA
+-- =============================================
+
+-- 13. Tabla FacturaElectronica - Estructura completa Hacienda
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='FacturaElectronica' AND xtype='U')
+BEGIN
+    CREATE TABLE FacturaElectronica (
+        Id int IDENTITY(1,1) NOT NULL,
+        IdFactura AS Id, -- Columna calculada para compatibilidad
+        VentaId int NOT NULL,
+        NumeroFactura nvarchar(50) NOT NULL,
+        ClaveNumerica nvarchar(50) NOT NULL,
+        FechaGeneracion datetime NOT NULL DEFAULT GETDATE(),
+        FechaEmision AS FechaGeneracion, -- Columna calculada para compatibilidad
+        
+        -- Información del documento
+        TipoDocumento nvarchar(10) NOT NULL DEFAULT '01', -- 01 = Factura Electrónica
+        CodigoSeguridadComprobante nvarchar(8) NULL,
+        Estado nvarchar(20) NOT NULL DEFAULT 'Activo',
+        
+        -- Datos del cliente
+        TipoIdentificacionCliente nvarchar(10) NOT NULL DEFAULT '01', -- 01=Cédula física, 02=Cédula jurídica, 03=DIMEX, 04=NITE
+        IdentificacionCliente nvarchar(20) NULL,
+        NombreCliente nvarchar(255) NOT NULL,
+        ClienteNombre AS NombreCliente, -- Columna calculada para compatibilidad
+        CorreoCliente nvarchar(255) NULL,
+        ClienteEmail AS CorreoCliente, -- Columna calculada para compatibilidad
+        TelefonoCliente nvarchar(20) NULL,
+        ClienteTelefono AS TelefonoCliente, -- Columna calculada para compatibilidad
+        
+        -- Totales Hacienda
+        SubtotalMercanciasGravadas decimal(18,5) NOT NULL DEFAULT 0,
+        SubtotalMercanciasExentas decimal(18,5) NOT NULL DEFAULT 0,
+        MontoTotalMercanciasGravadas decimal(18,5) NOT NULL DEFAULT 0,
+        MontoTotalMercanciasExentas decimal(18,5) NOT NULL DEFAULT 0,
+        MontoTotalImpuesto decimal(18,5) NOT NULL DEFAULT 0,
+        TotalComprobante decimal(18,5) NOT NULL DEFAULT 0,
+        
+        -- Campos de compatibilidad
+        SubTotal AS SubtotalMercanciasGravadas + SubtotalMercanciasExentas,
+        MontoImpuesto AS MontoTotalImpuesto,
+        MontoTotal AS TotalComprobante,
+        
+        -- Estado en Hacienda
+        EstadoHacienda nvarchar(50) NOT NULL DEFAULT 'Pendiente',
+        MensajeHacienda nvarchar(max) NULL,
+        FechaRespuestaHacienda datetime NULL,
+        ConsecutivoHacienda nvarchar(20) NULL,
+        
+        -- Email
+        EmailEnviado bit NOT NULL DEFAULT 0,
+        FechaEnvioEmail datetime NULL,
+        
+        -- Auditoria
+        CreadoPor nvarchar(100) NOT NULL DEFAULT 'Sistema',
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        ModificadoPor nvarchar(100) NULL,
+        FechaModificacion datetime NULL,
+        
+        CONSTRAINT PK_FacturaElectronica PRIMARY KEY (Id),
+        CONSTRAINT FK_FacturaElectronica_Venta FOREIGN KEY (VentaId) REFERENCES Venta(Id),
+        CONSTRAINT UQ_FacturaElectronica_ClaveNumerica UNIQUE (ClaveNumerica),
+        CONSTRAINT UQ_FacturaElectronica_NumeroFactura UNIQUE (NumeroFactura)
+    );
+    PRINT 'Tabla FacturaElectronica creada correctamente con estructura Hacienda';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla FacturaElectronica ya existe';
+END
+GO
+
+-- 14. Tabla para historial de eventos de facturación
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialFacturacionElectronica' AND xtype='U')
+BEGIN
+    CREATE TABLE HistorialFacturacionElectronica (
+        Id int IDENTITY(1,1) NOT NULL,
+        IdFactura int NOT NULL,
+        TipoEvento nvarchar(50) NOT NULL, -- Email, Hacienda, PDF, etc.
+        Detalle nvarchar(500) NULL,
+        Estado nvarchar(50) NOT NULL, -- Pendiente, Exitoso, Error
+        Mensaje nvarchar(max) NULL,
+        FechaEvento datetime NOT NULL DEFAULT GETDATE(),
+        CONSTRAINT PK_HistorialFacturacionElectronica PRIMARY KEY (Id),
+        CONSTRAINT FK_HistorialFacturacion_Factura FOREIGN KEY (IdFactura) REFERENCES FacturaElectronica(Id)
+    );
+    PRINT 'Tabla HistorialFacturacionElectronica creada correctamente';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla HistorialFacturacionElectronica ya existe';
+END
+GO
+
+-- =============================================
+-- STORED PROCEDURES BÁSICOS
+-- =============================================
+
+-- SP: Obtener productos con stock bajo
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'ObtenerProductosStockBajo')
+    DROP PROCEDURE ObtenerProductosStockBajo;
+GO
+
+CREATE PROCEDURE ObtenerProductosStockBajo
 AS
 BEGIN
     SET NOCOUNT ON;
+    
+    SELECT 
+        p.Id,
+        p.Codigo,
+        p.Nombre,
+        p.Stock,
+        p.StockMinimo,
+        p.Precio,
+        p.Categoria
+    FROM Producto p
+    WHERE p.Stock <= p.StockMinimo
+        AND p.Activo = 1
+    ORDER BY p.Stock ASC, p.Nombre;
+END
+GO
 
+-- SP: Registrar movimiento de inventario
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'RegistrarMovimientoInventario')
+    DROP PROCEDURE RegistrarMovimientoInventario;
+GO
+
+CREATE PROCEDURE RegistrarMovimientoInventario
+    @ProductoId INT,
+    @TipoMovimiento NVARCHAR(50),
+    @Cantidad INT,
+    @Motivo NVARCHAR(500) = NULL,
+    @UsuarioId INT,
+    @VentaId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @StockAnterior INT;
+    DECLARE @StockActual INT;
+    
+    BEGIN TRANSACTION;
     BEGIN TRY
-        -- Verificar si ya existe un usuario con la misma cédula o correo
-        IF EXISTS (SELECT 1 FROM Usuario WHERE Cedula = @Cedula)
+        -- Obtener stock actual
+        SELECT @StockAnterior = Stock FROM Producto WHERE Id = @ProductoId;
+        
+        -- Calcular nuevo stock
+        IF @TipoMovimiento = 'Entrada'
+            SET @StockActual = @StockAnterior + @Cantidad;
+        ELSE IF @TipoMovimiento = 'Salida'
+            SET @StockActual = @StockAnterior - @Cantidad;
+        ELSE
+            SET @StockActual = @Cantidad; -- Para ajustes
+            
+        -- Validar stock negativo
+        IF @StockActual < 0
         BEGIN
-            RAISERROR('Ya existe un usuario con esta cédula', 16, 1);
+            RAISERROR('Stock insuficiente', 16, 1);
             RETURN;
         END
-
-        IF EXISTS (SELECT 1 FROM Usuario WHERE Correo = @Correo)
-        BEGIN
-            RAISERROR('Ya existe un usuario con este correo', 16, 1);
-            RETURN;
-        END
-
-        -- Insertar el nuevo usuario
-        INSERT INTO Usuario (NombreCompleto, Correo, Cedula, ContrasenaHash, Estado, IdRol)
-        VALUES (@NombreCompleto, @Correo, @Cedula, @ContrasenaHash, @Estado, @IdRol);
-
-        -- Retornar el ID del usuario creado
-        SELECT SCOPE_IDENTITY() AS IdUsuario;
-
+        
+        -- Actualizar stock del producto
+        UPDATE Producto SET Stock = @StockActual WHERE Id = @ProductoId;
+        
+        -- Registrar movimiento
+        INSERT INTO MovimientoInventario (
+            ProductoId, TipoMovimiento, Cantidad, StockAnterior, 
+            StockActual, Motivo, UsuarioId, VentaId
+        )
+        VALUES (
+            @ProductoId, @TipoMovimiento, @Cantidad, @StockAnterior,
+            @StockActual, @Motivo, @UsuarioId, @VentaId
+        );
+        
+        COMMIT TRANSACTION;
+        
     END TRY
     BEGIN CATCH
-        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-        RAISERROR(@ErrorMessage, 16, 1);
+        ROLLBACK TRANSACTION;
+        THROW;
     END CATCH
 END
 GO
 
--- Crear o actualizar el stored procedure para actualizar usuario
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ActualizarUsuario')
-BEGIN
-    DROP PROCEDURE sp_ActualizarUsuario;
-END
+-- =============================================
+-- STORED PROCEDURES DE FACTURACIÓN ELECTRÓNICA
+-- =============================================
+
+-- SP: GenerarFacturaElectronica mejorado
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GenerarFacturaElectronica')
+    DROP PROCEDURE GenerarFacturaElectronica;
 GO
 
-CREATE PROCEDURE sp_ActualizarUsuario
-   @IdUsuario INT,
-   @NombreCompleto VARCHAR(100),
-   @Correo VARCHAR(100),
-   @Cedula VARCHAR(20),
-   @Estado VARCHAR(20),
-   @IdRol INT
-AS
-BEGIN
-   UPDATE Usuario
-   SET NombreCompleto = @NombreCompleto,
-       Correo = @Correo,
-       Cedula = @Cedula,
-       Estado = @Estado,
-       IdRol = @IdRol
-   WHERE IdUsuario = @IdUsuario;
-END
-GO
-
--- Crear o actualizar el stored procedure para eliminar usuario
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_EliminarUsuario')
-BEGIN
-    DROP PROCEDURE sp_EliminarUsuario;
-END
-GO
-
-CREATE PROCEDURE sp_EliminarUsuario
-   @IdUsuario INT
-AS
-BEGIN
-   DELETE FROM Usuario WHERE IdUsuario = @IdUsuario;
-END
-GO
-
--- Crear o actualizar el stored procedure para obtener usuarios
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuarios')
-BEGIN
-    DROP PROCEDURE sp_ObtenerUsuarios;
-END
-GO
-
-CREATE PROCEDURE sp_ObtenerUsuarios
-AS
-BEGIN
-   SELECT u.*, r.NombreRol
-   FROM Usuario u
-   INNER JOIN Rol r ON u.IdRol = r.IdRol;
-END
-GO
-
--- Crear o actualizar el stored procedure para obtener usuario por ID
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuario')
-BEGIN
-    DROP PROCEDURE sp_ObtenerUsuario;
-END
-GO
-
-CREATE PROCEDURE sp_ObtenerUsuario
-   @IdUsuario INT
-AS
-BEGIN
-   SELECT u.IdUsuario, u.NombreCompleto, u.Correo, u.Cedula, u.Estado, u.IdRol, r.NombreRol
-   FROM Usuario u
-   INNER JOIN Rol r ON u.IdRol = r.IdRol
-   WHERE u.IdUsuario = @IdUsuario;
-END
-GO
-
--- Drop and recreate sp_ListarRoles safely
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ListarRoles')
-BEGIN
-    DROP PROCEDURE sp_ListarRoles;
-END
-GO
-
--- Crear  el stored procedure para obtener la lista de roles
-CREATE PROCEDURE sp_ListarRoles
-AS
-BEGIN
-    SELECT IdRol, NombreRol, Descripcion
-    FROM Rol;
-END
-GO
-
--- Crear la tabla Producto si no existe
-IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Producto' AND xtype='U')
-BEGIN
-    CREATE TABLE Producto (
-        IdProducto INT PRIMARY KEY IDENTITY(1,1),
-        Codigo VARCHAR(50) UNIQUE NOT NULL,
-        Nombre VARCHAR(100) NOT NULL,
-        Descripcion TEXT NULL,
-        PrecioUnitario DECIMAL(18,2) NOT NULL,
-        Existencias INT NOT NULL
-    );
-END
-GO
-
--- Crear la tabla HistorialProducto si no existe
-IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialProducto' AND xtype='U')
-BEGIN
-    CREATE TABLE HistorialProducto (
-        IdHistorial INT PRIMARY KEY IDENTITY(1,1),
-        IdProducto INT NOT NULL,
-        Fecha DATETIME NOT NULL DEFAULT(GETDATE()),
-        Usuario VARCHAR(100) NOT NULL,
-        Cambio TEXT NOT NULL,
-        FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
-    );
-END
-GO
-
--- Stored procedures Producto
-
--- Insertar
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProducto')
-BEGIN
-    DROP PROCEDURE sp_InsertarProducto;
-END
-GO
-CREATE PROCEDURE sp_InsertarProducto
-    @Codigo VARCHAR(50),
-    @Nombre VARCHAR(100),
-    @Descripcion TEXT,
-    @PrecioUnitario DECIMAL(18,2),
-    @Existencias INT
+CREATE PROCEDURE GenerarFacturaElectronica
+    @VentaId INT,
+    @ClienteNombre NVARCHAR(255),
+    @ClienteEmail NVARCHAR(255) = NULL,
+    @ClienteTelefono NVARCHAR(20) = NULL,
+    @TipoIdentificacionCliente NVARCHAR(10) = '01',
+    @IdentificacionCliente NVARCHAR(20) = NULL,
+    @CreadoPor NVARCHAR(100) = 'Sistema'
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    IF EXISTS (SELECT 1 FROM Producto WHERE Codigo = @Codigo)
-    BEGIN
-        RAISERROR('Ya existe un producto con este código',16,1);
-        RETURN;
-    END
-
-    INSERT INTO Producto (Codigo, Nombre, Descripcion, PrecioUnitario, Existencias)
-    VALUES (@Codigo, @Nombre, @Descripcion, @PrecioUnitario, @Existencias);
-
-    SELECT SCOPE_IDENTITY() AS IdProducto;
-END
-GO
-
--- Actualizar
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ActualizarProducto')
-BEGIN
-    DROP PROCEDURE sp_ActualizarProducto;
-END
-GO
-CREATE PROCEDURE sp_ActualizarProducto
-    @IdProducto INT,
-    @Nombre VARCHAR(100),
-    @Descripcion TEXT,
-    @PrecioUnitario DECIMAL(18,2),
-    @Existencias INT
-AS
-BEGIN
-    UPDATE Producto
-    SET Nombre = @Nombre,
-        Descripcion = @Descripcion,
-        PrecioUnitario = @PrecioUnitario,
-        Existencias = @Existencias
-    WHERE IdProducto = @IdProducto;
-END
-GO
-
--- Obtener productos
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerProductos')
-BEGIN
-    DROP PROCEDURE sp_ObtenerProductos;
-END
-GO
-CREATE PROCEDURE sp_ObtenerProductos
-AS
-BEGIN
-    SELECT * FROM Producto;
-END
-GO
-
--- Obtener producto por id
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerProducto')
-BEGIN
-    DROP PROCEDURE sp_ObtenerProducto;
-END
-GO
-CREATE PROCEDURE sp_ObtenerProducto
-    @IdProducto INT
-AS
-BEGIN
-    SELECT * FROM Producto WHERE IdProducto = @IdProducto;
-END
-GO
-
--- Insertar historial
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProductoHistorial')
-BEGIN
-    DROP PROCEDURE sp_InsertarProductoHistorial;
-END
-GO
-CREATE PROCEDURE sp_InsertarProductoHistorial
-    @IdProducto INT,
-    @Usuario VARCHAR(100),
-    @Cambio TEXT
-AS
-BEGIN
-    INSERT INTO HistorialProducto (IdProducto, Usuario, Cambio)
-    VALUES (@IdProducto, @Usuario, @Cambio);
-END
-GO
-
--- Obtener historial producto
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
-BEGIN
-    DROP PROCEDURE sp_ObtenerHistorialProducto;
-END
-GO
-CREATE PROCEDURE sp_ObtenerHistorialProducto
-    @IdProducto INT
-AS
-BEGIN
-    SELECT * FROM HistorialProducto WHERE IdProducto = @IdProducto ORDER BY Fecha DESC;
-END
-GO
-
-PRINT 'Base de datos y stored procedures creados exitosamente';
-
--- Elimianr productos 28/6
-
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
-BEGIN
-    DROP PROCEDURE sp_EliminarProducto;
-END
-GO
-CREATE PROCEDURE sp_EliminarProducto
-    @IdProducto INT
-AS
-BEGIN
     
-    IF EXISTS (SELECT 1 FROM HistorialProducto WHERE IdProducto = @IdProducto)
-    BEGIN
-        RAISERROR ('No se puede eliminar este producto porque tiene historial.', 16, 1)
-        RETURN
-    END
-
+    DECLARE @FacturaId INT
+    DECLARE @NumeroFactura NVARCHAR(50)
+    DECLARE @ClaveNumerica NVARCHAR(50)
+    DECLARE @SubtotalGravado DECIMAL(18,5) = 0
+    DECLARE @SubtotalExento DECIMAL(18,5) = 0
+    DECLARE @MontoImpuesto DECIMAL(18,5) = 0
+    DECLARE @TotalVenta DECIMAL(18,5) = 0
+    DECLARE @Intentos INT = 0
+    DECLARE @MaxIntentos INT = 10
     
-    DELETE FROM Producto WHERE IdProducto = @IdProducto
-END
--- Regitsrar movimeintos 28/6
-
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
-BEGIN
-    DROP PROCEDURE sp_RegistrarMovimientoInventarioo;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        -- Verificar que la venta existe
+        IF NOT EXISTS (SELECT 1 FROM Venta WHERE Id = @VentaId)
+        BEGIN
+            RAISERROR('La venta especificada no existe', 16, 1);
+            RETURN;
+        END
+        
+        -- Calcular totales separando gravados y exentos
+        SELECT 
+            @SubtotalGravado = ISNULL(SUM(CASE WHEN ISNULL(p.Gravado, 1) = 1 THEN dv.Cantidad * dv.PrecioUnitario ELSE 0 END), 0),
+            @SubtotalExento = ISNULL(SUM(CASE WHEN ISNULL(p.Gravado, 1) = 0 THEN dv.Cantidad * dv.PrecioUnitario ELSE 0 END), 0)
+        FROM DetalleVenta dv
+        LEFT JOIN Producto p ON dv.ProductoId = p.Id
+        WHERE dv.VentaId = @VentaId;
+        
+        -- Calcular impuesto solo sobre productos gravados
+        SET @MontoImpuesto = @SubtotalGravado * 0.13;
+        SET @TotalVenta = @SubtotalGravado + @SubtotalExento + @MontoImpuesto;
+        
+        -- Generar número de factura secuencial
+        DECLARE @Contador INT;
+        SELECT @Contador = ISNULL(MAX(CAST(SUBSTRING(NumeroFactura, 4, LEN(NumeroFactura)-3) AS INT)), 0) + 1
+        FROM FacturaElectronica
+        WHERE NumeroFactura LIKE 'FAC%';
+        
+        SET @NumeroFactura = 'FAC' + RIGHT('000000' + CAST(@Contador AS VARCHAR), 6);
+        
+        -- Generar clave numérica única con reintentos
+        WHILE @Intentos < @MaxIntentos
+        BEGIN
+            BEGIN TRY
+                -- Generar clave numérica con GUID para garantizar unicidad
+                SET @ClaveNumerica = 
+                    FORMAT(GETDATE(), 'ddMMyyyy') + 
+                    FORMAT(GETDATE(), 'HHmmss') + 
+                    RIGHT('000' + CAST(ABS(CHECKSUM(NEWID()) % 1000) AS VARCHAR), 3) +
+                    RIGHT('00000' + CAST(ABS(CHECKSUM(NEWID()) % 100000) AS VARCHAR), 5);
+                
+                -- Insertar la factura con estructura Hacienda
+                INSERT INTO FacturaElectronica (
+                    VentaId, NumeroFactura, ClaveNumerica, FechaGeneracion,
+                    TipoIdentificacionCliente, IdentificacionCliente, NombreCliente, 
+                    CorreoCliente, TelefonoCliente,
+                    SubtotalMercanciasGravadas, SubtotalMercanciasExentas,
+                    MontoTotalMercanciasGravadas, MontoTotalMercanciasExentas,
+                    MontoTotalImpuesto, TotalComprobante,
+                    EstadoHacienda, CreadoPor, FechaCreacion
+                )
+                VALUES (
+                    @VentaId, @NumeroFactura, @ClaveNumerica, GETDATE(),
+                    @TipoIdentificacionCliente, @IdentificacionCliente, @ClienteNombre,
+                    @ClienteEmail, @ClienteTelefono,
+                    @SubtotalGravado, @SubtotalExento,
+                    @SubtotalGravado, @SubtotalExento,
+                    @MontoImpuesto, @TotalVenta,
+                    'Generada', @CreadoPor, GETDATE()
+                );
+                
+                SET @FacturaId = SCOPE_IDENTITY();
+                
+                -- Si llegamos aquí, la inserción fue exitosa
+                BREAK;
+                
+            END TRY
+            BEGIN CATCH
+                -- Si es error de clave duplicada, intentar de nuevo
+                IF ERROR_NUMBER() = 2627 -- Violation of UNIQUE KEY constraint
+                BEGIN
+                    SET @Intentos = @Intentos + 1;
+                    WAITFOR DELAY '00:00:01'; -- Esperar 1 segundo antes del siguiente intento
+                    CONTINUE;
+                END
+                ELSE
+                BEGIN
+                    -- Si es otro tipo de error, lanzarlo
+                    THROW;
+                END
+            END CATCH
+        END
+        
+        IF @Intentos >= @MaxIntentos
+        BEGIN
+            RAISERROR('No se pudo generar una clave numérica única después de varios intentos', 16, 1);
+            RETURN;
+        END
+        
+        -- Registro de evento de creación
+        INSERT INTO HistorialFacturacionElectronica (IdFactura, TipoEvento, Estado, Mensaje, FechaEvento)
+        VALUES (@FacturaId, 'Creacion', 'Exitoso', 'Factura electrónica generada correctamente', GETDATE());
+        
+        -- Registro de actividad para el email si se proporcionó
+        IF @ClienteEmail IS NOT NULL
+        BEGIN
+            INSERT INTO HistorialFacturacionElectronica (IdFactura, TipoEvento, Detalle, Estado, Mensaje, FechaEvento)
+            VALUES (@FacturaId, 'Email', @ClienteEmail, 'Pendiente', 'Email programado para envío', GETDATE());
+        END
+        
+        COMMIT TRANSACTION;
+        
+        -- Retornar información de la factura creada
+        SELECT 
+            @FacturaId as Id,
+            @FacturaId as IdFactura,
+            @NumeroFactura as NumeroFactura,
+            @ClaveNumerica as ClaveNumerica,
+            @ClienteNombre as ClienteNombre,
+            @ClienteNombre as NombreCliente,
+            @ClienteEmail as ClienteEmail,
+            @ClienteEmail as CorreoCliente,
+            @SubtotalGravado + @SubtotalExento as SubTotal,
+            @MontoImpuesto as MontoImpuesto,
+            @TotalVenta as MontoTotal,
+            @TotalVenta as TotalComprobante,
+            'Generada' as EstadoHacienda,
+            GETDATE() as FechaEmision,
+            GETDATE() as FechaGeneracion;
+            
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+        DECLARE @ErrorState INT = ERROR_STATE();
+        
+        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+    END CATCH
 END
 GO
-CREATE PROCEDURE sp_RegistrarMovimientoInventario
-    @IdProducto INT,
-    @TipoMovimiento VARCHAR(10),
-    @Cantidad INT
+
+-- SP: Buscar Facturas Electrónicas
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'BuscarFacturasElectronicas')
+    DROP PROCEDURE BuscarFacturasElectronicas;
+GO
+
+CREATE PROCEDURE BuscarFacturasElectronicas
+    @FechaInicio DATETIME = NULL,
+    @FechaFin DATETIME = NULL,
+    @NumeroFactura NVARCHAR(50) = NULL,
+    @ClienteNombre NVARCHAR(255) = NULL,
+    @IdentificacionCliente NVARCHAR(20) = NULL,
+    @EstadoHacienda NVARCHAR(50) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    IF NOT EXISTS (SELECT 1 FROM Producto WHERE IdProducto = @IdProducto)
-        THROW 50000, 'Producto no encontrado.', 1;
-
-    IF @TipoMovimiento = 'Salida'
-    BEGIN
-        DECLARE @StockActual INT;
-        SELECT @StockActual = Existencias FROM Producto WHERE IdProducto = @IdProducto;
-        IF @StockActual < @Cantidad
-            THROW 50000, 'No hay existencias suficientes.', 1;
-
-        UPDATE Producto SET Existencias = Existencias - @Cantidad WHERE IdProducto = @IdProducto;
-    END
-    ELSE IF @TipoMovimiento = 'Entrada'
-    BEGIN
-        UPDATE Producto SET Existencias = Existencias + @Cantidad WHERE IdProducto = @IdProducto;
-    END
-    ELSE
-        THROW 50000, 'Tipo de movimiento inválido.', 1;
-
-    INSERT INTO MovimientoInventario (IdProducto, TipoMovimiento, Cantidad)
-    VALUES (@IdProducto, @TipoMovimiento, @Cantidad);
-END
-
--- Productos con estado 
-
-IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
-BEGIN
-    DROP PROCEDURE sp_ObtenerProductosConEstado;
-END
-GO
-CREATE PROCEDURE  sp_ObtenerProductosConEstado
-AS
-BEGIN
+    
     SELECT 
-        IdProducto,
-        Nombre,
-        Descripcion,
-        PrecioUnitario,
-        Existencias,
-        CASE 
-            WHEN Existencias = 0 THEN 'Agotado'
-            WHEN Existencias <= 5 THEN 'Bajo stock'
-            ELSE 'Disponible'
-        END AS EstadoStock
-    FROM Producto
+        fe.Id,
+        fe.Id as IdFactura,
+        fe.VentaId,
+        fe.NumeroFactura,
+        fe.ClaveNumerica,
+        fe.FechaGeneracion,
+        fe.FechaGeneracion as FechaEmision,
+        fe.NombreCliente,
+        fe.NombreCliente as ClienteNombre,
+        fe.CorreoCliente,
+        fe.CorreoCliente as ClienteEmail,
+        fe.TelefonoCliente,
+        fe.TelefonoCliente as ClienteTelefono,
+        fe.IdentificacionCliente,
+        fe.SubtotalMercanciasGravadas + fe.SubtotalMercanciasExentas as SubTotal,
+        fe.MontoTotalImpuesto as MontoImpuesto,
+        fe.TotalComprobante,
+        fe.TotalComprobante as MontoTotal,
+        fe.EstadoHacienda,
+        fe.MensajeHacienda,
+        fe.EmailEnviado,
+        fe.FechaEnvioEmail
+    FROM FacturaElectronica fe
+    WHERE fe.Estado = 'Activo'
+        AND (@FechaInicio IS NULL OR fe.FechaGeneracion >= @FechaInicio)
+        AND (@FechaFin IS NULL OR fe.FechaGeneracion <= @FechaFin)
+        AND (@NumeroFactura IS NULL OR fe.NumeroFactura LIKE '%' + @NumeroFactura + '%')
+        AND (@ClienteNombre IS NULL OR fe.NombreCliente LIKE '%' + @ClienteNombre + '%')
+        AND (@IdentificacionCliente IS NULL OR fe.IdentificacionCliente LIKE '%' + @IdentificacionCliente + '%')
+        AND (@EstadoHacienda IS NULL OR fe.EstadoHacienda = @EstadoHacienda)
+    ORDER BY fe.FechaGeneracion DESC;
 END
-
--- Tabla principal de ventas
-CREATE TABLE Venta (
-    Id INT PRIMARY KEY IDENTITY(1,1),
-    Fecha DATETIME NOT NULL DEFAULT GETDATE(),
-    MetodoPago VARCHAR(50) NOT NULL  -- Efectivo, Tarjeta, Sinpe Móvil
-);
-
--- Detalle de cada producto vendido
-CREATE TABLE DetalleVenta (
-    Id INT PRIMARY KEY IDENTITY(1,1),
-    VentaId INT NOT NULL,
-    ProductoId INT NOT NULL,
-    Cantidad INT NOT NULL,
-    PrecioUnitario DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (VentaId) REFERENCES Venta(Id),
-    FOREIGN KEY (ProductoId) REFERENCES Producto(IdProducto)
-);
-
---------------------------------------------------------------Nuevo Agregar
-CREATE TYPE TipoDetalleVenta AS TABLE
-(
-    ProductoId INT,
-    Cantidad INT,
-    PrecioUnitario DECIMAL(10,2)
-);
 GO
 
-CREATE PROCEDURE RegistrarVenta
-    @MetodoPago VARCHAR(50),
-    @DetallesVenta TipoDetalleVenta READONLY 
+-- SP: Obtener Detalle Completo de Factura
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'ObtenerDetalleFacturaElectronica')
+    DROP PROCEDURE ObtenerDetalleFacturaElectronica;
+GO
+
+CREATE PROCEDURE ObtenerDetalleFacturaElectronica
+    @FacturaId INT
 AS
 BEGIN
     SET NOCOUNT ON;
-
     
-    INSERT INTO Venta (Fecha, MetodoPago)
-    VALUES (GETDATE(), @MetodoPago);
+    SELECT 
+        -- Datos principales de la factura
+        fe.Id,
+        fe.Id as IdFactura,
+        fe.VentaId,
+        fe.NumeroFactura,
+        fe.ClaveNumerica,
+        fe.FechaGeneracion,
+        fe.FechaGeneracion as FechaEmision,
+        fe.TipoDocumento,
+        fe.EstadoHacienda,
+        fe.MensajeHacienda,
+        
+        -- Datos del cliente
+        fe.TipoIdentificacionCliente,
+        fe.IdentificacionCliente,
+        fe.NombreCliente,
+        fe.NombreCliente as ClienteNombre,
+        fe.CorreoCliente,
+        fe.CorreoCliente as ClienteEmail,
+        fe.TelefonoCliente,
+        fe.TelefonoCliente as ClienteTelefono,
+        
+        -- Datos de la venta
+        v.Fecha as FechaVenta,
+        v.MetodoPago as MetodoPagoVenta,
+        
+        -- Totales Hacienda
+        fe.SubtotalMercanciasGravadas,
+        fe.SubtotalMercanciasExentas,
+        fe.MontoTotalMercanciasGravadas,
+        fe.MontoTotalMercanciasExentas,
+        fe.MontoTotalImpuesto,
+        fe.TotalComprobante,
+        
+        -- Totales de compatibilidad
+        fe.SubtotalMercanciasGravadas + fe.SubtotalMercanciasExentas as SubTotal,
+        fe.MontoTotalImpuesto as MontoImpuesto,
+        fe.TotalComprobante as MontoTotal,
+        
+        -- Email
+        fe.EmailEnviado,
+        fe.FechaEnvioEmail
+        
+    FROM FacturaElectronica fe
+    INNER JOIN Venta v ON fe.VentaId = v.Id
+    WHERE fe.Id = @FacturaId
+        AND fe.Estado = 'Activo';
+        
+    -- También devolver los detalles de productos
+    SELECT 
+        p.Id as ProductoId,
+        p.Codigo as ProductoCodigo,
+        p.Nombre as ProductoDescripcion,
+        dv.Cantidad,
+        dv.PrecioUnitario,
+        (dv.Cantidad * dv.PrecioUnitario) as MontoTotal,
+        (dv.Cantidad * dv.PrecioUnitario) as BaseImponible,
+        CASE WHEN ISNULL(p.Gravado, 1) = 1 THEN 13.0 ELSE 0.0 END as TarifaImpuesto,
+        CASE WHEN ISNULL(p.Gravado, 1) = 1 THEN (dv.Cantidad * dv.PrecioUnitario * 0.13) ELSE 0.0 END as MontoImpuestoDetalle,
+        ISNULL(p.Gravado, 1) as Gravado
+    FROM FacturaElectronica fe
+    INNER JOIN Venta v ON fe.VentaId = v.Id
+    INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+    INNER JOIN Producto p ON dv.ProductoId = p.Id
+    WHERE fe.Id = @FacturaId
+        AND fe.Estado = 'Activo'
+    ORDER BY p.Nombre;
+END
+GO
 
-    DECLARE @VentaId INT = SCOPE_IDENTITY();
+-- =============================================
+-- DATOS INICIALES
+-- =============================================
 
+-- Insertar usuario administrador por defecto si no existe
+IF NOT EXISTS (SELECT 1 FROM Usuario WHERE Email = 'admin@antojeria.com')
+BEGIN
+    INSERT INTO Usuario (Nombre, Email, Password, RolId, Activo) 
+    VALUES ('Administrador', 'admin@antojeria.com', 'admin123', 1, 1);
+    PRINT 'Usuario administrador creado';
+END
+
+-- Insertar algunos productos de ejemplo si la tabla está vacía
+IF NOT EXISTS (SELECT 1 FROM Producto)
+BEGIN
+    INSERT INTO Producto (Codigo, Nombre, Descripcion, Precio, Categoria, Stock, StockMinimo, Gravado) VALUES
+    ('P001', 'Gallo Pinto', 'Plato tradicional costarricense', 2500.00, 'Comida', 50, 5, 1),
+    ('P002', 'Casado', 'Casado completo', 3500.00, 'Comida', 30, 5, 1),
+    ('P003', 'Refresco Natural', 'Refresco de frutas naturales', 800.00, 'Bebidas', 100, 10, 1),
+    ('P004', 'Café', 'Café costarricense', 600.00, 'Bebidas', 80, 10, 1),
+    ('P005', 'Arroz con Leche', 'Postre tradicional', 1200.00, 'Postres', 25, 5, 0), -- Exento
+    ('P006', 'Leche', 'Leche pasteurizada', 1000.00, 'Básicos', 40, 10, 0); -- Exento
     
-    INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario)
-    SELECT @VentaId, ProductoId, Cantidad, PrecioUnitario
-    FROM @DetallesVenta;
-
-    
-    UPDATE P
-    SET P.Existencias = P.Existencias - D.Cantidad
-    FROM Producto P
-    INNER JOIN @DetallesVenta D ON P.IdProducto = D.ProductoId;
+    PRINT 'Productos de ejemplo insertados';
 END
-GO
 
-----------------------------------------Agregar por si quieren hacer pruebas 
-
-INSERT INTO Producto (Codigo, Nombre, Descripcion, PrecioUnitario, Existencias)
-VALUES 
-('P001', 'Galleta Choco', 'Galleta con chispas', 1500.00, 20),
-('P002', 'Refresco Mango', 'Bebida natural de mango', 1200.00, 15);
-
-SELECT * FROM Venta;
-SELECT * FROM DetalleVenta;
-SELECT * FROM Producto;
-
-------------------------------------------------------------NUEVO 4 SPRINT
-
-IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MetodoPago' AND xtype='U')
-BEGIN
-    CREATE TABLE MetodoPago (
-        IdMetodoPago INT PRIMARY KEY IDENTITY(1,1),
-        Nombre NVARCHAR(50) NOT NULL,
-        EstaActivo BIT NOT NULL DEFAULT 1
-    );
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistorialMetodoPago' AND xtype='U')
-BEGIN
-    CREATE TABLE HistorialMetodoPago (
-        IdHistorial INT PRIMARY KEY IDENTITY(1,1),
-        IdMetodoPago INT NOT NULL,
-        FechaModificacion DATETIME NOT NULL DEFAULT GETDATE(),
-        Accion NVARCHAR(50) NOT NULL,
-        UsuarioModificador NVARCHAR(100) NOT NULL,
-        FOREIGN KEY (IdMetodoPago) REFERENCES MetodoPago(IdMetodoPago)
-    );
-END
-GO
-
-IF OBJECT_ID('TR_MetodoPago_Historial', 'TR') IS NOT NULL
-    DROP TRIGGER TR_MetodoPago_Historial;
-GO
-
-CREATE TRIGGER TR_MetodoPago_Historial
-ON MetodoPago
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @Accion NVARCHAR(50);
-
-    -- inserción o una actualización
-    IF EXISTS (SELECT * FROM inserted EXCEPT SELECT * FROM deleted)
-        SET @Accion = 'INSERT';
-    ELSE
-        SET @Accion = 'UPDATE';
-
-    -- Insertar en el historial
-    INSERT INTO HistorialMetodoPago (IdMetodoPago, FechaModificacion, Accion, UsuarioModificador)
-    SELECT 
-        i.IdMetodoPago,
-        GETDATE(),
-        @Accion,
-        SYSTEM_USER
-    FROM inserted i;
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Descuento' AND xtype='U')
-BEGIN
-    CREATE TABLE Descuento (
-        IdDescuento INT PRIMARY KEY IDENTITY(1,1),
-        Nombre NVARCHAR(100) NOT NULL,
-        Tipo NVARCHAR(20) NOT NULL, -- 'Porcentaje', 'MontoFijo', 'Cupon'
-        Valor DECIMAL(10,2) NOT NULL,
-        CodigoCupon NVARCHAR(50) NULL,
-        FechaInicio DATETIME NOT NULL,
-        FechaFin DATETIME NOT NULL,
-        Estado NVARCHAR(20) NOT NULL, -- 'Activo', 'Inactivo', 'Vencido'
-        Restricciones NVARCHAR(MAX) NULL
-    );
-END
-GO
-
-CREATE TABLE Impuesto (
-    IdImpuesto INT PRIMARY KEY IDENTITY(1,1),
-    Nombre NVARCHAR(100),
-    Tipo NVARCHAR(50), -- IVA o ISC
-    Porcentaje DECIMAL(5,2),
-    AplicaEnRestaurante BIT,
-    EsExonerado BIT,
-    Estado BIT -- 1: Activo, 0: Inactivo
-);
-
-ALTER TABLE Producto
-ADD IdImpuesto INT FOREIGN KEY REFERENCES Impuesto(IdImpuesto);
-=======
-
-----movimientos
-CREATE TABLE MovimientoDiario (
-    IdMovimiento INT IDENTITY(1,1) PRIMARY KEY,
-    FechaHora DATETIME NOT NULL DEFAULT GETDATE(),
-    TipoMovimiento VARCHAR(20) NOT NULL, -- 'Ingreso' o 'Egreso'
-    Categoria VARCHAR(50) NOT NULL, -- 'Ventas', 'Compras', 'Gastos Operativos', etc.
-    Monto DECIMAL(10,2) NOT NULL,
-    Descripcion NVARCHAR(255),
-    IdUsuario INT NOT NULL,
-    FOREIGN KEY (IdUsuario) REFERENCES Usuario(IdUsuario)
-);
-------
-CREATE PROCEDURE InsertarMovimientoDiario
-    @TipoMovimiento VARCHAR(20),
-    @Categoria VARCHAR(50),
-    @Monto DECIMAL(10,2),
-    @Descripcion NVARCHAR(255),
-    @IdUsuario INT
-AS
-BEGIN
-    INSERT INTO MovimientoDiario (TipoMovimiento, Categoria, Monto, Descripcion, IdUsuario)
-    VALUES (@TipoMovimiento, @Categoria, @Monto, @Descripcion, @IdUsuario);
-END;
-----
-
-CREATE PROCEDURE sp_ListarMovimientosConNombre
-AS
-BEGIN
-    SELECT 
-        md.IdMovimiento,
-        md.FechaHora,
-        md.TipoMovimiento,
-        md.Categoria,
-        md.Monto,
-        md.Descripcion,
-        md.IdUsuario,
-        u.NombreCompleto AS NombreUsuario
-    FROM MovimientoDiario md
-    INNER JOIN Usuario u ON md.IdUsuario = u.IdUsuario
-    ORDER BY md.FechaHora DESC
-END
------
-
-CREATE PROCEDURE EliminarMovimientoDiario
-    @IdMovimiento INT
-AS
-BEGIN
-    DELETE FROM MovimientoDiario WHERE IdMovimiento = @IdMovimiento;
-END;
--------
-CREATE PROCEDURE ActualizarMovimientoDiario
-    @IdMovimiento INT,
-    @TipoMovimiento VARCHAR(20),
-    @Categoria VARCHAR(50),
-    @Monto DECIMAL(10,2),
-    @Descripcion NVARCHAR(255)
-AS
-BEGIN
-    UPDATE MovimientoDiario
-    SET TipoMovimiento = @TipoMovimiento,
-        Categoria = @Categoria,
-        Monto = @Monto,
-        Descripcion = @Descripcion
-    WHERE IdMovimiento = @IdMovimiento;
-END;
-----
-CREATE PROCEDURE ActualizarMovimientoDiario
-    @IdMovimiento INT,
-    @TipoMovimiento VARCHAR(20),
-    @Categoria VARCHAR(50),
-    @Monto DECIMAL(10,2),
-    @Descripcion NVARCHAR(255)
-AS
-BEGIN
-    UPDATE MovimientoDiario
-    SET TipoMovimiento = @TipoMovimiento,
-        Categoria = @Categoria,
-        Monto = @Monto,
-        Descripcion = @Descripcion
-    WHERE IdMovimiento = @IdMovimiento;
-END;
-
-
-
-
-------- CIERRE DE CAJA
-CREATE PROCEDURE sp_CierreCajaDiario
-AS
-BEGIN
-    SELECT 
-        SUM(CASE WHEN TipoMovimiento = 'Ingreso' THEN Monto ELSE 0 END) AS TotalIngresos,
-        SUM(CASE WHEN TipoMovimiento = 'Egreso' THEN Monto ELSE 0 END) AS TotalEgresos
-    FROM MovimientoDiario
-    WHERE CAST(FechaHora AS DATE) = CAST(GETDATE() AS DATE)
-END
----------
-CREATE PROCEDURE sp_ListarCierresDeCaja
-AS
-BEGIN
-    SELECT 
-        IdMovimiento,
-        FechaHora,
-        TotalIngresos,
-        TotalEgresos,
-        MontoFisico,
-        NotaJustificativa,
-        NombreUsuario
-    FROM CierreCaja
-    ORDER BY FechaHora DESC
-END
+-- =============================================
+-- MENSAJE FINAL
+-- =============================================
+PRINT '=========================================';
+PRINT 'Base de datos AntojeriaTica configurada completamente';
+PRINT 'Incluye:';
+PRINT '- Tablas básicas del sistema';
+PRINT '- Facturación electrónica completa';
+PRINT '- Stored procedures optimizados';
+PRINT '- Datos iniciales';
+PRINT '=========================================';

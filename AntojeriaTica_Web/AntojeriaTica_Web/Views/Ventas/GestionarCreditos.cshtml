@@ -1,0 +1,344 @@
+@model List<AntojeriaTica_Web.Models.CreditoCliente>
+@{
+    ViewData["Title"] = "Gestión de Créditos de Clientes";
+    var identificacion = ViewBag.Identificacion as string;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-piggy-bank me-2"></i>
+                        Gestión de Créditos de Clientes
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Búsqueda de Cliente -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-search me-2"></i>
+                                        Buscar Cliente
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <form asp-action="VerCreditosCliente" method="get" class="row g-3">
+                                        <div class="col-md-8">
+                                            <label class="form-label">Identificación del Cliente:</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                                                <input name="identificacion" type="text" class="form-control" 
+                                                       placeholder="Cédula o identificación" 
+                                                       value="@identificacion" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-search me-1"></i> Buscar Créditos
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @ViewBag.Error
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(identificacion))
+                    {
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-user me-2"></i>
+                                    Mostrando créditos para la identificación: <strong>@identificacion</strong>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (Model != null && Model.Any())
+                    {
+                        <!-- Resumen de Créditos -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-coins fa-2x mb-2"></i>
+                                        <h4>₡@Model.Where(c => c.Estado == "Disponible").Sum(c => c.SaldoDisponible).ToString("N0")</h4>
+                                        <p class="mb-0">Saldo Disponible Total</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-list-ul fa-2x mb-2"></i>
+                                        <h4>@Model.Count(c => c.Estado == "Disponible")</h4>
+                                        <p class="mb-0">Créditos Activos</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-warning text-dark">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-history fa-2x mb-2"></i>
+                                        <h4>@Model.Count(c => c.Estado == "Utilizado")</h4>
+                                        <p class="mb-0">Créditos Utilizados</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Créditos -->
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th><i class="fas fa-hashtag me-1"></i>ID</th>
+                                        <th><i class="fas fa-user me-1"></i>Cliente</th>
+                                        <th><i class="fas fa-calendar me-1"></i>Fecha Creación</th>
+                                        <th><i class="fas fa-dollar-sign me-1"></i>Monto Original</th>
+                                        <th><i class="fas fa-wallet me-1"></i>Saldo Disponible</th>
+                                        <th><i class="fas fa-info-circle me-1"></i>Estado</th>
+                                        <th><i class="fas fa-cogs me-1"></i>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var credito in Model.OrderByDescending(c => c.FechaCreacion))
+                                    {
+                                        <tr class="@(credito.Estado == "Disponible" ? "" : "table-secondary")">
+                                            <td>
+                                                <span class="badge bg-primary">#@credito.Id</span>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <strong>@credito.NombreCliente</strong><br>
+                                                    <small class="text-muted">@credito.IdentificacionCliente</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fecha-visible">@credito.FechaCreacion.ToString("dd/MM/yyyy")</span>
+                                                    <small class="hora-visible">@credito.FechaCreacion.ToString("HH:mm:ss")</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-info fw-bold">₡@credito.MontoOriginal.ToString("N0")</span>
+                                            </td>
+                                            <td>
+                                                <span class="@(credito.SaldoDisponible > 0 ? "text-success" : "text-muted") fw-bold">
+                                                    ₡@credito.SaldoDisponible.ToString("N0")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var estadoBadge = credito.Estado == "Disponible" ? "bg-success" : "bg-secondary";
+                                                    var estadoIcon = credito.Estado == "Disponible" ? "fas fa-check-circle" : "fas fa-times-circle";
+                                                }
+                                                <span class="badge @estadoBadge">
+                                                    <i class="@estadoIcon me-1"></i>@credito.Estado
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (credito.Estado == "Disponible" && credito.SaldoDisponible > 0)
+                                                {
+                                                    <div class="btn-group" role="group">
+                                                        <button type="button" class="btn btn-sm btn-outline-success" 
+                                                                data-bs-toggle="modal" data-bs-target="#aplicarCreditoModal" 
+                                                                onclick="prepararAplicarCredito(@credito.Id, '@credito.NombreCliente', @credito.SaldoDisponible)">
+                                                            <i class="fas fa-credit-card me-1"></i>Aplicar
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-info" 
+                                                                data-bs-toggle="modal" data-bs-target="#detalleModal" 
+                                                                onclick="mostrarDetalle(@credito.Id, '@credito.NombreCliente', '@credito.IdentificacionCliente', '@credito.FechaCreacion.ToString("dd/MM/yyyy HH:mm")', '@credito.MontoOriginal.ToString("N0")', '@credito.SaldoDisponible.ToString("N0")', '@credito.Estado')">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                                            data-bs-toggle="modal" data-bs-target="#detalleModal" 
+                                                            onclick="mostrarDetalle(@credito.Id, '@credito.NombreCliente', '@credito.IdentificacionCliente', '@credito.FechaCreacion.ToString("dd/MM/yyyy HH:mm")', '@credito.MontoOriginal.ToString("N0")', '@credito.SaldoDisponible.ToString("N0")', '@credito.Estado')">
+                                                        <i class="fas fa-eye me-1"></i>Ver
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(identificacion))
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-piggy-bank fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay créditos para este cliente</h5>
+                            <p class="text-muted">Este cliente no tiene créditos disponibles o utilizados.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Busque un cliente para ver sus créditos</h5>
+                            <p class="text-muted">Ingrese la identificación del cliente para ver sus créditos disponibles.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Aplicar Crédito -->
+<div class="modal fade" id="aplicarCreditoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-credit-card me-2"></i>
+                    Aplicar Crédito
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="AplicarCredito" method="post">
+                <div class="modal-body">
+                    <input type="hidden" id="creditoId" name="creditoId" />
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Cliente:</label>
+                        <p id="clienteNombre" class="fw-bold"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Saldo Disponible:</label>
+                        <p id="saldoDisponible" class="text-success fs-5 fw-bold"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="montoAplicar" class="form-label">Monto a Aplicar:</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₡</span>
+                            <input type="number" class="form-control" id="montoAplicar" name="montoAplicar" 
+                                   min="1" step="0.01" required />
+                        </div>
+                        <small class="form-text text-muted">Ingrese el monto que desea aplicar del crédito</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descripcionUso" class="form-label">Descripción del Uso:</label>
+                        <textarea class="form-control" id="descripcionUso" name="descripcionUso" 
+                                  rows="2" placeholder="Describa para qué se aplica este crédito..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check me-1"></i>Aplicar Crédito
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Detalle de Crédito -->
+<div class="modal fade" id="detalleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Detalle de Crédito
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-hashtag me-2"></i>ID de Crédito:</h6>
+                        <p id="modalId" class="fw-bold"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-calendar me-2"></i>Fecha de Creación:</h6>
+                        <p id="modalFecha"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-user me-2"></i>Cliente:</h6>
+                        <p id="modalCliente"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-id-card me-2"></i>Identificación:</h6>
+                        <p id="modalIdentificacion"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-dollar-sign me-2"></i>Monto Original:</h6>
+                        <p id="modalMontoOriginal" class="text-info fw-bold fs-5"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-wallet me-2"></i>Saldo Disponible:</h6>
+                        <p id="modalSaldoDisponible" class="text-success fw-bold fs-5"></p>
+                    </div>
+                    <div class="col-12">
+                        <h6><i class="fas fa-info me-2"></i>Estado:</h6>
+                        <p id="modalEstado" class="fw-bold"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function prepararAplicarCredito(id, cliente, saldo) {
+            document.getElementById('creditoId').value = id;
+            document.getElementById('clienteNombre').textContent = cliente;
+            document.getElementById('saldoDisponible').textContent = '₡' + saldo.toLocaleString();
+            document.getElementById('montoAplicar').max = saldo;
+            document.getElementById('montoAplicar').value = '';
+            document.getElementById('descripcionUso').value = '';
+        }
+
+        function mostrarDetalle(id, cliente, identificacion, fecha, montoOriginal, saldoDisponible, estado) {
+            document.getElementById('modalId').textContent = '#' + id;
+            document.getElementById('modalFecha').textContent = fecha;
+            document.getElementById('modalCliente').textContent = cliente;
+            document.getElementById('modalIdentificacion').textContent = identificacion;
+            document.getElementById('modalMontoOriginal').textContent = '₡' + montoOriginal;
+            document.getElementById('modalSaldoDisponible').textContent = '₡' + saldoDisponible;
+            document.getElementById('modalEstado').textContent = estado;
+        }
+    </script>
+}
+
+<style>
+    .fecha-visible {
+        color: #212529 !important;
+        font-weight: 600 !important;
+    }
+    .hora-visible {
+        color: #495057 !important;
+        font-weight: 500 !important;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.08);
+    }
+</style>

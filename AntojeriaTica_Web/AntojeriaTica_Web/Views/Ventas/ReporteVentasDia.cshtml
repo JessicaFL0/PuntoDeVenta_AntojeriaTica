@@ -1,0 +1,249 @@
+@model AntojeriaTica_Web.Models.ReporteVentasDia
+@{
+    ViewData["Title"] = "Reporte de Ventas del Día";
+    var fechaConsulta = ViewBag.FechaConsulta as DateTime? ?? DateTime.Now;
+}
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0">
+                    <div class="d-flex align-items-center">
+                        <p class="mb-0">Reporte de Ventas - @fechaConsulta.ToString("dddd, dd MMMM yyyy")</p>
+                        <div class="ms-auto">
+                            <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("BuscarVentas")">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                            <button class="btn btn-info btn-sm" onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Selector de Fecha -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <form method="get">
+                                <div class="input-group">
+                                    <input type="date" name="fecha" value="@fechaConsulta.ToString("yyyy-MM-dd")" class="form-control">
+                                    <button class="btn btn-outline-primary" type="submit">
+                                        <i class="fas fa-calendar-alt"></i> Consultar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @ViewBag.Error
+                        </div>
+                    }
+
+                    <!-- Resumen General -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-gradient-primary">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-8">
+                                            <div class="numbers">
+                                                <p class="text-sm mb-0 text-white opacity-7">Total de Ventas</p>
+                                                <h5 class="text-white font-weight-bolder mb-0">
+                                                    @Model.TotalVentas transacciones
+                                                </h5>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <div class="icon icon-shape bg-white shadow-primary text-center border-radius-md">
+                                                <i class="fas fa-shopping-cart text-dark opacity-10"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-gradient-success">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-8">
+                                            <div class="numbers">
+                                                <p class="text-sm mb-0 text-white opacity-7">Monto Total</p>
+                                                <h5 class="text-white font-weight-bolder mb-0">
+                                                    ₡@Model.MontoTotal.ToString("N2")
+                                                </h5>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <div class="icon icon-shape bg-white shadow-success text-center border-radius-md">
+                                                <i class="fas fa-dollar-sign text-dark opacity-10"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ventas por Método de Pago -->
+                    @if (Model.VentasPorMetodo.Any())
+                    {
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header pb-0">
+                                        <h6>Ventas por Método de Pago</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table align-items-center mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Método de Pago</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Cantidad</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Monto Total</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Porcentaje</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var metodo in Model.VentasPorMetodo)
+                                                    {
+                                                        var porcentaje = Model.MontoTotal > 0 ? (metodo.MontoTotal / Model.MontoTotal * 100) : 0;
+                                                        <tr>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    @if (metodo.MetodoPago == "Efectivo")
+                                                                    {
+                                                                        <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                                                    }
+                                                                    else if (metodo.MetodoPago == "Tarjeta")
+                                                                    {
+                                                                        <i class="fas fa-credit-card text-info me-2"></i>
+                                                                    }
+                                                                    else if (metodo.MetodoPago == "Sinpe Móvil")
+                                                                    {
+                                                                        <i class="fas fa-mobile-alt text-warning me-2"></i>
+                                                                    }
+                                                                    <span class="font-weight-bold">@metodo.MetodoPago</span>
+                                                                </div>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <span class="text-secondary text-sm font-weight-bold">@metodo.CantidadVentas</span>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <span class="text-success text-sm font-weight-bold">₡@metodo.MontoTotal.ToString("N2")</span>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <div class="progress mx-auto" style="width: 60%">
+                                                                    <div class="progress-bar bg-gradient-success" role="progressbar" style="width: @porcentaje.ToString("F1")%" aria-valuenow="@porcentaje.ToString("F1")" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                </div>
+                                                                <span class="text-xs font-weight-bold">@porcentaje.ToString("F1")%</span>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Productos Más Vendidos -->
+                    @if (Model.ProductosVendidos.Any())
+                    {
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header pb-0">
+                                        <h6>Productos Vendidos del Día</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table align-items-center mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Código</th>
+                                                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Producto</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Cantidad</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Monto Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var producto in Model.ProductosVendidos.Take(10))
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                <p class="text-xs font-weight-bold mb-0">@producto.ProductoCodigo</p>
+                                                            </td>
+                                                            <td>
+                                                                <div class="d-flex flex-column justify-content-center">
+                                                                    <h6 class="mb-0 text-sm">@producto.ProductoNombre</h6>
+                                                                </div>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <span class="badge bg-gradient-info">@producto.CantidadVendida</span>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <span class="text-success text-sm font-weight-bold">₡@producto.MontoTotal.ToString("N2")</span>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        @if (Model.ProductosVendidos.Count > 10)
+                                        {
+                                            <div class="mt-3">
+                                                <small class="text-muted">Se muestran los 10 productos principales. Total de productos diferentes: @Model.ProductosVendidos.Count</small>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!Model.VentasPorMetodo.Any() && !Model.ProductosVendidos.Any() && Model.TotalVentas == 0)
+                    {
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle"></i> No hay ventas registradas para la fecha seleccionada.
+                        </div>
+                    }
+
+                    <!-- Información de pie -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card bg-gradient-light">
+                                <div class="card-body">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar"></i> Reporte generado para el día @fechaConsulta.ToString("dd/MM/yyyy") - 
+                                        <i class="fas fa-clock"></i> Consulta realizada el @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@media print {
+        .btn, .card-header .ms-auto {
+            display: none !important;
+        }
+        
+        .card {
+            box-shadow: none !important;
+            border: 1px solid #000 !important;
+        }
+    }
+</style>

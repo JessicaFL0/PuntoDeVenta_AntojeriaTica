@@ -23,6 +23,9 @@
     <link href="@Url.Content("~/Content/vendor/aos/aos.css")" rel="stylesheet">
     <link href="@Url.Content("~/Content/vendor/glightbox/css/glightbox.min.css")" rel="stylesheet">
     <link href="@Url.Content("~/Content/vendor/swiper/swiper-bundle.min.css")" rel="stylesheet">
+    
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <link href="@Url.Content("~/Content/css/main.css")" rel="stylesheet">
 
@@ -66,6 +69,15 @@
                         <li><a href="#gallery">Gallery</a></li>
                         @if (!string.IsNullOrEmpty(Context.Session.GetString("NombreRol")))
                         {
+                            <li class="dropdown">
+                                <a href="#"><span>Ventas</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                                <ul>
+                                    <li><a href="@Url.Action("RegistrarVenta", "Ventas")">Nueva Venta</a></li>
+                                    <li><a href="@Url.Action("BuscarVentas", "Ventas")">Buscar Ventas</a></li>
+                                    <li><a href="@Url.Action("ProcesarDevoluciones", "Ventas")">Devoluciones</a></li>
+                                    <li><a href="@Url.Action("ReporteVentasDia", "Ventas")">Reportes</a></li>
+                                </ul>
+                            </li>
                             <li class="nav-item"><span
                                     class="badge bg-success me-2">@Context.Session.GetString("NombreRol")</span></li>
                         }
@@ -89,10 +101,21 @@
                                         <li><a href="@Url.Action("ConfiguracionImpuestos", "Impuestos")">Configurar Impuestos</a></li>
                                         <li><a href="@Url.Action("ConfiguracionPago", "Ventas")">Métodos de Pago</a></li>
                                         <li><a href="@Url.Action("RegistrarVenta", "Ventas")">Registrar Venta</a></li>
+                                        <li><a href="@Url.Action("BuscarVentas", "Ventas")">Buscar Ventas Anteriores</a></li>
+                                        <li><a href="@Url.Action("ReporteVentasDia", "Ventas")">Reporte de Ventas del Día</a></li>
+                                        <li class="dropdown">
+                                            <a href="#"><span>Devoluciones</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                                            <ul>
+                                                <li><a href="@Url.Action("ProcesarDevoluciones", "Ventas")">Procesar Devoluciones</a></li>
+                                                <li><a href="@Url.Action("HistorialDevoluciones", "Ventas")">Historial Devoluciones</a></li>
+                                                <li><a href="@Url.Action("GestionarCreditos", "Ventas")">Gestionar Créditos</a></li>
+                                            </ul>
+                                        </li>
                                         <li><a href="@Url.Action("ListarProductos", "Inventario")">Inventario</a></li>
                                         <li><a href="@Url.Action("EstadoInventario", "Inventario")">Estado de Inventario</a></li>
                                         <li><a href="@Url.Action("Listar", "MovimientoDiario")">Movimientos Diarios</a></li>
                                         <li><a href="@Url.Action("Index", "CierreCaja")">Cierre de Caja</a></li>
+                                        <li><a href="@Url.Action("Index", "FacturacionElectronica")">Facturación Electrónica</a></li>
                                        
                                         <li><a href="#">Cerrar Sesión</a></li>
                                     </ul>

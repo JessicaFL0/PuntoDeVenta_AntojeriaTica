@@ -1,0 +1,203 @@
+@model AntojeriaTica_Web.Models.VentaCompleta
+@{
+    ViewData["Title"] = "Detalle de Venta";
+}
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0">
+                    <div class="d-flex align-items-center">
+                        <p class="mb-0">Detalle de Venta #@Model.Id</p>
+                        <div class="ms-auto">
+                            <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("BuscarVentas")">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                            <a class="btn btn-success btn-sm" href="@Url.Action("ImprimirComprobante", new { id = Model.Id })" target="_blank">
+                                <i class="fas fa-print"></i> Imprimir
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @ViewBag.Error
+                        </div>
+                    }
+
+                    @if (Model.Id > 0)
+                    {
+                        <!-- Información General de la Venta -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header pb-0">
+                                        <h6>Información de la Venta</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <label class="form-label mb-1">ID de Venta:</label>
+                                                <p class="text-dark font-weight-bold">#@Model.Id</p>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label mb-1">Fecha:</label>
+                                                <p class="text-dark">@Model.Fecha.ToString("dd/MM/yyyy")</p>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <label class="form-label mb-1">Hora:</label>
+                                                <p class="text-dark">@Model.Fecha.ToString("HH:mm:ss")</p>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label mb-1">Método de Pago:</label>
+                                                <span class="badge bg-gradient-info">@Model.MetodoPago</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header pb-0">
+                                        <h6>Resumen</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <label class="form-label mb-1">Productos:</label>
+                                                <p class="text-dark font-weight-bold">@Model.Detalles.Count</p>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label mb-1">Cantidad Total:</label>
+                                                <p class="text-dark">@Model.Detalles.Sum(d => d.Cantidad)</p>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <label class="form-label mb-1">Total:</label>
+                                                <h4 class="text-success font-weight-bold">₡@Model.Total.ToString("N2")</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detalle de Productos -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header pb-0">
+                                        <h6>Productos Vendidos</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table align-items-center mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Código</th>
+                                                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Producto</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Cantidad</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Precio Unit.</th>
+                                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Subtotal</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var detalle in Model.Detalles)
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                <p class="text-xs font-weight-bold mb-0">@detalle.ProductoCodigo</p>
+                                                            </td>
+                                                            <td>
+                                                                <div class="d-flex flex-column justify-content-center">
+                                                                    <h6 class="mb-0 text-sm">@detalle.ProductoNombre</h6>
+                                                                </div>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <span class="text-secondary text-xs font-weight-bold">@detalle.Cantidad</span>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <span class="text-secondary text-xs font-weight-bold">₡@detalle.PrecioUnitario.ToString("N2")</span>
+                                                            </td>
+                                                            <td class="align-middle text-center">
+                                                                <span class="text-success text-sm font-weight-bold">₡@detalle.Subtotal.ToString("N2")</span>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="table-active">
+                                                        <td colspan="4" class="text-end">
+                                                            <strong>TOTAL:</strong>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <strong class="text-success text-lg">₡@Model.Total.ToString("N2")</strong>
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información Adicional -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card bg-gradient-light">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="info">
+                                                    <i class="fas fa-info-circle text-primary"></i>
+                                                    <span class="ms-2">Esta venta se realizó el @Model.Fecha.ToString("dddd, dd MMMM yyyy") a las @Model.Fecha.ToString("HH:mm")</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="info">
+                                                    <i class="fas fa-credit-card text-info"></i>
+                                                    <span class="ms-2">Método de pago utilizado: @Model.MetodoPago</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="info">
+                                                    <i class="fas fa-box text-success"></i>
+                                                    <span class="ms-2">Total de @Model.Detalles.Sum(d => d.Cantidad) productos vendidos</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> No se encontró información para esta venta.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .table tfoot tr {
+        border-top: 2px solid #dee2e6;
+    }
+</style>

@@ -1,0 +1,218 @@
+@model List<AntojeriaTica_Web.Models.DevolucionDetalladaModel>
+@{
+    ViewData["Title"] = "Historial de Devoluciones";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Historial de Devoluciones
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @ViewBag.Error
+                        </div>
+                    }
+
+                    @if (Model != null && Model.Any())
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <i class="fas fa-list-ul text-secondary me-2"></i>
+                                Total de devoluciones: <span class="badge bg-secondary">@Model.Count</span>
+                            </h6>
+                            <div class="text-muted">
+                                <i class="fas fa-calculator me-1"></i>
+                                Monto total devuelto: <strong class="text-danger">₡@Model.Sum(d => d.MontoDevuelto).ToString("N0")</strong>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th><i class="fas fa-receipt me-1"></i>Venta Original</th>
+                                        <th><i class="fas fa-calendar me-1"></i>Fecha Devolución</th>
+                                        <th><i class="fas fa-exchange-alt me-1"></i>Tipo</th>
+                                        <th><i class="fas fa-credit-card me-1"></i>Reembolso</th>
+                                        <th><i class="fas fa-dollar-sign me-1"></i>Monto</th>
+                                        <th><i class="fas fa-comment me-1"></i>Motivo</th>
+                                        <th><i class="fas fa-cogs me-1"></i>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var devolucion in Model.OrderByDescending(d => d.Fecha))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <a asp-controller="Ventas" asp-action="DetalleVenta" asp-route-id="@devolucion.VentaOriginalId" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-receipt me-1"></i>Ver Venta
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fecha-visible">@devolucion.Fecha.ToString("dd/MM/yyyy")</span>
+                                                    <small class="hora-visible">@devolucion.Fecha.ToString("HH:mm:ss")</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var tipoBadge = devolucion.TipoDevolucion == "Total" ? "bg-danger" : "bg-warning text-dark";
+                                                    var tipoIcon = devolucion.TipoDevolucion == "Total" ? "fas fa-undo" : "fas fa-list-ul";
+                                                }
+                                                <span class="badge @tipoBadge">
+                                                    <i class="@tipoIcon me-1"></i>@devolucion.TipoDevolucion
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var reembolsoBadge = devolucion.TipoReembolso switch {
+                                                        "Efectivo" => "bg-success",
+                                                        "Tarjeta" => "bg-primary",
+                                                        "Credito" => "bg-info",
+                                                        _ => "bg-secondary"
+                                                    };
+                                                    var reembolsoIcon = devolucion.TipoReembolso switch {
+                                                        "Efectivo" => "fas fa-money-bill-wave",
+                                                        "Tarjeta" => "fas fa-credit-card",
+                                                        "Credito" => "fas fa-piggy-bank",
+                                                        _ => "fas fa-question"
+                                                    };
+                                                }
+                                                <span class="badge @reembolsoBadge">
+                                                    <i class="@reembolsoIcon me-1"></i>@devolucion.TipoReembolso
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <strong class="text-danger">₡@devolucion.MontoDevuelto.ToString("N0")</strong>
+                                            </td>
+                                            <td>
+                                                <span class="text-truncate" style="max-width: 150px; display: inline-block;" 
+                                                      title="@(devolucion.Motivo ?? "")">
+                                                    @(devolucion.Motivo?.Length > 30 ? devolucion.Motivo.Substring(0, 30) + "..." : devolucion.Motivo ?? "N/A")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-sm btn-outline-info" 
+                                                            data-bs-toggle="modal" data-bs-target="#detalleModal" 
+                                                            onclick="mostrarDetalle('@devolucion.TipoDevolucion', '@devolucion.TipoReembolso', '@devolucion.Fecha.ToString("dd/MM/yyyy HH:mm")', '@devolucion.MontoDevuelto.ToString("N0")', '@Html.Raw(devolucion.Motivo.Replace("'", "\\'"))')">>
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    @if (devolucion.TipoReembolso == "Credito")
+                                                    {
+                                                        <a asp-action="VerCreditosCliente" asp-route-identificacion="@devolucion.IdentificacionCliente" 
+                                                           class="btn btn-sm btn-outline-success" title="Ver Créditos">
+                                                            <i class="fas fa-coins"></i>
+                                                        </a>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay devoluciones registradas</h5>
+                            <p class="text-muted">Las devoluciones procesadas aparecerán aquí.</p>
+                            <a asp-action="ProcesarDevoluciones" class="btn btn-primary">
+                                <i class="fas fa-undo-alt me-2"></i>
+                                Procesar Primera Devolución
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Detalle de Devolución -->
+<div class="modal fade" id="detalleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Detalle de Devolución
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-calendar me-2"></i>Fecha:</h6>
+                        <p id="modalFecha"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-exchange-alt me-2"></i>Tipo de Devolución:</h6>
+                        <p id="modalTipo"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-credit-card me-2"></i>Método de Reembolso:</h6>
+                        <p id="modalReembolso"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-dollar-sign me-2"></i>Monto Devuelto:</h6>
+                        <p id="modalMonto" class="text-danger fw-bold fs-5"></p>
+                    </div>
+                    <div class="col-12">
+                        <h6><i class="fas fa-comment me-2"></i>Motivo:</h6>
+                        <div class="bg-light p-3 rounded">
+                            <p id="modalMotivo" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function mostrarDetalle(tipo, reembolso, fecha, monto, motivo) {
+            document.getElementById('modalFecha').textContent = fecha;
+            document.getElementById('modalTipo').textContent = tipo;
+            document.getElementById('modalReembolso').textContent = reembolso;
+            document.getElementById('modalMonto').textContent = '₡' + monto;
+            document.getElementById('modalMotivo').textContent = motivo;
+        }
+    </script>
+}
+
+<style>
+    .fecha-visible {
+        color: #212529 !important;
+        font-weight: 600 !important;
+    }
+    .hora-visible {
+        color: #495057 !important;
+        font-weight: 500 !important;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.08);
+    }
+    .text-truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

@@ -1,0 +1,398 @@
+@model AntojeriaTica_Web.Models.DevolucionModel
+@{
+    ViewData["Title"] = "Procesar Devoluciones y Reembolsos";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-undo-alt me-2"></i>
+                        Procesar Devoluciones y Reembolsos
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Error:</strong> @ViewBag.Error
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (ViewBag.Success != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Éxito:</strong> @ViewBag.Success
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <!-- Paso 1: Buscar Venta -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-search me-2"></i>
+                                        Paso 1: Buscar Venta para Devolver
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">ID de Venta:</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
+                                                <input id="ventaIdInput" type="number" class="form-control" placeholder="Ej: 123" required />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 d-flex align-items-end">
+                                            <button type="button" class="btn btn-primary" onclick="buscarVenta()">
+                                                <i class="fas fa-search me-1"></i> Buscar Venta
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="/Ventas/BuscarVentaDevolucion" class="btn btn-outline-info">
+                                            <i class="fas fa-external-link-alt me-1"></i>
+                                            Ir a Búsqueda Avanzada
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paso 2: Información de la Venta (solo si hay venta cargada) -->
+                    @if (Model.VentaOriginal != null)
+                    {
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-info">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-receipt me-2"></i>
+                                            Información de la Venta Original
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-3">
+                                            <div class="col-md-3">
+                                                <strong>ID de Venta:</strong><br>
+                                                <span class="badge bg-primary fs-6">#@Model.VentaOriginal.Id</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Fecha:</strong><br>
+                                                @Model.VentaOriginal.Fecha.ToString("dd/MM/yyyy HH:mm")
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Método de Pago:</strong><br>
+                                                <span class="badge 
+                                                    @(Model.VentaOriginal.MetodoPago == "Efectivo" ? "bg-success" : 
+                                                      Model.VentaOriginal.MetodoPago == "Tarjeta" ? "bg-primary" : "bg-warning")">
+                                                    @Model.VentaOriginal.MetodoPago
+                                                </span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Total:</strong><br>
+                                                <span class="text-success fs-5 fw-bold">₡@Model.VentaOriginal.Total.ToString("N0")</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Detalles de Productos -->
+                                        <h6 class="mb-3">
+                                            <i class="fas fa-list me-2"></i>
+                                            Productos de la Venta:
+                                        </h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Código</th>
+                                                        <th>Producto</th>
+                                                        <th>Cantidad</th>
+                                                        <th>Precio Unit.</th>
+                                                        <th>Subtotal</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var detalle in Model.VentaOriginal.Detalles)
+                                                    {
+                                                        <tr>
+                                                            <td><code>@detalle.ProductoCodigo</code></td>
+                                                            <td>@detalle.ProductoNombre</td>
+                                                            <td>@detalle.Cantidad</td>
+                                                            <td>₡@detalle.PrecioUnitario.ToString("N0")</td>
+                                                            <td class="fw-bold">₡@detalle.Subtotal.ToString("N0")</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paso 3: Procesar Devolución -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card border-warning">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-exchange-alt me-2"></i>
+                                            Paso 3: Configurar Devolución
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form asp-action="ProcesarDevolucion" method="post">
+                                            <input asp-for="VentaId" type="hidden" />
+                                            
+                                            <!-- Tipo de Devolución -->
+                                            <div class="mb-4">
+                                                <label class="form-label fw-bold">Tipo de Devolución:</label>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input asp-for="TipoDevolucion" class="form-check-input" type="radio" value="Total" id="tipoTotal" checked />
+                                                            <label class="form-check-label" for="tipoTotal">
+                                                                <i class="fas fa-undo me-1 text-danger"></i>
+                                                                <strong>Devolución Total</strong><br>
+                                                                <small class="text-muted">Devolver todos los productos</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input asp-for="TipoDevolucion" class="form-check-input" type="radio" value="Parcial" id="tipoParcial" />
+                                                            <label class="form-check-label" for="tipoParcial">
+                                                                <i class="fas fa-list-ul me-1 text-warning"></i>
+                                                                <strong>Devolución Parcial</strong><br>
+                                                                <small class="text-muted">Seleccionar productos específicos</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Tipo de Reembolso -->
+                                            <div class="mb-4">
+                                                <label class="form-label fw-bold">Método de Reembolso:</label>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input asp-for="TipoReembolso" class="form-check-input" type="radio" value="MismoMetodo" id="mismoMetodo" checked />
+                                                            <label class="form-check-label" for="mismoMetodo">
+                                                                <i class="fas fa-credit-card me-1 text-primary"></i>
+                                                                <strong>Mismo Método</strong><br>
+                                                                <small class="text-muted">@Model.VentaOriginal.MetodoPago</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input asp-for="TipoReembolso" class="form-check-input" type="radio" value="Efectivo" id="efectivo" />
+                                                            <label class="form-check-label" for="efectivo">
+                                                                <i class="fas fa-money-bill-wave me-1 text-success"></i>
+                                                                <strong>Efectivo</strong><br>
+                                                                <small class="text-muted">Reembolso en efectivo</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input asp-for="TipoReembolso" class="form-check-input" type="radio" value="Credito" id="credito" />
+                                                            <label class="form-check-label" for="credito">
+                                                                <i class="fas fa-piggy-bank me-1 text-info"></i>
+                                                                <strong>Crédito en Cuenta</strong><br>
+                                                                <small class="text-muted">Para futuras compras</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Campos para Crédito en Cuenta -->
+                                            <div id="datosCredito" class="mb-4" style="display: none;">
+                                                <div class="border border-info rounded p-3">
+                                                    <h6 class="text-info mb-3">
+                                                        <i class="fas fa-user me-2"></i>
+                                                        Datos del Cliente para Crédito:
+                                                    </h6>
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Nombre del Cliente:</label>
+                                                            <input asp-for="NombreCliente" type="text" class="form-control" placeholder="Nombre completo" />
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Identificación:</label>
+                                                            <input asp-for="IdentificacionCliente" type="text" class="form-control" placeholder="Cédula o identificación" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Motivo -->
+                                            <div class="mb-4">
+                                                <label asp-for="Motivo" class="form-label fw-bold">Motivo de la Devolución:</label>
+                                                <textarea asp-for="Motivo" class="form-control" rows="3" placeholder="Describa el motivo de la devolución..." required></textarea>
+                                            </div>
+
+                                            <!-- Botones de Acción -->
+                                            <div class="d-flex gap-3">
+                                                <button type="submit" class="btn btn-warning btn-lg">
+                                                    <i class="fas fa-check me-2"></i>
+                                                    Procesar Devolución
+                                                </button>
+                                                <a asp-action="ProcesarDevoluciones" class="btn btn-secondary btn-lg">
+                                                    <i class="fas fa-times me-2"></i>
+                                                    Cancelar
+                                                </a>
+                                                <a asp-controller="Ventas" asp-action="BuscarVentas" class="btn btn-info btn-lg">
+                                                    <i class="fas fa-search me-2"></i>
+                                                    Buscar Otra Venta
+                                                </a>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Información de Ayuda -->
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-info-circle me-2"></i>¿Cómo procesar devoluciones?</h5>
+                            <ol class="mb-0">
+                                <li><strong>Busque la venta:</strong> Ingrese el ID de la venta que desea devolver</li>
+                                <li><strong>Verifique los datos:</strong> Confirme que la información de la venta es correcta</li>
+                                <li><strong>Configure la devolución:</strong> Seleccione el tipo y método de reembolso</li>
+                                <li><strong>Complete el proceso:</strong> Proporcione el motivo y confirme la operación</li>
+                            </ol>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-undo-alt fa-2x text-danger mb-2"></i>
+                                        <h6>Devolución Total</h6>
+                                        <small class="text-muted">Devolver todos los productos y el monto completo</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-list-ul fa-2x text-warning mb-2"></i>
+                                        <h6>Devolución Parcial</h6>
+                                        <small class="text-muted">Seleccionar productos específicos para devolver</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-piggy-bank fa-2x text-info mb-2"></i>
+                                        <h6>Crédito en Cuenta</h6>
+                                        <small class="text-muted">Generar crédito para futuras compras</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Mostrar/ocultar campos de crédito
+        document.addEventListener('DOMContentLoaded', function() {
+            const radioCredito = document.getElementById('credito');
+            const datosCredito = document.getElementById('datosCredito');
+            const radiosReembolso = document.querySelectorAll('input[name="TipoReembolso"]');
+            
+            radiosReembolso.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'Credito') {
+                        datosCredito.style.display = 'block';
+                        document.querySelector('input[name="NombreCliente"]').required = true;
+                        document.querySelector('input[name="IdentificacionCliente"]').required = true;
+                    } else {
+                        datosCredito.style.display = 'none';
+                        document.querySelector('input[name="NombreCliente"]').required = false;
+                        document.querySelector('input[name="IdentificacionCliente"]').required = false;
+                    }
+                });
+            });
+            
+            // Confirmación antes de procesar
+            document.querySelector('form[action*="ProcesarDevolucion"]')?.addEventListener('submit', function(e) {
+                const tipoDevolucion = document.querySelector('input[name="TipoDevolucion"]:checked').value;
+                const tipoReembolso = document.querySelector('input[name="TipoReembolso"]:checked').value;
+                
+                if (!confirm(`¿Está seguro de procesar una devolución ${tipoDevolucion.toLowerCase()} con reembolso en ${tipoReembolso}?`)) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+}
+
+<style>
+    .form-check {
+        padding: 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .form-check:hover {
+        border-color: #007bff;
+        background-color: #f8f9fa;
+    }
+    .form-check-input:checked + .form-check-label {
+        color: #007bff;
+        font-weight: 600;
+    }
+    .card {
+        transition: transform 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+
+<script>
+function buscarVenta() {
+    const ventaId = document.getElementById('ventaIdInput').value;
+    if (!ventaId || ventaId < 1) {
+        alert('Por favor ingrese un ID de venta válido');
+        return;
+    }
+    
+    // Redireccionar a la página de búsqueda con el ID como parámetro
+    window.location.href = `/Ventas/BuscarVentaDevolucion?ventaId=${ventaId}`;
+}
+
+// Permitir buscar con Enter
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('ventaIdInput');
+    if (input) {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                buscarVenta();
+            }
+        });
+    }
+});
+</script>

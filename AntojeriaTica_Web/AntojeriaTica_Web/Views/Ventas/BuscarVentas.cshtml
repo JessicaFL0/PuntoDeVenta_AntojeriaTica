@@ -1,0 +1,440 @@
+@model AntojeriaTica_Web.Models.BusquedaVentasModel
+@{
+    ViewData["Title"] = "Búsqueda de Ventas Anteriores";
+}
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0 d-flex align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-search text-primary me-2"></i>
+                        <h5 class="mb-0">Búsqueda y Filtrado de Ventas Anteriores</h5>
+                    </div>
+                    <div class="ms-auto">
+                        <a class="btn btn-info btn-sm" href="@Url.Action("ReporteVentasDia")">
+                            <i class="fas fa-chart-line me-1"></i>Reporte del Día
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Error:</strong> @ViewBag.Error
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Error:</strong> @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <!-- Formulario de Búsqueda -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card bg-gradient-light border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title text-dark">
+                                        <i class="fas fa-filter me-2"></i>Filtros de Búsqueda
+                                    </h6>
+                                    <form asp-action="BuscarVentas" method="post">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label asp-for="FechaInicio" class="form-label fw-bold">
+                                                    <i class="fas fa-calendar-alt me-1 text-success"></i>Fecha Inicio
+                                                </label>
+                                                <input asp-for="FechaInicio" type="datetime-local" class="form-control border-2" />
+                                                <div class="form-text">
+                                                    <i class="fas fa-info-circle me-1"></i>Para auditorías desde una fecha específica
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label asp-for="FechaFin" class="form-label fw-bold">
+                                                    <i class="fas fa-calendar-check me-1 text-warning"></i>Fecha Fin
+                                                </label>
+                                                <input asp-for="FechaFin" type="datetime-local" class="form-control border-2" />
+                                                <div class="form-text">
+                                                    <i class="fas fa-info-circle me-1"></i>Para auditorías hasta una fecha específica
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label asp-for="MetodoPago" class="form-label fw-bold">
+                                                    <i class="fas fa-credit-card me-1 text-info"></i>Método de Pago
+                                                </label>
+                                                <select asp-for="MetodoPago" class="form-control border-2">
+                                                    <option value="">
+                                                        <i class="fas fa-list me-1"></i>-- Todos los métodos --
+                                                    </option>
+                                                    @foreach (var metodo in Model.MetodosPago)
+                                                    {
+                                                        <option value="@metodo">
+                                                            @if(metodo == "Efectivo") { <text>💵</text> }
+                                                            else if(metodo == "Tarjeta") { <text>💳</text> }
+                                                            else if(metodo == "Sinpe Móvil") { <text>📱</text> }
+                                                            @metodo
+                                                        </option>
+                                                    }
+                                                </select>
+                                                <div class="form-text">
+                                                    <i class="fas fa-info-circle me-1"></i>Para ver solo transacciones con método específico
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label asp-for="VentaId" class="form-label fw-bold">
+                                                    <i class="fas fa-hashtag me-1 text-danger"></i>ID de Venta
+                                                </label>
+                                                <input asp-for="VentaId" type="number" class="form-control border-2" placeholder="Ej: 123" />
+                                                <div class="form-text">
+                                                    <i class="fas fa-info-circle me-1"></i>Para buscar una venta específica
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <div class="w-100">
+                                                    <button type="submit" class="btn btn-success w-100 mb-2 shadow-sm">
+                                                        <i class="fas fa-search me-1"></i> Buscar
+                                                    </button>
+                                                    <a asp-action="BuscarVentas" class="btn btn-outline-secondary w-100 btn-sm">
+                                                        <i class="fas fa-broom me-1"></i> Limpiar
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resultados -->
+                    @if (Model.Resultados.Any())
+                    {
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-list-ul text-success me-2"></i>
+                                        Resultados encontrados: <span class="badge bg-success">@Model.Resultados.Count</span>
+                                    </h6>
+                                    <div class="text-muted">
+                                        <i class="fas fa-calculator me-1"></i>
+                                        Total: <strong class="text-success">₡@Model.Resultados.Sum(v => v.Total).ToString("N0")</strong>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-items-center mb-0 border">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>
+                                                    <i class="fas fa-hashtag me-1"></i>ID
+                                                </th>
+                                                <th>
+                                                    <i class="fas fa-calendar-day me-1"></i>Fecha y Hora
+                                                </th>
+                                                <th>
+                                                    <i class="fas fa-credit-card me-1"></i>Método de Pago
+                                                </th>
+                                                <th>
+                                                    <i class="fas fa-box me-1"></i>Productos
+                                                </th>
+                                                <th class="text-center">
+                                                    <i class="fas fa-dollar-sign me-1"></i>Total
+                                                </th>
+                                                <th class="text-center">
+                                                    <i class="fas fa-cogs me-1"></i>Acciones
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var venta in Model.Resultados)
+                                            {
+                                                <tr class="border-bottom">
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar avatar-sm rounded-circle bg-gradient-info me-2">
+                                                                <span class="text-white text-xs font-weight-bold">@venta.Id.ToString().Substring(Math.Max(0, venta.Id.ToString().Length - 2))</span>
+                                                            </div>
+                                                            <span class="text-sm font-weight-bold">#@venta.Id</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex flex-column justify-content-center">
+                                                            <h6 class="mb-0 text-sm fecha-visible">
+                                                                <i class="fas fa-calendar-alt text-info me-1"></i>
+                                                                @venta.Fecha.ToString("dd/MM/yyyy")
+                                                            </h6>
+                                                            <p class="text-xs hora-visible mb-0">
+                                                                <i class="fas fa-clock text-warning me-1"></i>
+                                                                @venta.Fecha.ToString("HH:mm:ss")
+                                                            </p>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        @{
+                                                            var metodoBadgeClass = venta.MetodoPago switch {
+                                                                "Efectivo" => "bg-gradient-success",
+                                                                "Tarjeta" => "bg-gradient-primary", 
+                                                                "Sinpe Móvil" => "bg-gradient-warning",
+                                                                _ => "bg-gradient-secondary"
+                                                            };
+                                                            var metodoIcon = venta.MetodoPago switch {
+                                                                "Efectivo" => "fas fa-money-bill-wave",
+                                                                "Tarjeta" => "fas fa-credit-card",
+                                                                "Sinpe Móvil" => "fas fa-mobile-alt",
+                                                                _ => "fas fa-question"
+                                                            };
+                                                        }
+                                                        <span class="badge @metodoBadgeClass">
+                                                            <i class="@metodoIcon me-1"></i>@venta.MetodoPago
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="fas fa-cubes text-info me-2"></i>
+                                                            <span class="text-sm font-weight-bold">@venta.CantidadProductos</span>
+                                                            <span class="text-xs text-secondary ms-1">item(s)</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-success text-lg font-weight-bold">
+                                                            <i class="fas fa-coins me-1"></i>₡@venta.Total.ToString("N0")
+                                                        </span>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <div class="btn-group" role="group">
+                                                            <a href="@Url.Action("DetalleVenta", new { id = venta.Id })" 
+                                                               class="btn btn-outline-info btn-sm shadow-sm" 
+                                                               title="Ver Detalle Completo"
+                                                               data-bs-toggle="tooltip">
+                                                                <i class="fas fa-eye me-1"></i>Ver
+                                                            </a>
+                                                            <a href="@Url.Action("ImprimirComprobante", new { id = venta.Id })" 
+                                                               class="btn btn-outline-success btn-sm shadow-sm" 
+                                                               title="Imprimir Comprobante" 
+                                                               target="_blank"
+                                                               data-bs-toggle="tooltip">
+                                                                <i class="fas fa-print me-1"></i>Imprimir
+                                                            </a>
+                                                            <a href="@Url.Action("GenerarDesdeVenta", "FacturacionElectronica", new { ventaId = venta.Id })" 
+                                                               class="btn btn-outline-warning btn-sm shadow-sm" 
+                                                               title="Generar Factura Electrónica"
+                                                               data-bs-toggle="tooltip">
+                                                                <i class="fas fa-file-invoice-dollar me-1"></i>Factura
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (ViewContext.HttpContext.Request.Method == "POST")
+                    {
+                        <div class="alert alert-warning border-0 shadow-sm" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-search text-warning me-3 fa-2x"></i>
+                                <div>
+                                    <h5 class="alert-heading mb-1">No se encontraron resultados</h5>
+                                    <p class="mb-0">No se encontraron ventas con los criterios especificados. Intente ajustar los filtros de búsqueda.</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary" role="alert">
+                            <i class="fas fa-search"></i> Configure los filtros de búsqueda y presione "Buscar" para ver los resultados.
+                        </div>
+                    }
+
+                    <!-- Información de Escenarios de Uso -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card bg-gradient-secondary">
+                                <div class="card-body text-white">
+                                    <h6 class="text-white">Casos de Uso Principales:</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled">
+                                                <li><i class="fas fa-calendar-alt text-warning"></i> <strong>Auditorías diarias:</strong> Filtre por fecha específica</li>
+                                                <li><i class="fas fa-receipt text-info"></i> <strong>Reimpresión de comprobantes:</strong> Busque por ID de venta</li>
+                                                <li><i class="fas fa-credit-card text-success"></i> <strong>Transacciones por tarjeta:</strong> Filtre por método de pago</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled">
+                                                <li><i class="fas fa-database text-danger"></i> <strong>Problemas técnicos:</strong> Consulte el historial completo</li>
+                                                <li><i class="fas fa-exclamation-triangle text-warning"></i> <strong>Validación de datos:</strong> Verifique campos obligatorios</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Inicializar tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Auto-rellenar fecha de hoy para búsquedas rápidas
+            const fechaInicio = document.querySelector('input[name="FechaInicio"]');
+            const fechaFin = document.querySelector('input[name="FechaFin"]');
+            
+            // Botón para búsqueda del día de hoy
+            const buscarHoyBtn = document.createElement('button');
+            buscarHoyBtn.type = 'button';
+            buscarHoyBtn.className = 'btn btn-outline-primary btn-sm mt-2 me-2';
+            buscarHoyBtn.innerHTML = '<i class="fas fa-calendar-day me-1"></i>Hoy';
+            buscarHoyBtn.onclick = function() {
+                const hoy = new Date();
+                const inicioDelDia = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0);
+                const finDelDia = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 23, 59);
+                
+                fechaInicio.value = inicioDelDia.toISOString().slice(0, 16);
+                fechaFin.value = finDelDia.toISOString().slice(0, 16);
+            };
+
+            // Botón para búsqueda de ayer
+            const buscarAyerBtn = document.createElement('button');
+            buscarAyerBtn.type = 'button';
+            buscarAyerBtn.className = 'btn btn-outline-warning btn-sm mt-2 me-2';
+            buscarAyerBtn.innerHTML = '<i class="fas fa-calendar-minus me-1"></i>Ayer';
+            buscarAyerBtn.onclick = function() {
+                const ayer = new Date();
+                ayer.setDate(ayer.getDate() - 1);
+                const inicioDelDia = new Date(ayer.getFullYear(), ayer.getMonth(), ayer.getDate(), 0, 0);
+                const finDelDia = new Date(ayer.getFullYear(), ayer.getMonth(), ayer.getDate(), 23, 59);
+                
+                fechaInicio.value = inicioDelDia.toISOString().slice(0, 16);
+                fechaFin.value = finDelDia.toISOString().slice(0, 16);
+            };
+
+            // Botón para búsqueda de esta semana
+            const buscarSemanaBtn = document.createElement('button');
+            buscarSemanaBtn.type = 'button';
+            buscarSemanaBtn.className = 'btn btn-outline-info btn-sm mt-2';
+            buscarSemanaBtn.innerHTML = '<i class="fas fa-calendar-week me-1"></i>Esta Semana';
+            buscarSemanaBtn.onclick = function() {
+                const hoy = new Date();
+                const inicioSemana = new Date(hoy.setDate(hoy.getDate() - hoy.getDay()));
+                const finSemana = new Date(hoy.setDate(hoy.getDate() - hoy.getDay() + 6));
+                
+                fechaInicio.value = inicioSemana.toISOString().slice(0, 16);
+                fechaFin.value = new Date(finSemana.setHours(23, 59)).toISOString().slice(0, 16);
+            };
+
+            // Agregar botones al formulario
+            const formRow = document.querySelector('.card-body .row');
+            if (formRow) {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'col-12 mt-3';
+                buttonContainer.innerHTML = '<small class="text-muted"><i class="fas fa-magic me-1"></i>Búsquedas rápidas:</small>';
+                buttonContainer.appendChild(buscarHoyBtn);
+                buttonContainer.appendChild(buscarAyerBtn);
+                buttonContainer.appendChild(buscarSemanaBtn);
+                formRow.appendChild(buttonContainer);
+            }
+
+            // Destacar filas al pasar el mouse
+            const tableRows = document.querySelectorAll('tbody tr');
+            tableRows.forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.classList.add('table-active');
+                });
+                row.addEventListener('mouseleave', function() {
+                    this.classList.remove('table-active');
+                });
+            });
+        });
+
+        // Validación del formulario
+        function validarFormulario() {
+            const fechaInicio = document.querySelector('input[name="FechaInicio"]').value;
+            const fechaFin = document.querySelector('input[name="FechaFin"]').value;
+            const ventaId = document.querySelector('input[name="VentaId"]').value;
+
+            if (fechaInicio && fechaFin && new Date(fechaInicio) > new Date(fechaFin)) {
+                alert('La fecha de inicio no puede ser mayor que la fecha fin');
+                return false;
+            }
+
+            if (!fechaInicio && !fechaFin && !ventaId && !document.querySelector('select[name="MetodoPago"]').value) {
+                if (!confirm('¿Está seguro de que desea buscar todas las ventas? Esto puede tardar un momento.')) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Agregar validación al formulario
+        document.querySelector('form').addEventListener('submit', function(e) {
+            if (!validarFormulario()) {
+                e.preventDefault();
+            }
+        });
+    </script>
+}
+
+<style>
+    .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-right: 0.25rem;
+    }
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+    .table-active {
+        background-color: rgba(0, 123, 255, 0.1) !important;
+        transform: scale(1.01);
+        transition: all 0.2s ease-in-out;
+    }
+    .avatar {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    /* Mejorar visibilidad de fechas */
+    .fecha-visible {
+        color: #212529 !important;
+        font-weight: 600 !important;
+    }
+    .hora-visible {
+        color: #495057 !important;
+        font-weight: 500 !important;
+    }
+    .text-dark-custom {
+        color: #212529 !important;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.08);
+    }
+</style>
