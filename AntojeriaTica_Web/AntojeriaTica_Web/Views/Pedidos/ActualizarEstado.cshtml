@@ -1,0 +1,73 @@
+@{
+    ViewData["Title"] = "Actualizar Estado del Pedido";
+    var pedidoId = ViewBag.PedidoId ?? 0;
+    var estadoActual = ViewBag.EstadoActual?.ToString();
+    var pedidoInfo = ViewBag.PedidoInfo as AntojeriaTica_Web.Models.PedidoModel;
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-edit"></i> Actualizar Estado del Pedido
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (pedidoInfo != null)
+                    {
+                        <div class="mb-4">
+                            <h6>Información del Pedido:</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Número:</strong> @pedidoInfo.NumeroPedido</li>
+                                <li><strong>Fecha:</strong> @pedidoInfo.Fecha.ToString("dd/MM/yyyy HH:mm")</li>
+                                @if (!string.IsNullOrEmpty(pedidoInfo.Cliente))
+                                {
+                                    <li><strong>Cliente:</strong> @pedidoInfo.Cliente</li>
+                                }
+                                @if (!string.IsNullOrEmpty(pedidoInfo.Mesa))
+                                {
+                                    <li><strong>Mesa:</strong> @pedidoInfo.Mesa</li>
+                                }
+                                <li><strong>Estado actual:</strong> 
+                                    <span class="badge bg-warning">@pedidoInfo.Estado</span>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+
+                    <form asp-action="ActualizarEstado" method="post">
+                        <input type="hidden" name="pedidoId" value="@pedidoId" />
+                        
+                        <div class="mb-3">
+                            <label for="nuevoEstado" class="form-label">Nuevo Estado:</label>
+                            <select name="nuevoEstado" id="nuevoEstado" class="form-select" required>
+                                <option value="">Seleccionar nuevo estado...</option>
+                                @if (ViewBag.Estados != null)
+                                {
+                                    @foreach (var estado in (SelectList)ViewBag.Estados)
+                                    {
+                                        if (estado.Text != estadoActual)
+                                        {
+                                            <option value="@estado.Value">@estado.Text</option>
+                                        }
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Actualizar Estado
+                            </button>
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

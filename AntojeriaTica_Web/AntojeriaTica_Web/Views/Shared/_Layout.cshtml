@@ -29,6 +29,53 @@
 
     <link href="@Url.Content("~/Content/css/main.css")" rel="stylesheet">
 
+    <!-- Custom CSS para topbar fijo -->
+    <style>
+        .header.fixed-top .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            background-color: #1f1f1f;
+            border-bottom: 1px solid #333;
+        }
+        
+        .header.fixed-top .branding {
+            margin-top: 45px; /* Ajustar para el espacio del topbar */
+        }
+        
+        body {
+            padding-top: 120px; /* Espacio para el header completo fijo */
+        }
+        
+        .topbar .contact-info i {
+            color: #ce1212;
+        }
+        
+        .topbar .contact-info a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+        
+        .topbar .languages ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+        
+        .topbar .languages li {
+            margin-left: 15px;
+            color: #ffffff;
+        }
+        
+        .topbar .languages a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+    </style>
+
 </head>
 
 <body class="index-page">
@@ -76,6 +123,14 @@
                                     <li><a href="@Url.Action("BuscarVentas", "Ventas")">Buscar Ventas</a></li>
                                     <li><a href="@Url.Action("ProcesarDevoluciones", "Ventas")">Devoluciones</a></li>
                                     <li><a href="@Url.Action("ReporteVentasDia", "Ventas")">Reportes</a></li>
+                                </ul>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#"><span>Pedidos</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                                <ul>
+                                    <li><a href="@Url.Action("Index", "Pedidos")">Ver Pedidos</a></li>
+                                    <li><a href="@Url.Action("RegistrarPedido", "Pedidos")">Nuevo Pedido</a></li>
+                                    <li><a href="@Url.Action("Cocina", "Pedidos")">Vista Cocina</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item"><span

@@ -1,0 +1,264 @@
+@model AntojeriaTica_Web.Models.PedidoModel
+
+@{
+    ViewData["Title"] = "Registrar Pedido";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plus-circle"></i> Registrar Nuevo Pedido</h2>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver a Pedidos
+                </a>
+            </div>
+
+            <form asp-action="RegistrarPedido" method="post" id="formPedido">
+                <div class="row">
+                    <div class="col-md-8">
+                        <!-- Información del Pedido -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Información del Pedido</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label asp-for="TipoPedido" class="form-label"></label>
+                                            <select asp-for="TipoPedido" class="form-select" asp-items="ViewBag.TiposPedido">
+                                                <option value="">Seleccionar tipo...</option>
+                                            </select>
+                                            <span asp-validation-for="TipoPedido" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label asp-for="Cliente" class="form-label"></label>
+                                            <input asp-for="Cliente" class="form-control" placeholder="Nombre del cliente (opcional)" />
+                                            <span asp-validation-for="Cliente" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label asp-for="Mesa" class="form-label"></label>
+                                            <input asp-for="Mesa" class="form-control" placeholder="Número de mesa (opcional)" />
+                                            <span asp-validation-for="Mesa" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label asp-for="Observaciones" class="form-label"></label>
+                                    <textarea asp-for="Observaciones" class="form-control" rows="3" placeholder="Observaciones generales del pedido..."></textarea>
+                                    <span asp-validation-for="Observaciones" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detalles del Pedido -->
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Productos del Pedido</h5>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="agregarProducto()">
+                                    <i class="fas fa-plus"></i> Agregar Producto
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="productosContainer">
+                                    <!-- Los productos se agregarán dinámicamente aquí -->
+                                </div>
+                                <div id="noProductos" class="text-center text-muted py-4">
+                                    <i class="fas fa-box-open fa-2x mb-2"></i>
+                                    <p>No hay productos agregados al pedido</p>
+                                    <small>Haz clic en "Agregar Producto" para comenzar</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <!-- Resumen del Pedido -->
+                        <div class="card sticky-top">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Resumen del Pedido</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Subtotal:</span>
+                                        <span id="subtotal">₡0.00</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Impuesto:</span>
+                                        <span id="impuesto">₡0.00</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between h5">
+                                        <strong>Total:</strong>
+                                        <strong id="total">₡0.00</strong>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fas fa-save"></i> Registrar Pedido
+                                    </button>
+                                    <a asp-action="Index" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Template para productos -->
+<template id="productoTemplate">
+    <div class="producto-item border rounded p-3 mb-3">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <select name="Detalles[INDEX].ProductoId" class="form-select producto-select" onchange="actualizarPrecio(this)">
+                    <option value="">Seleccionar producto...</option>
+                    @if (ViewBag.Productos != null)
+                    {
+                        @foreach (var producto in (SelectList)ViewBag.Productos)
+                        {
+                            <option value="@producto.Value">@producto.Text</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input name="Detalles[INDEX].Cantidad" type="number" class="form-control cantidad-input" 
+                       placeholder="Cant." min="1" value="1" onchange="calcularSubtotal(this)">
+            </div>
+            <div class="col-md-2">
+                <input name="Detalles[INDEX].PrecioUnitario" type="number" class="form-control precio-input" 
+                       placeholder="Precio" step="0.01" min="0" readonly>
+            </div>
+            <div class="col-md-3">
+                <input name="Detalles[INDEX].ObservacionesItem" type="text" class="form-control" 
+                       placeholder="Observaciones...">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-danger" onclick="eliminarProducto(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    <script>
+        let productoIndex = 0;
+
+        function agregarProducto() {
+            const template = document.getElementById('productoTemplate');
+            const container = document.getElementById('productosContainer');
+            const noProductos = document.getElementById('noProductos');
+
+            // Clonar el template
+            const clone = template.content.cloneNode(true);
+            
+            // Reemplazar INDEX con el índice actual
+            clone.innerHTML = clone.innerHTML.replace(/INDEX/g, productoIndex);
+            
+            container.appendChild(clone);
+            noProductos.style.display = 'none';
+            
+            productoIndex++;
+            actualizarTotal();
+        }
+
+        function eliminarProducto(button) {
+            const productoItem = button.closest('.producto-item');
+            productoItem.remove();
+            
+            const container = document.getElementById('productosContainer');
+            const noProductos = document.getElementById('noProductos');
+            
+            if (container.children.length === 0) {
+                noProductos.style.display = 'block';
+            }
+            
+            actualizarTotal();
+        }
+
+        function actualizarPrecio(select) {
+            const selectedOption = select.options[select.selectedIndex];
+            const precio = selectedOption.getAttribute('data-precio') || 0;
+            const productoItem = select.closest('.producto-item');
+            const precioInput = productoItem.querySelector('.precio-input');
+            
+            precioInput.value = precio;
+            calcularSubtotal(precioInput);
+        }
+
+        function calcularSubtotal(input) {
+            const productoItem = input.closest('.producto-item');
+            const cantidad = parseFloat(productoItem.querySelector('.cantidad-input').value) || 0;
+            const precio = parseFloat(productoItem.querySelector('.precio-input').value) || 0;
+            
+            actualizarTotal();
+        }
+
+        function actualizarTotal() {
+            let subtotal = 0;
+            
+            document.querySelectorAll('.producto-item').forEach(item => {
+                const cantidad = parseFloat(item.querySelector('.cantidad-input').value) || 0;
+                const precio = parseFloat(item.querySelector('.precio-input').value) || 0;
+                subtotal += cantidad * precio;
+            });
+            
+            const impuesto = subtotal * 0.13; // 13% IVA
+            const total = subtotal + impuesto;
+            
+            document.getElementById('subtotal').textContent = formatCurrency(subtotal);
+            document.getElementById('impuesto').textContent = formatCurrency(impuesto);
+            document.getElementById('total').textContent = formatCurrency(total);
+        }
+
+        function formatCurrency(amount) {
+            return '₡' + amount.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Validación del formulario
+        document.getElementById('formPedido').addEventListener('submit', function(e) {
+            const productos = document.querySelectorAll('.producto-item');
+            
+            if (productos.length === 0) {
+                e.preventDefault();
+                alert('Debe agregar al menos un producto al pedido');
+                return false;
+            }
+            
+            let valid = true;
+            productos.forEach(item => {
+                const select = item.querySelector('.producto-select');
+                const cantidad = item.querySelector('.cantidad-input');
+                
+                if (!select.value || cantidad.value <= 0) {
+                    valid = false;
+                }
+            });
+            
+            if (!valid) {
+                e.preventDefault();
+                alert('Todos los productos deben tener un producto seleccionado y cantidad válida');
+                return false;
+            }
+        });
+
+        // Agregar un producto por defecto al cargar
+        document.addEventListener('DOMContentLoaded', function() {
+            agregarProducto();
+        });
+    </script>
+}

@@ -1,21 +1,21 @@
 -- =============================================
 -- Base de datos AntojeriaTica - Script Consolidado
--- Incluye todas las funcionalidades: básica + facturación electrónica
+-- Incluye todas las funcionalidades: básica + facturación electrónica + pedidos
 -- =============================================
 
 -- Crear la base de datos si no existe
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'AntojeriaTicaBD')
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'AntojeriaTica')
 BEGIN
-    CREATE DATABASE AntojeriaTicaBD;
-    PRINT 'Base de datos AntojeriaTicaBD creada';
+    CREATE DATABASE AntojeriaTica;
+    PRINT 'Base de datos AntojeriaTica creada';
 END
 ELSE
 BEGIN
-    PRINT 'Base de datos AntojeriaTicaBD ya existe';
+    PRINT 'Base de datos AntojeriaTica ya existe';
 END
 GO
 
-USE AntojeriaTicaBD;
+USE AntojeriaTica;
 GO
 
 -- =============================================
@@ -331,6 +331,66 @@ END
 GO
 
 -- =============================================
+-- TABLAS DE PEDIDOS
+-- =============================================
+
+-- 13. Tabla Pedido
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Pedido' AND xtype='U')
+BEGIN
+    CREATE TABLE Pedido (
+        Id int IDENTITY(1,1) NOT NULL,
+        NumeroPedido nvarchar(20) NOT NULL,
+        Fecha datetime NOT NULL DEFAULT GETDATE(),
+        UsuarioId int NOT NULL,
+        Cliente nvarchar(255) NULL,
+        Mesa nvarchar(20) NULL,
+        TipoPedido nvarchar(50) NOT NULL, -- Mesa, Telefono, App
+        Estado nvarchar(50) NOT NULL DEFAULT 'En preparación', -- En preparación, Listo, Entregado, Cancelado
+        Subtotal decimal(10,2) NOT NULL DEFAULT 0,
+        Impuesto decimal(10,2) NOT NULL DEFAULT 0,
+        Descuento decimal(10,2) NOT NULL DEFAULT 0,
+        Total decimal(10,2) NOT NULL DEFAULT 0,
+        Observaciones nvarchar(500) NULL,
+        FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
+        FechaActualizacion datetime NULL,
+        CONSTRAINT PK_Pedido PRIMARY KEY (Id),
+        CONSTRAINT FK_Pedido_Usuario FOREIGN KEY (UsuarioId) REFERENCES Usuario(Id),
+        CONSTRAINT UQ_Pedido_Numero UNIQUE (NumeroPedido)
+    );
+    PRINT 'Tabla Pedido creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla Pedido ya existe';
+END
+GO
+
+-- 14. Tabla DetallePedido
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DetallePedido' AND xtype='U')
+BEGIN
+    CREATE TABLE DetallePedido (
+        Id int IDENTITY(1,1) NOT NULL,
+        PedidoId int NOT NULL,
+        ProductoId int NOT NULL,
+        Cantidad int NOT NULL,
+        PrecioUnitario decimal(10,2) NOT NULL,
+        Descuento decimal(10,2) NOT NULL DEFAULT 0,
+        Impuesto decimal(10,2) NOT NULL DEFAULT 0,
+        Subtotal decimal(10,2) NOT NULL DEFAULT 0,
+        ObservacionesItem nvarchar(200) NULL, -- Para especificaciones como "sin cebolla", "extra picante", etc.
+        CONSTRAINT PK_DetallePedido PRIMARY KEY (Id),
+        CONSTRAINT FK_DetallePedido_Pedido FOREIGN KEY (PedidoId) REFERENCES Pedido(Id),
+        CONSTRAINT FK_DetallePedido_Producto FOREIGN KEY (ProductoId) REFERENCES Producto(Id)
+    );
+    PRINT 'Tabla DetallePedido creada';
+END
+ELSE
+BEGIN
+    PRINT 'Tabla DetallePedido ya existe';
+END
+GO
+
+-- =============================================
 -- TABLAS DE FACTURACIÓN ELECTRÓNICA
 -- =============================================
 
@@ -428,6 +488,152 @@ GO
 -- =============================================
 -- STORED PROCEDURES BÁSICOS
 -- =============================================
+
+-- SP: Insertar Usuario
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarUsuario')
+    DROP PROCEDURE sp_InsertarUsuario;
+GO
+
+CREATE PROCEDURE sp_InsertarUsuario
+    @NombreCompleto NVARCHAR(100),
+    @Correo NVARCHAR(255),
+    @Cedula NVARCHAR(50) = NULL,
+    @ContrasenaHash NVARCHAR(255),
+    @Estado NVARCHAR(20) = 'Activo',
+    @IdRol INT = 2
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        -- Verificar si el email ya existe
+        IF EXISTS (SELECT 1 FROM Usuario WHERE Email = @Correo)
+        BEGIN
+            RAISERROR('El email ya está registrado', 16, 1);
+            RETURN;
+        END
+        
+        -- Insertar usuario
+        INSERT INTO Usuario (Nombre, Email, Password, RolId, Activo)
+        VALUES (@NombreCompleto, @Correo, @ContrasenaHash, @IdRol, 
+                CASE WHEN @Estado = 'Activo' THEN 1 ELSE 0 END);
+        
+        -- Retornar el ID del usuario creado
+        SELECT SCOPE_IDENTITY() as IdUsuario;
+        
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Obtener Usuario por ID
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuario')
+    DROP PROCEDURE sp_ObtenerUsuario;
+GO
+
+CREATE PROCEDURE sp_ObtenerUsuario
+    @IdUsuario INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        u.Id as IdUsuario,
+        u.Nombre as NombreCompleto,
+        u.Email as Correo,
+        '' as Cedula, -- Campo no existe en la tabla actual
+        CASE WHEN u.Activo = 1 THEN 'Activo' ELSE 'Inactivo' END as Estado,
+        u.RolId as IdRol,
+        r.Nombre as NombreRol,
+        u.Password as ContrasenaHash
+    FROM Usuario u
+    INNER JOIN Rol r ON u.RolId = r.Id
+    WHERE u.Id = @IdUsuario
+        AND u.Activo = 1;
+END
+GO
+
+-- SP: Obtener Todos los Usuarios
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuarios')
+    DROP PROCEDURE sp_ObtenerUsuarios;
+GO
+
+CREATE PROCEDURE sp_ObtenerUsuarios
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        u.Id as IdUsuario,
+        u.Nombre as NombreCompleto,
+        u.Email as Correo,
+        '' as Cedula, -- Campo no existe en la tabla actual
+        CASE WHEN u.Activo = 1 THEN 'Activo' ELSE 'Inactivo' END as Estado,
+        u.RolId as IdRol,
+        r.Nombre as NombreRol,
+        u.FechaCreacion
+    FROM Usuario u
+    INNER JOIN Rol r ON u.RolId = r.Id
+    ORDER BY u.FechaCreacion DESC;
+END
+GO
+
+-- SP: Insertar Rol
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarRol')
+    DROP PROCEDURE sp_InsertarRol;
+GO
+
+CREATE PROCEDURE sp_InsertarRol
+    @NombreRol NVARCHAR(50),
+    @Descripcion NVARCHAR(200) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        -- Verificar si el rol ya existe
+        IF EXISTS (SELECT 1 FROM Rol WHERE Nombre = @NombreRol)
+        BEGIN
+            RAISERROR('El rol ya existe', 16, 1);
+            RETURN;
+        END
+        
+        -- Insertar rol
+        INSERT INTO Rol (Nombre, Descripcion, Activo)
+        VALUES (@NombreRol, @Descripcion, 1);
+        
+        SELECT SCOPE_IDENTITY() as IdRol;
+        
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Listar Roles
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ListarRoles')
+    DROP PROCEDURE sp_ListarRoles;
+GO
+
+CREATE PROCEDURE sp_ListarRoles
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        Id as IdRol,
+        Nombre as NombreRol,
+        Descripcion,
+        Activo,
+        FechaCreacion
+    FROM Rol
+    WHERE Activo = 1
+    ORDER BY Nombre;
+END
+GO
 
 -- SP: Obtener productos con stock bajo
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'ObtenerProductosStockBajo')
@@ -813,6 +1019,239 @@ END
 GO
 
 -- =============================================
+-- STORED PROCEDURES DE PEDIDOS
+-- =============================================
+
+-- Crear tipo de tabla para detalles de pedido
+IF NOT EXISTS (SELECT * FROM sys.types st JOIN sys.schemas ss ON st.schema_id = ss.schema_id WHERE st.name = 'TipoDetallePedido' AND ss.name = 'dbo')
+BEGIN
+    CREATE TYPE TipoDetallePedido AS TABLE (
+        ProductoId INT,
+        Cantidad INT,
+        PrecioUnitario DECIMAL(10,2),
+        ObservacionesItem NVARCHAR(200)
+    );
+    PRINT 'Tipo TipoDetallePedido creado';
+END
+GO
+
+-- Stored procedure para registrar pedidos
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'RegistrarPedido') AND type = 'P')
+    DROP PROCEDURE RegistrarPedido;
+GO
+
+CREATE PROCEDURE RegistrarPedido
+    @UsuarioId INT,
+    @Cliente NVARCHAR(255) = NULL,
+    @Mesa NVARCHAR(20) = NULL,
+    @TipoPedido NVARCHAR(50),
+    @Observaciones NVARCHAR(500) = NULL,
+    @DetallesPedido TipoDetallePedido READONLY
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @PedidoId INT;
+    DECLARE @NumeroPedido NVARCHAR(20);
+    DECLARE @Subtotal DECIMAL(10,2) = 0;
+    DECLARE @Impuesto DECIMAL(10,2) = 0;
+    DECLARE @Total DECIMAL(10,2) = 0;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Generar número de pedido único
+        DECLARE @Contador INT;
+        SELECT @Contador = ISNULL(MAX(CAST(SUBSTRING(NumeroPedido, 4, LEN(NumeroPedido)) AS INT)), 0) + 1
+        FROM Pedido 
+        WHERE NumeroPedido LIKE 'PED%' AND ISNUMERIC(SUBSTRING(NumeroPedido, 4, LEN(NumeroPedido))) = 1;
+        
+        SET @NumeroPedido = 'PED' + RIGHT('00000' + CAST(@Contador AS NVARCHAR), 5);
+        
+        -- Insertar pedido
+        INSERT INTO Pedido (NumeroPedido, UsuarioId, Cliente, Mesa, TipoPedido, Estado, Observaciones)
+        VALUES (@NumeroPedido, @UsuarioId, @Cliente, @Mesa, @TipoPedido, 'En preparación', @Observaciones);
+        
+        SET @PedidoId = SCOPE_IDENTITY();
+        
+        -- Insertar detalles del pedido y calcular totales
+        DECLARE @ProductoId INT, @Cantidad INT, @PrecioUnitario DECIMAL(10,2), @ObservacionesItem NVARCHAR(200);
+        DECLARE @SubtotalItem DECIMAL(10,2), @ImpuestoItem DECIMAL(10,2);
+        DECLARE @EsGravado BIT;
+        
+        DECLARE detalle_cursor CURSOR FOR
+        SELECT ProductoId, Cantidad, PrecioUnitario, ObservacionesItem
+        FROM @DetallesPedido;
+        
+        OPEN detalle_cursor;
+        FETCH NEXT FROM detalle_cursor INTO @ProductoId, @Cantidad, @PrecioUnitario, @ObservacionesItem;
+        
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            -- Verificar si el producto está gravado
+            SELECT @EsGravado = ISNULL(Gravado, 1) FROM Producto WHERE Id = @ProductoId;
+            
+            SET @SubtotalItem = @Cantidad * @PrecioUnitario;
+            SET @ImpuestoItem = CASE WHEN @EsGravado = 1 THEN @SubtotalItem * 0.13 ELSE 0 END;
+            
+            -- Insertar detalle del pedido
+            INSERT INTO DetallePedido (PedidoId, ProductoId, Cantidad, PrecioUnitario, Impuesto, Subtotal, ObservacionesItem)
+            VALUES (@PedidoId, @ProductoId, @Cantidad, @PrecioUnitario, @ImpuestoItem, @SubtotalItem, @ObservacionesItem);
+            
+            -- Acumular totales
+            SET @Subtotal = @Subtotal + @SubtotalItem;
+            SET @Impuesto = @Impuesto + @ImpuestoItem;
+            
+            FETCH NEXT FROM detalle_cursor INTO @ProductoId, @Cantidad, @PrecioUnitario, @ObservacionesItem;
+        END
+        
+        CLOSE detalle_cursor;
+        DEALLOCATE detalle_cursor;
+        
+        SET @Total = @Subtotal + @Impuesto;
+        
+        -- Actualizar totales del pedido
+        UPDATE Pedido 
+        SET Subtotal = @Subtotal, Impuesto = @Impuesto, Total = @Total, FechaActualizacion = GETDATE()
+        WHERE Id = @PedidoId;
+        
+        COMMIT TRANSACTION;
+        
+        -- Retornar información del pedido creado
+        SELECT @PedidoId as PedidoId, @NumeroPedido as NumeroPedido, 'Pedido registrado correctamente' as Mensaje;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- Stored procedure para actualizar estado de pedido
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'ActualizarEstadoPedido') AND type = 'P')
+    DROP PROCEDURE ActualizarEstadoPedido;
+GO
+
+CREATE PROCEDURE ActualizarEstadoPedido
+    @PedidoId INT,
+    @NuevoEstado NVARCHAR(50),
+    @UsuarioId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        -- Validar que el pedido existe
+        IF NOT EXISTS (SELECT 1 FROM Pedido WHERE Id = @PedidoId)
+        BEGIN
+            RAISERROR('El pedido no existe', 16, 1);
+            RETURN;
+        END
+        
+        -- Actualizar estado
+        UPDATE Pedido 
+        SET Estado = @NuevoEstado, FechaActualizacion = GETDATE()
+        WHERE Id = @PedidoId;
+        
+        SELECT 'Estado actualizado correctamente' as Mensaje;
+        
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH
+END
+GO
+
+-- Stored procedure para buscar pedidos
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'BuscarPedidos') AND type = 'P')
+    DROP PROCEDURE BuscarPedidos;
+GO
+
+CREATE PROCEDURE BuscarPedidos
+    @FechaInicio DATETIME = NULL,
+    @FechaFin DATETIME = NULL,
+    @Estado NVARCHAR(50) = NULL,
+    @TipoPedido NVARCHAR(50) = NULL,
+    @PedidoId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        p.Id,
+        p.NumeroPedido,
+        p.Fecha,
+        p.Cliente,
+        p.Mesa,
+        p.TipoPedido,
+        p.Estado,
+        p.Total,
+        p.Observaciones,
+        u.Nombre as Usuario,
+        COUNT(dp.Id) as CantidadItems
+    FROM Pedido p
+    LEFT JOIN Usuario u ON p.UsuarioId = u.Id
+    LEFT JOIN DetallePedido dp ON p.Id = dp.PedidoId
+    WHERE 
+        (@FechaInicio IS NULL OR p.Fecha >= @FechaInicio)
+        AND (@FechaFin IS NULL OR p.Fecha <= @FechaFin)
+        AND (@Estado IS NULL OR p.Estado = @Estado)
+        AND (@TipoPedido IS NULL OR p.TipoPedido = @TipoPedido)
+        AND (@PedidoId IS NULL OR p.Id = @PedidoId)
+    GROUP BY p.Id, p.NumeroPedido, p.Fecha, p.Cliente, p.Mesa, p.TipoPedido, p.Estado, p.Total, p.Observaciones, u.Nombre
+    ORDER BY p.Fecha DESC;
+END
+GO
+
+-- Stored procedure para obtener detalle de pedido
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'ObtenerDetallePedido') AND type = 'P')
+    DROP PROCEDURE ObtenerDetallePedido;
+GO
+
+CREATE PROCEDURE ObtenerDetallePedido
+    @PedidoId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Información del pedido
+    SELECT 
+        p.Id,
+        p.NumeroPedido,
+        p.Fecha,
+        p.Cliente,
+        p.Mesa,
+        p.TipoPedido,
+        p.Estado,
+        p.Subtotal,
+        p.Impuesto,
+        p.Total,
+        p.Observaciones,
+        u.Nombre as Usuario
+    FROM Pedido p
+    LEFT JOIN Usuario u ON p.UsuarioId = u.Id
+    WHERE p.Id = @PedidoId;
+    
+    -- Detalles del pedido
+    SELECT 
+        dp.Id,
+        dp.ProductoId,
+        p.Codigo as ProductoCodigo,
+        p.Nombre as ProductoNombre,
+        dp.Cantidad,
+        dp.PrecioUnitario,
+        dp.Subtotal,
+        dp.Impuesto,
+        dp.ObservacionesItem
+    FROM DetallePedido dp
+    INNER JOIN Producto p ON dp.ProductoId = p.Id
+    WHERE dp.PedidoId = @PedidoId
+    ORDER BY p.Nombre;
+END
+GO
+
+-- =============================================
 -- DATOS INICIALES
 -- =============================================
 
@@ -845,6 +1284,7 @@ PRINT '=========================================';
 PRINT 'Base de datos AntojeriaTica configurada completamente';
 PRINT 'Incluye:';
 PRINT '- Tablas básicas del sistema';
+PRINT '- Sistema de pedidos completo';
 PRINT '- Facturación electrónica completa';
 PRINT '- Stored procedures optimizados';
 PRINT '- Datos iniciales';

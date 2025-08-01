@@ -339,14 +339,15 @@ namespace AntojeriaTica_Api.Controllers
 
                 using (var connection = new SqlConnection(connectionString))
                 {
-                    string query = @"SELECT u.IdUsuario, u.ContrasenaHash, u.NombreCompleto, u.IdRol, r.NombreRol
+                    string query = @"SELECT u.Id as IdUsuario, u.Password as ContrasenaHash, u.Nombre as NombreCompleto, 
+                                    u.RolId as IdRol, r.Nombre as NombreRol
                                       FROM Usuario u
-                                      INNER JOIN Rol r ON u.IdRol = r.IdRol
-                                      WHERE u.Correo = @Correo";
+                                      INNER JOIN Rol r ON u.RolId = r.Id
+                                      WHERE u.Email = @Email AND u.Activo = 1";
 
                     using (var command = new SqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@Correo", request.Correo ?? string.Empty);
+                        command.Parameters.AddWithValue("@Email", request.Correo ?? string.Empty);
 
                         connection.Open();
                         using (var reader = command.ExecuteReader())
