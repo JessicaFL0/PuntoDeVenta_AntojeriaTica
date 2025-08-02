@@ -127,7 +127,7 @@ namespace AntojeriaTica_Api.Controllers
             try
             {
                 using var connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-                using var cmd = new SqlCommand("sp_ObtenerProductos", connection) { CommandType = CommandType.StoredProcedure };
+                using var cmd = new SqlCommand("SELECT Id, Codigo, Nombre, Descripcion, Precio, Stock FROM Producto WHERE Activo = 1", connection);
                 connection.Open();
                 using var reader = cmd.ExecuteReader();
                 var list = new List<Producto>();
@@ -135,12 +135,12 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     list.Add(new Producto
                     {
-                        IdProducto = (int)reader["IdProducto"],
+                        IdProducto = (int)reader["Id"],
                         Codigo = reader["Codigo"].ToString() ?? string.Empty,
                         Nombre = reader["Nombre"].ToString() ?? string.Empty,
-                        Descripcion = reader["Descripcion"].ToString(),
-                        PrecioUnitario = (decimal)reader["PrecioUnitario"],
-                        Existencias = (int)reader["Existencias"]
+                        Descripcion = reader["Descripcion"]?.ToString(),
+                        PrecioUnitario = (decimal)reader["Precio"],
+                        Existencias = (int)reader["Stock"]
                     });
                 }
                 return Ok(list);

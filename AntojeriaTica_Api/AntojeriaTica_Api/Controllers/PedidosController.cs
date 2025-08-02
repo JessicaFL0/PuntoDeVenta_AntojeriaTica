@@ -47,6 +47,7 @@ namespace AntojeriaTica_Api.Controllers
                         cmd.Parameters.AddWithValue("@Cliente", pedido.Cliente ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@Mesa", pedido.Mesa ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@TipoPedido", pedido.TipoPedido);
+                        cmd.Parameters.AddWithValue("@TiempoEstimado", pedido.TiempoEstimado ?? 30); // Default 30 minutos
                         cmd.Parameters.AddWithValue("@Observaciones", pedido.Observaciones ?? (object)DBNull.Value);
 
                         SqlParameter tvpParam = cmd.Parameters.AddWithValue("@DetallesPedido", detallePedidoTable);
@@ -107,6 +108,133 @@ namespace AntojeriaTica_Api.Controllers
             catch (System.Exception ex)
             {
                 return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("ActualizarEstadoPedido/{pedidoId}")]
+        public IActionResult ActualizarEstadoPedidoPorId(int pedidoId, [FromBody] ActualizarEstadoRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return BadRequest(new { 
+                        success = false,
+                        message = "El cuerpo de la petición es nulo" 
+                    });
+                }
+
+                if (string.IsNullOrEmpty(request.NuevoEstado))
+                {
+                    return BadRequest(new { 
+                        success = false,
+                        message = "El nuevo estado es requerido" 
+                    });
+                }
+
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("ActualizarEstadoPedido", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@PedidoId", pedidoId);
+                        cmd.Parameters.AddWithValue("@NuevoEstado", request.NuevoEstado);
+                        cmd.Parameters.AddWithValue("@UsuarioId", request.UsuarioId);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                var mensaje = reader["Mensaje"]?.ToString() ?? "Estado actualizado";
+                                return Ok(new { 
+                                    success = true,
+                                    message = mensaje 
+                                });
+                            }
+                        }
+                    }
+                }
+
+                return Ok(new { 
+                    success = true,
+                    message = "Estado actualizado correctamente" 
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = $"Error: {ex.Message}" 
+                });
+            }
+        }
+
+        // Endpoint simplificado para testing
+        [HttpPost("ActualizarEstadoSimple/{pedidoId}")]
+        public IActionResult ActualizarEstadoSimple(int pedidoId, [FromBody] ActualizarEstadoRequest request)
+        {
+            try
+            {
+                Console.WriteLine($"API - ActualizarEstadoSimple - pedidoId: {pedidoId}");
+                Console.WriteLine($"API - request is null: {request == null}");
+                
+                if (request != null)
+                {
+                    Console.WriteLine($"API - NuevoEstado: '{request.NuevoEstado}'");
+                    Console.WriteLine($"API - UsuarioId: {request.UsuarioId}");
+                }
+                
+                if (request == null || string.IsNullOrEmpty(request.NuevoEstado))
+                {
+                    Console.WriteLine("API - Datos inválidos detectados");
+                    return BadRequest(new { 
+                        success = false,
+                        message = "Datos inválidos" 
+                    });
+                }
+
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    
+                    // Query SQL directo en lugar del stored procedure
+                    string sql = @"
+                        UPDATE Pedido 
+                        SET Estado = @NuevoEstado, FechaActualizacion = GETDATE() 
+                        WHERE Id = @PedidoId;
+                        
+                        SELECT 'Estado actualizado correctamente' as Mensaje;";
+                    
+                    using (SqlCommand cmd = new SqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@PedidoId", pedidoId);
+                        cmd.Parameters.AddWithValue("@NuevoEstado", request.NuevoEstado);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return Ok(new { 
+                                    success = true,
+                                    message = reader["Mensaje"].ToString() 
+                                });
+                            }
+                        }
+                    }
+                }
+
+                return Ok(new { 
+                    success = true,
+                    message = "Estado actualizado correctamente" 
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = $"Error: {ex.Message}" 
+                });
             }
         }
 
@@ -263,6 +391,327 @@ namespace AntojeriaTica_Api.Controllers
             };
 
             return Ok(tipos);
+        }
+
+        // PED-002: Endpoints para seguimiento de pedidos
+        [HttpPost("DetectarPedidosAtrasados")]
+        public IActionResult DetectarPedidosAtrasados()
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("DetectarPedidosAtrasados", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        var result = cmd.ExecuteScalar();
+                        return Ok(new { PedidosAtrasadosDetectados = result, Mensaje = "Detección de pedidos atrasados completada" });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("ObtenerNotificaciones/{usuarioId}")]
+        public IActionResult ObtenerNotificaciones(int usuarioId, bool soloNoLeidas = true)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("ObtenerNotificacionesUsuario", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@UsuarioId", usuarioId);
+                        cmd.Parameters.AddWithValue("@SoloNoLeidas", soloNoLeidas);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            var notificaciones = new List<NotificacionPedido>();
+                            while (reader.Read())
+                            {
+                                notificaciones.Add(new NotificacionPedido
+                                {
+                                    Id = reader.GetInt32("Id"),
+                                    PedidoId = reader.GetInt32("PedidoId"),
+                                    NumeroPedido = reader.GetString("NumeroPedido"),
+                                    TipoNotificacion = reader.GetString("TipoNotificacion"),
+                                    Mensaje = reader.GetString("Mensaje"),
+                                    Leida = reader.GetBoolean("Leida"),
+                                    FechaCreacion = reader.GetDateTime("FechaCreacion"),
+                                    FechaLectura = reader.IsDBNull("FechaLectura") ? null : reader.GetDateTime("FechaLectura"),
+                                    EstadoPedido = reader.GetString("EstadoPedido"),
+                                    Mesa = reader.IsDBNull("Mesa") ? null : reader.GetString("Mesa"),
+                                    Cliente = reader.IsDBNull("Cliente") ? null : reader.GetString("Cliente")
+                                });
+                            }
+                            return Ok(notificaciones);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("MarcarNotificacionLeida/{notificacionId}")]
+        public IActionResult MarcarNotificacionLeida(int notificacionId, [FromBody] int usuarioId)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("MarcarNotificacionLeida", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@NotificacionId", notificacionId);
+                        cmd.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            reader.Read();
+                            return Ok(new { mensaje = reader.GetString("Mensaje") });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("ObtenerPedidosConSeguimiento")]
+        public IActionResult ObtenerPedidosConSeguimiento(int? usuarioId = null, bool soloAtrasados = false)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("BuscarPedidos", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@FechaInicio", DateTime.Today);
+                        cmd.Parameters.AddWithValue("@FechaFin", DateTime.Today.AddDays(1));
+                        cmd.Parameters.AddWithValue("@UsuarioId", usuarioId ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@SoloAtrasados", soloAtrasados);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            var pedidos = new List<object>();
+                            while (reader.Read())
+                            {
+                                pedidos.Add(new
+                                {
+                                    Id = reader.GetInt32("Id"),
+                                    NumeroPedido = reader.GetString("NumeroPedido"),
+                                    Fecha = reader.GetDateTime("Fecha"),
+                                    Cliente = reader.IsDBNull("Cliente") ? null : reader.GetString("Cliente"),
+                                    Mesa = reader.IsDBNull("Mesa") ? null : reader.GetString("Mesa"),
+                                    TipoPedido = reader.GetString("TipoPedido"),
+                                    Estado = reader.GetString("Estado"),
+                                    Total = reader.GetDecimal("Total"),
+                                    TiempoEstimado = reader.IsDBNull("TiempoEstimado") ? (int?)null : reader.GetInt32("TiempoEstimado"),
+                                    TiempoPreparacion = reader.IsDBNull("TiempoPreparacion") ? (int?)null : reader.GetInt32("TiempoPreparacion"),
+                                    FechaEstimadaEntrega = reader.IsDBNull("FechaEstimadaEntrega") ? (DateTime?)null : reader.GetDateTime("FechaEstimadaEntrega"),
+                                    EsAtrasado = reader.GetBoolean("EsAtrasado"),
+                                    Usuario = reader.GetString("Usuario"),
+                                    CantidadItems = reader.GetInt32("CantidadItems"),
+                                    TiempoTranscurrido = reader.GetInt32("TiempoTranscurrido"),
+                                    EstadoTiempo = reader.GetString("EstadoTiempo"),
+                                    MinutosDiferencia = reader.GetInt32("MinutosDiferencia")
+                                });
+                            }
+                            return Ok(pedidos);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // =============================================
+        // ENDPOINTS PED-004: CANCELACIÓN DE PEDIDOS
+        // =============================================
+
+        /// <summary>
+        /// Verificar si un pedido puede ser cancelado - PED-004
+        /// </summary>
+        /// <param name="pedidoId">ID del pedido a verificar</param>
+        /// <returns>Información sobre la posibilidad de cancelación</returns>
+        [HttpGet("VerificarCancelacion/{pedidoId}")]
+        public IActionResult VerificarCancelacion(int pedidoId)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("VerificarCancelacionPedido", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@PedidoId", pedidoId);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                var response = new VerificarCancelacionResponse
+                                {
+                                    PuedeCancelarse = reader.GetBoolean("PuedeCancelarse"),
+                                    Mensaje = reader.GetString("Mensaje"),
+                                    RequiereAutorizacion = reader.IsDBNull("RequiereAutorizacion") ? (bool?)null : reader.GetBoolean("RequiereAutorizacion"),
+                                    EstadoActual = reader.IsDBNull("EstadoActual") ? null : reader.GetString("EstadoActual"),
+                                    NumeroPedido = reader.IsDBNull("NumeroPedido") ? null : reader.GetString("NumeroPedido")
+                                };
+                                return Ok(response);
+                            }
+                            return NotFound(new { message = "Pedido no encontrado" });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Cancelar un pedido - PED-004
+        /// Escenario 1: Cancelación sin autorización (antes de iniciar preparación)
+        /// Escenario 2: Cancelación con autorización (después de iniciar preparación)
+        /// </summary>
+        /// <param name="request">Datos de la cancelación</param>
+        /// <returns>Resultado de la cancelación</returns>
+        [HttpPost("CancelarPedido")]
+        public IActionResult CancelarPedido([FromBody] CancelarPedidoRequest request)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("CancelarPedido", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@PedidoId", request.PedidoId);
+                        cmd.Parameters.AddWithValue("@UsuarioId", request.UsuarioId);
+                        cmd.Parameters.AddWithValue("@MotivoCancelacion", request.MotivoCancelacion);
+                        cmd.Parameters.AddWithValue("@UsuarioAutorizacion", request.UsuarioAutorizacion ?? (object)DBNull.Value);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                var response = new CancelarPedidoResponse
+                                {
+                                    Exitoso = true,
+                                    Mensaje = reader.GetString("Mensaje"),
+                                    RequirioAutorizacion = reader.GetBoolean("RequirioAutorizacion"),
+                                    TipoCancelacion = reader.GetString("TipoCancelacion"),
+                                    NumeroPedido = reader.GetString("NumeroPedido"),
+                                    FechaCancelacion = reader.GetDateTime("FechaCancelacion")
+                                };
+                                return Ok(response);
+                            }
+                            return StatusCode(500, new { message = "Error inesperado en la cancelación" });
+                        }
+                    }
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                // Errores específicos de SQL Server (validaciones de negocio)
+                return BadRequest(new CancelarPedidoResponse
+                {
+                    Exitoso = false,
+                    Mensaje = sqlEx.Message,
+                    RequirioAutorizacion = false,
+                    TipoCancelacion = "Error",
+                    NumeroPedido = "",
+                    FechaCancelacion = DateTime.Now
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Obtener historial de cancelaciones
+        /// </summary>
+        /// <param name="fechaInicio">Fecha de inicio opcional</param>
+        /// <param name="fechaFin">Fecha de fin opcional</param>
+        /// <param name="usuarioId">ID del usuario opcional</param>
+        /// <returns>Lista de pedidos cancelados</returns>
+        [HttpGet("HistorialCancelaciones")]
+        public IActionResult ObtenerHistorialCancelaciones(
+            [FromQuery] DateTime? fechaInicio = null,
+            [FromQuery] DateTime? fechaFin = null,
+            [FromQuery] int? usuarioId = null)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = new SqlCommand("BuscarPedidos", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@FechaInicio", fechaInicio ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@FechaFin", fechaFin ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@Estado", "Cancelado");
+                        cmd.Parameters.AddWithValue("@TipoPedido", DBNull.Value);
+                        cmd.Parameters.AddWithValue("@PedidoId", DBNull.Value);
+                        cmd.Parameters.AddWithValue("@UsuarioId", usuarioId ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@SoloAtrasados", false);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            var pedidosCancelados = new List<object>();
+                            while (reader.Read())
+                            {
+                                pedidosCancelados.Add(new
+                                {
+                                    Id = reader.GetInt32("Id"),
+                                    NumeroPedido = reader.GetString("NumeroPedido"),
+                                    Fecha = reader.GetDateTime("Fecha"),
+                                    Cliente = reader.IsDBNull("Cliente") ? null : reader.GetString("Cliente"),
+                                    Mesa = reader.IsDBNull("Mesa") ? null : reader.GetString("Mesa"),
+                                    TipoPedido = reader.GetString("TipoPedido"),
+                                    Estado = reader.GetString("Estado"),
+                                    Total = reader.GetDecimal("Total"),
+                                    FechaCancelacion = reader.IsDBNull("FechaCancelacion") ? (DateTime?)null : reader.GetDateTime("FechaCancelacion"),
+                                    MotivoCancelacion = reader.IsDBNull("MotivoCancelacion") ? null : reader.GetString("MotivoCancelacion"),
+                                    Usuario = reader.GetString("Usuario"),
+                                    UsuarioCancelacion = reader.IsDBNull("UsuarioCancelacion") ? null : reader.GetString("UsuarioCancelacion"),
+                                    AutorizadoPor = reader.IsDBNull("AutorizadoPor") ? null : reader.GetString("AutorizadoPor")
+                                });
+                            }
+                            return Ok(pedidosCancelados);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }

@@ -15,6 +15,26 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    <!-- Mostrar mensajes de error -->
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong><i class="fas fa-exclamation-triangle"></i> Error:</strong>
+                            @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <!-- Mostrar mensajes de éxito -->
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong><i class="fas fa-check-circle"></i> Éxito:</strong>
+                            @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
                     @if (pedidoInfo != null)
                     {
                         <div class="mb-4">
@@ -37,7 +57,7 @@
                         </div>
                     }
 
-                    <form asp-action="ActualizarEstado" method="post">
+                    <form asp-action="ActualizarEstado" method="post" id="formActualizarEstado">
                         <input type="hidden" name="pedidoId" value="@pedidoId" />
                         
                         <div class="mb-3">
@@ -50,11 +70,14 @@
                                     {
                                         if (estado.Text != estadoActual)
                                         {
-                                            <option value="@estado.Value">@estado.Text</option>
+                                            <option value="@estado.Text">@estado.Text</option>
                                         }
                                     }
                                 }
                             </select>
+                            <div class="invalid-feedback">
+                                Por favor seleccione un nuevo estado.
+                            </div>
                         </div>
 
                         <div class="d-grid gap-2">
@@ -71,3 +94,35 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Debug: mostrar qué estados están disponibles
+        console.log('Estados disponibles:', @Html.Raw(Json.Serialize(ViewBag.Estados)));
+        console.log('Estado actual:', '@ViewBag.EstadoActual');
+        
+        document.getElementById('formActualizarEstado').addEventListener('submit', function(e) {
+            const nuevoEstado = document.getElementById('nuevoEstado').value;
+            console.log('Formulario enviado con nuevoEstado:', nuevoEstado);
+            
+            if (!nuevoEstado || nuevoEstado === '') {
+                e.preventDefault();
+                alert('Por favor seleccione un nuevo estado.');
+                
+                // Mostrar feedback de validación
+                const select = document.getElementById('nuevoEstado');
+                select.classList.add('is-invalid');
+                
+                return false;
+            }
+            
+            console.log('Enviando formulario con estado:', nuevoEstado);
+        });
+        
+        // Debug: agregar listener para cambios en el select
+        document.getElementById('nuevoEstado').addEventListener('change', function() {
+            console.log('Estado seleccionado:', this.value);
+            this.classList.remove('is-invalid');
+        });
+    </script>
+}

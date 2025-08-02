@@ -1,0 +1,784 @@
+@{
+    ViewData["Title"] = "Seguimiento de Pedidos";
+}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2><i class="fas fa-tracking-circle"></i> Seguimiento de Pedidos</h2>
+                <div>
+                    <button type="button" class="btn btn-info me-2" onclick="actualizarSeguimiento()">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                    <button type="button" class="btn btn-warning me-2" onclick="detectarAtrasados()">
+                        <i class="fas fa-exclamation-triangle"></i> Detectar Atrasados
+                    </button>
+                    <span class="badge bg-primary" id="contadorNotificaciones">0</span>
+                </div>
+            </div>
+
+            <!-- Panel de Notificaciones -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="fas fa-bell"></i> Notificaciones Activas</h5>
+                        </div>
+                        <div class="card-body" id="panelNotificaciones">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-bell-slash fa-2x"></i>
+                                <p class="mt-2">No hay notificaciones pendientes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <select class="form-select" id="filtroEstado" onchange="aplicarFiltros()">
+                        <option value="">Todos los estados</option>
+                        <option value="En preparación">En preparación</option>
+                        <option value="Listo">Listo</option>
+                        <option value="Entregado">Entregado</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="filtroTipo" onchange="aplicarFiltros()">
+                        <option value="">Todos los tipos</option>
+                        <option value="Mesa">Mesa</option>
+                        <option value="Telefono">Teléfono</option>
+                        <option value="App">App</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="soloAtrasados" onchange="aplicarFiltros()">
+                        <label class="form-check-label text-danger" for="soloAtrasados">
+                            <i class="fas fa-clock"></i> Solo atrasados
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="misPedidos" onchange="aplicarFiltros()">
+                        <label class="form-check-label" for="misPedidos">
+                            <i class="fas fa-user"></i> Mis pedidos
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Pedidos -->
+            <div class="row" id="listaPedidos">
+                <!-- Los pedidos se cargarán aquí dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalles del pedido -->
+<div class="modal fade" id="modalDetallePedido" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle del Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenidoDetallePedido">
+                <!-- El contenido se cargará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-danger" id="btnCancelar" style="display: none;">
+                    <i class="fas fa-times"></i> Cancelar Pedido
+                </button>
+                <button type="button" class="btn btn-success" id="btnMarcarListo" style="display: none;">
+                    <i class="fas fa-check"></i> Marcar como Listo
+                </button>
+                <button type="button" class="btn btn-primary" id="btnMarcarEntregado" style="display: none;">
+                    <i class="fas fa-hand-holding"></i> Marcar como Entregado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+let pedidos = [];
+let notificaciones = [];
+// Obtener el ID del usuario de forma más segura
+let usuarioActual = null;
+let nombreUsuario = null;
+
+// Verificar todos los datos de sesión disponibles
+@{
+    var idUsuario = Context.Session.GetInt32("IdUsuario");
+    var nombreRol = Context.Session.GetString("NombreRol");
+    var nombreCompleto = Context.Session.GetString("NombreCompleto");
+    var esUsuarioValido = idUsuario.HasValue && idUsuario.Value > 0;
+}
+
+console.log('Datos de sesión disponibles:');
+console.log('IdUsuario: @idUsuario');
+console.log('NombreRol: @nombreRol'); 
+console.log('NombreCompleto: @nombreCompleto');
+
+@if (esUsuarioValido)
+{
+    <text>usuarioActual = '@idUsuario';</text>
+}
+@if (!string.IsNullOrEmpty(nombreCompleto))
+{
+    <text>nombreUsuario = '@nombreCompleto';</text>
+}
+else if (!string.IsNullOrEmpty(nombreRol))
+{
+    <text>nombreUsuario = '@nombreRol';</text>
+}
+
+let intervalActualizacion;
+const API_BASE_URL = 'http://localhost:5091';
+
+$(document).ready(function() {
+    console.log('Usuario actual:', usuarioActual);
+    console.log('Nombre usuario:', nombreUsuario);
+    console.log('Tipo de usuario actual:', typeof usuarioActual);
+    console.log('¿Usuario válido?:', usuarioActual !== null && usuarioActual !== "null" && usuarioActual !== "");
+    
+    cargarSeguimientoPedidos();
+    if (usuarioActual) {
+        cargarNotificaciones();
+    } else {
+        console.log('No hay usuario autenticado, cargando solo vista pública...');
+        // Mostrar mensaje informativo en lugar de redirigir
+        $('#panelNotificaciones').html(`
+            <div class="alert alert-warning text-center">
+                <i class="fas fa-user-slash"></i>
+                <p class="mb-0">Inicia sesión para ver notificaciones personalizadas</p>
+            </div>
+        `);
+        $('#contadorNotificaciones').text(0);
+    }
+    
+    // Actualizar cada 30 segundos
+    intervalActualizacion = setInterval(function() {
+        cargarSeguimientoPedidos();
+        if (usuarioActual) {
+            cargarNotificaciones();
+        }
+    }, 30000);
+    
+    // Event handler para los botones de ver detalle
+    $(document).on('click', '.btn-ver-detalle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const pedidoId = $(this).data('pedido-id');
+        console.log('Botón clickeado, pedido ID:', pedidoId);
+        verDetallePedido(pedidoId);
+        
+        return false;
+    });
+});
+
+function cargarSeguimientoPedidos() {
+    const filtros = obtenerFiltros();
+    
+    $.ajax({
+        url: `${API_BASE_URL}/Pedidos/ObtenerPedidosConSeguimiento`,
+        type: 'GET',
+        data: filtros,
+        success: function(data) {
+            pedidos = data;
+            mostrarPedidos(data);
+        },
+        error: function(error) {
+            console.error('Error al cargar pedidos:', error);
+            Swal.fire('Error', 'No se pudieron cargar los pedidos', 'error');
+        }
+    });
+}
+
+function cargarNotificaciones() {
+    console.log('Intentando cargar notificaciones para usuario:', usuarioActual);
+    if (usuarioActual && usuarioActual !== "" && usuarioActual !== null && usuarioActual !== "0" && usuarioActual !== "null") {
+        $.ajax({
+            url: `${API_BASE_URL}/Pedidos/ObtenerNotificaciones/${usuarioActual}`,
+            type: 'GET',
+            data: { soloNoLeidas: true },
+            success: function(data) {
+                notificaciones = data;
+                mostrarNotificaciones(data);
+                $('#contadorNotificaciones').text(data.length);
+            },
+            error: function(error) {
+                console.error('Error al cargar notificaciones:', error);
+                // NO redirigir automáticamente, solo mostrar mensaje
+                if (error.status === 401) {
+                    console.log('Usuario no autorizado para notificaciones, pero puede ver pedidos');
+                    $('#panelNotificaciones').html(`
+                        <div class="alert alert-warning text-center">
+                            <i class="fas fa-lock"></i>
+                            <p class="mb-0">Inicia sesión para ver notificaciones personalizadas</p>
+                        </div>
+                    `);
+                } else {
+                    $('#panelNotificaciones').html(`
+                        <div class="alert alert-danger text-center">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p class="mb-0">Error al cargar notificaciones</p>
+                        </div>
+                    `);
+                }
+                $('#contadorNotificaciones').text(0);
+            }
+        });
+    } else {
+        console.log('Usuario no válido, no se cargan notificaciones');
+        $('#contadorNotificaciones').text(0);
+        mostrarNotificaciones([]);
+    }
+}
+
+function mostrarNotificaciones(notifs) {
+    const panel = $('#panelNotificaciones');
+    
+    if (notifs.length === 0) {
+        panel.html(`
+            <div class="text-center text-muted">
+                <i class="fas fa-bell-slash fa-2x"></i>
+                <p class="mt-2">No hay notificaciones pendientes</p>
+            </div>
+        `);
+        return;
+    }
+
+    let html = '';
+    notifs.forEach(notif => {
+        const tipoClass = notif.tipoNotificacion === 'Atrasado' ? 'alert-danger' : 'alert-success';
+        const icono = notif.tipoNotificacion === 'Atrasado' ? 'fa-exclamation-triangle' : 'fa-check-circle';
+        
+        html += `
+            <div class="alert ${tipoClass} alert-dismissible fade show" role="alert">
+                <i class="fas ${icono}"></i>
+                <strong>${notif.tipoNotificacion}:</strong> ${notif.mensaje}
+                <small class="d-block mt-1">Mesa: ${notif.mesa || 'N/A'} | Cliente: ${notif.cliente || 'N/A'}</small>
+                <button type="button" class="btn-close" onclick="marcarNotificacionLeida(${notif.id})"></button>
+            </div>
+        `;
+    });
+    
+    panel.html(html);
+}
+
+function mostrarPedidos(pedidosData) {
+    const lista = $('#listaPedidos');
+    
+    if (pedidosData.length === 0) {
+        lista.html(`
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle"></i> No hay pedidos que coincidan con los filtros aplicados
+                </div>
+            </div>
+        `);
+        return;
+    }
+
+    let html = '';
+    pedidosData.forEach(pedido => {
+        const estadoClass = getEstadoClass(pedido.estado, pedido.esAtrasado);
+        const tiempoClass = getTiempoClass(pedido.estadoTiempo);
+        
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card ${pedido.esAtrasado ? 'border-danger' : 'border-primary'} h-100">
+                    <div class="card-header ${estadoClass} text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">${pedido.numeroPedido}</h6>
+                            <span class="badge bg-light text-dark">${pedido.estado}</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                <small class="text-muted">Tipo:</small>
+                                <br><strong>${pedido.tipoPedido}</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Mesa:</small>
+                                <br><strong>${pedido.mesa || 'N/A'}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Cliente:</small>
+                            <br><strong>${pedido.cliente || 'N/A'}</strong>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Mesero:</small>
+                            <br><strong>${pedido.usuario}</strong>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                <small class="text-muted">Tiempo estimado:</small>
+                                <br><span class="badge ${tiempoClass}">${pedido.tiempoEstimado || 0} min</span>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Transcurrido:</small>
+                                <br><span class="badge bg-secondary">${pedido.tiempoTranscurrido} min</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Estado de tiempo:</small>
+                            <br>
+                            <span class="badge ${tiempoClass}">
+                                ${pedido.estadoTiempo}
+                                ${pedido.estadoTiempo === 'Atrasado' ? `(+${pedido.minutosDiferencia} min)` : 
+                                  pedido.estadoTiempo === 'A tiempo' ? `(-${pedido.minutosDiferencia} min)` : ''}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Total: <strong>₡${pedido.total.toLocaleString()}</strong></small>
+                            <small class="text-muted">${pedido.cantidadItems} items</small>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-sm btn-outline-primary w-100 btn-ver-detalle" data-pedido-id="${pedido.id}">
+                            <i class="fas fa-eye"></i> Ver Detalle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    lista.html(html);
+}
+
+function getEstadoClass(estado, esAtrasado) {
+    if (esAtrasado) return 'bg-danger';
+    switch (estado) {
+        case 'En preparación': return 'bg-warning';
+        case 'Listo': return 'bg-success';
+        case 'Entregado': return 'bg-primary';
+        case 'Cancelado': return 'bg-danger';
+        default: return 'bg-secondary';
+    }
+}
+
+function getTiempoClass(estadoTiempo) {
+    switch (estadoTiempo) {
+        case 'Atrasado': return 'bg-danger';
+        case 'A tiempo': return 'bg-success';
+        case 'Completado': return 'bg-primary';
+        default: return 'bg-secondary';
+    }
+}
+
+function obtenerFiltros() {
+    const filtros = {
+        soloAtrasados: $('#soloAtrasados').is(':checked')
+    };
+    
+    // Solo agregar usuarioId si está marcado "mis pedidos" y hay un usuario válido
+    if ($('#misPedidos').is(':checked') && usuarioActual && usuarioActual !== "" && usuarioActual !== null && usuarioActual !== "0" && usuarioActual !== "null") {
+        filtros.usuarioId = usuarioActual;
+    }
+    
+    return filtros;
+}
+
+function aplicarFiltros() {
+    let pedidosFiltrados = [...pedidos];
+    
+    const estado = $('#filtroEstado').val();
+    const tipo = $('#filtroTipo').val();
+    const soloAtrasados = $('#soloAtrasados').is(':checked');
+    const misPedidos = $('#misPedidos').is(':checked');
+    
+    if (estado) {
+        pedidosFiltrados = pedidosFiltrados.filter(p => p.estado === estado);
+    }
+    
+    if (tipo) {
+        pedidosFiltrados = pedidosFiltrados.filter(p => p.tipoPedido === tipo);
+    }
+    
+    if (soloAtrasados) {
+        pedidosFiltrados = pedidosFiltrados.filter(p => p.esAtrasado);
+    }
+    
+    if (misPedidos && usuarioActual) {
+        pedidosFiltrados = pedidosFiltrados.filter(p => p.usuarioId == usuarioActual);
+    }
+    
+    mostrarPedidos(pedidosFiltrados);
+}
+
+function actualizarSeguimiento() {
+    Swal.fire({
+        title: 'Actualizando...',
+        text: 'Cargando información actualizada de pedidos',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    cargarSeguimientoPedidos();
+    cargarNotificaciones();
+    
+    setTimeout(() => {
+        Swal.close();
+        Swal.fire('Actualizado', 'La información se ha actualizado correctamente', 'success');
+    }, 1500);
+}
+
+function detectarAtrasados() {
+    Swal.fire({
+        title: '¿Detectar pedidos atrasados?',
+        text: 'Esto revisará todos los pedidos activos y enviará notificaciones para los que estén atrasados.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, detectar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: `${API_BASE_URL}/Pedidos/DetectarPedidosAtrasados`,
+                type: 'POST',
+                success: function(data) {
+                    Swal.fire('Completado', `Se detectaron ${data.pedidosAtrasadosDetectados} pedidos atrasados`, 'info');
+                    cargarSeguimientoPedidos();
+                    cargarNotificaciones();
+                },
+                error: function(error) {
+                    Swal.fire('Error', 'No se pudo ejecutar la detección de pedidos atrasados', 'error');
+                }
+            });
+        }
+    });
+}
+
+function marcarNotificacionLeida(notificacionId) {
+    $.ajax({
+        url: `${API_BASE_URL}/Pedidos/MarcarNotificacionLeida/${notificacionId}`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(parseInt(usuarioActual)),
+        success: function(data) {
+            cargarNotificaciones();
+        },
+        error: function(error) {
+            console.error('Error al marcar notificación como leída:', error);
+        }
+    });
+}
+
+function verDetallePedido(pedidoId) {
+    console.log('=== INICIO verDetallePedido ===');
+    console.log('Cargando detalles del pedido:', pedidoId);
+    
+    // Mostrar loading en el modal
+    $('#modalDetallePedido .modal-title').text('Cargando detalles...');
+    $('#contenidoDetallePedido').html(`
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando detalles del pedido...</p>
+        </div>
+    `);
+    
+    // Mostrar el modal
+    $('#modalDetallePedido').modal('show');
+    
+    // Cargar los detalles usando la ruta específica que no interfiere con la vista
+    const url = `${API_BASE_URL}/api/Pedidos/DetalleJson/${pedidoId}`;
+    console.log('=== URL CONSTRUIDA ===');
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('pedidoId:', pedidoId);
+    console.log('URL final:', url);
+    
+    // Mostrar confirmación antes de hacer la llamada
+    console.log('=== INICIANDO AJAX ===');
+    
+    $.ajax({
+        url: url,
+        type: 'GET',
+        dataType: 'json',
+        beforeSend: function(xhr, settings) {
+            console.log('=== AJAX BEFORE SEND ===');
+            console.log('URL que se va a llamar:', settings.url);
+            console.log('Método:', settings.type);
+        },
+        success: function(data) {
+            console.log('=== AJAX SUCCESS ===');
+            console.log('Datos recibidos:', data);
+            mostrarDetallePedidoEnModal(data);
+        },
+        error: function(xhr, status, error) {
+            console.log('=== AJAX ERROR ===');
+            console.error('Error al cargar detalles del pedido:', {
+                status: xhr.status,
+                statusText: xhr.statusText,
+                responseText: xhr.responseText,
+                error: error,
+                url: url
+            });
+            
+            // Si el status es 0, podría ser un problema de CORS o redirección
+            if (xhr.status === 0) {
+                console.error('Status 0: Posible problema de CORS o redirección');
+            }
+            
+            $('#modalDetallePedido .modal-title').text('Error');
+            $('#contenidoDetallePedido').html(`
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Error al cargar los detalles del pedido<br>
+                    <small>Status: ${xhr.status} - ${xhr.statusText}</small><br>
+                    <small>URL: ${url}</small><br>
+                    <small>Error: ${error}</small>
+                </div>
+            `);
+        },
+        complete: function(xhr, status) {
+            console.log('=== AJAX COMPLETE ===');
+            console.log('Status final:', status);
+            console.log('Response headers:', xhr.getAllResponseHeaders());
+        }
+    });
+    
+    console.log('=== FIN verDetallePedido ===');
+    
+    // Importante: devolver false para evitar cualquier propagación
+    return false;
+}
+
+function mostrarDetallePedidoEnModal(pedido) {
+    $('#modalDetallePedido .modal-title').text(`Pedido #${pedido.numeroPedido || pedido.id}`);
+    
+    let html = `
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <h6>Información General</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Número:</strong></td><td>${pedido.numeroPedido || pedido.id}</td></tr>
+                    <tr><td><strong>Estado:</strong></td><td><span class="badge bg-${getEstadoBadgeClass(pedido.estado)}">${pedido.estado}</span></td></tr>
+                    <tr><td><strong>Tipo:</strong></td><td>${pedido.tipoPedido}</td></tr>
+                    <tr><td><strong>Mesa:</strong></td><td>${pedido.mesa || 'N/A'}</td></tr>
+                    <tr><td><strong>Cliente:</strong></td><td>${pedido.cliente || 'N/A'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Tiempos</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Fecha:</strong></td><td>${new Date(pedido.fecha).toLocaleString()}</td></tr>
+                    <tr><td><strong>Tiempo Estimado:</strong></td><td>${pedido.tiempoEstimado || 0} minutos</td></tr>
+                    ${pedido.fechaEstimadaEntrega ? `<tr><td><strong>Entrega Estimada:</strong></td><td>${new Date(pedido.fechaEstimadaEntrega).toLocaleString()}</td></tr>` : ''}
+                    ${pedido.fechaInicioPreparacion ? `<tr><td><strong>Inicio Preparación:</strong></td><td>${new Date(pedido.fechaInicioPreparacion).toLocaleString()}</td></tr>` : ''}
+                    ${pedido.fechaFinalizacion ? `<tr><td><strong>Finalización:</strong></td><td>${new Date(pedido.fechaFinalizacion).toLocaleString()}</td></tr>` : ''}
+                </table>
+            </div>
+        </div>
+    `;
+    
+    if (pedido.observaciones) {
+        html += `
+            <div class="mb-3">
+                <h6>Observaciones</h6>
+                <div class="alert alert-info">
+                    ${pedido.observaciones}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (pedido.detalles && pedido.detalles.length > 0) {
+        html += `
+            <div class="mb-3">
+                <h6>Productos del Pedido</h6>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unit.</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        pedido.detalles.forEach(item => {
+            html += `
+                <tr>
+                    <td>
+                        ${item.productoNombre}
+                        ${item.observacionesItem ? `<br><small class="text-muted">${item.observacionesItem}</small>` : ''}
+                    </td>
+                    <td>${item.cantidad}</td>
+                    <td>₡${item.precioUnitario ? item.precioUnitario.toLocaleString() : '0'}</td>
+                    <td>₡${item.subtotal ? item.subtotal.toLocaleString() : '0'}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    html += `
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><td><strong>Subtotal:</strong></td><td>₡${(pedido.subtotal || 0).toLocaleString()}</td></tr>
+                    <tr><td><strong>Impuestos:</strong></td><td>₡${(pedido.impuesto || 0).toLocaleString()}</td></tr>
+                    <tr><td><strong>Descuento:</strong></td><td>₡${(pedido.descuento || 0).toLocaleString()}</td></tr>
+                    <tr class="table-primary"><td><strong>Total:</strong></td><td><strong>₡${(pedido.total || 0).toLocaleString()}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    $('#contenidoDetallePedido').html(html);
+    
+    // Configurar botones según el estado del pedido
+    configurarBotonesModal(pedido);
+}
+
+function getEstadoBadgeClass(estado) {
+    switch (estado) {
+        case 'En preparación': return 'warning';
+        case 'Listo': return 'success';
+        case 'Entregado': return 'primary';
+        case 'Cancelado': return 'danger';
+        default: return 'secondary';
+    }
+}
+
+function configurarBotonesModal(pedido) {
+    const btnListo = $('#btnMarcarListo');
+    const btnEntregado = $('#btnMarcarEntregado');
+    const btnCancelar = $('#btnCancelar');
+    
+    // Mostrar/ocultar botones según el estado
+    if (pedido.estado === 'En preparación') {
+        btnListo.show();
+        btnEntregado.hide();
+        btnCancelar.show();
+    } else if (pedido.estado === 'Listo') {
+        btnListo.hide();
+        btnEntregado.show();
+        btnCancelar.hide();
+    } else {
+        btnListo.hide();
+        btnEntregado.hide();
+        btnCancelar.hide();
+    }
+    
+    // Configurar eventos de los botones
+    btnListo.off('click').on('click', function() {
+        cambiarEstadoPedido(pedido.id, 'Listo');
+    });
+    
+    btnEntregado.off('click').on('click', function() {
+        cambiarEstadoPedido(pedido.id, 'Entregado');
+    });
+    
+    btnCancelar.off('click').on('click', function() {
+        cambiarEstadoPedido(pedido.id, 'Cancelado');
+    });
+}
+
+function cambiarEstadoPedido(pedidoId, nuevoEstado) {
+    const icono = nuevoEstado === 'Cancelado' ? 'warning' : 'question';
+    const confirmText = nuevoEstado === 'Cancelado' ? 'Sí, cancelar' : 'Sí, cambiar';
+    const mensajeConfirmacion = nuevoEstado === 'Cancelado' 
+        ? '¿Está seguro de que desea cancelar este pedido? Esta acción no se puede deshacer.'
+        : `¿Está seguro de cambiar el estado del pedido a "${nuevoEstado}"?`;
+    
+    Swal.fire({
+        title: `¿Marcar como ${nuevoEstado}?`,
+        text: mensajeConfirmacion,
+        icon: icono,
+        showCancelButton: true,
+        confirmButtonText: confirmText,
+        cancelButtonText: 'No, mantener',
+        confirmButtonColor: nuevoEstado === 'Cancelado' ? '#d33' : '#3085d6'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: `${API_BASE_URL}/Pedidos/ActualizarEstado`,
+                type: 'POST',
+                data: {
+                    pedidoId: pedidoId,
+                    nuevoEstado: nuevoEstado
+                },
+                success: function(data) {
+                    if (data.success) {
+                        const mensaje = nuevoEstado === 'Cancelado' 
+                            ? 'Pedido cancelado correctamente'
+                            : `Pedido marcado como ${nuevoEstado}`;
+                        Swal.fire('Actualizado', mensaje, 'success');
+                        $('#modalDetallePedido').modal('hide');
+                        cargarSeguimientoPedidos(); // Refrescar la lista
+                        cargarNotificaciones(); // Refrescar notificaciones
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo actualizar el estado', 'error');
+                    }
+                },
+                error: function(error) {
+                    console.error('Error al actualizar estado:', error);
+                    Swal.fire('Error', 'No se pudo actualizar el estado del pedido', 'error');
+                }
+            });
+        }
+    });
+}
+
+// Limpiar intervalo cuando se sale de la página
+$(window).on('beforeunload', function() {
+    if (intervalActualizacion) {
+        clearInterval(intervalActualizacion);
+    }
+});
+</script>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+.alert {
+    font-size: 0.9em;
+}
+
+@@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.border-danger {
+    animation: pulse 2s infinite;
+}
+</style>
+}

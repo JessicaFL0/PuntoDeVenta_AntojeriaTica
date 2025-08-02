@@ -86,7 +86,30 @@ namespace AntojeriaTica_Web.Controllers
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    ModelState.AddModelError("", $"Error al registrar el pedido: {errorContent}");
+                    
+                    // Intentar deserializar el error para obtener un mensaje más específico
+                    try
+                    {
+                        var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent);
+                        
+                        if (errorObj.TryGetProperty("error", out var errorMessage))
+                        {
+                            ModelState.AddModelError("", $"Error del servidor: {errorMessage.GetString()}");
+                        }
+                        else if (errorObj.TryGetProperty("message", out var message))
+                        {
+                            ModelState.AddModelError("", $"Error: {message.GetString()}");
+                        }
+                        else
+                        {
+                            ModelState.AddModelError("", $"Error al registrar el pedido. Código de estado: {response.StatusCode}");
+                        }
+                    }
+                    catch
+                    {
+                        // Si no se puede deserializar, mostrar el error raw
+                        ModelState.AddModelError("", $"Error al registrar el pedido: {errorContent}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -96,37 +119,6 @@ namespace AntojeriaTica_Web.Controllers
 
             await CargarListasAsync();
             return View(model);
-        }
-
-        // GET: Pedidos/Detalle/5
-        public async Task<IActionResult> Detalle(int id)
-        {
-            var client = _httpClientFactory.CreateClient();
-            var url = $"http://localhost:5062/api/Pedidos/ObtenerDetalle/{id}";
-
-            try
-            {
-                var response = await client.GetAsync(url);
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                    var pedido = JsonSerializer.Deserialize<PedidoModel>(jsonResponse, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
-
-                    if (pedido != null)
-                    {
-                        return View(pedido);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al cargar el detalle del pedido: {ex.Message}";
-            }
-
-            return RedirectToAction("Index");
         }
 
         // GET: Pedidos/ActualizarEstado/5
@@ -170,42 +162,6 @@ namespace AntojeriaTica_Web.Controllers
             return RedirectToAction("Index");
         }
 
-        // POST: Pedidos/ActualizarEstado
-        [HttpPost]
-        public async Task<IActionResult> ActualizarEstado(int pedidoId, string nuevoEstado)
-        {
-            var client = _httpClientFactory.CreateClient();
-            var url = "http://localhost:5062/api/Pedidos/ActualizarEstado";
-
-            var request = new
-            {
-                PedidoId = pedidoId,
-                NuevoEstado = nuevoEstado,
-                UsuarioId = 1 // Esto debería venir de la sesión del usuario
-            };
-
-            try
-            {
-                var response = await client.PostAsJsonAsync(url, request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    TempData["Success"] = "Estado del pedido actualizado correctamente";
-                }
-                else
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    TempData["Error"] = $"Error al actualizar el estado: {errorContent}";
-                }
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error de conexión: {ex.Message}";
-            }
-
-            return RedirectToAction("Index");
-        }
-
         // GET: Pedidos/Cocina - Vista especial para la cocina
         public async Task<IActionResult> Cocina()
         {
@@ -242,7 +198,7 @@ namespace AntojeriaTica_Web.Controllers
             // Cargar productos
             try
             {
-                var productosUrl = "http://localhost:5062/api/Producto/ObtenerProductos";
+                var productosUrl = "http://localhost:5062/api/Producto/ListarProductos";
                 var productosResponse = await client.GetAsync(productosUrl);
                 
                 if (productosResponse.IsSuccessStatusCode)
@@ -253,16 +209,375 @@ namespace AntojeriaTica_Web.Controllers
                         PropertyNameCaseInsensitive = true
                     });
 
-                    ViewBag.Productos = new SelectList(productos ?? new List<ProductoModel>(), "Id", "Nombre");
+                    // Pasar la lista completa de productos para acceder al precio
+                    ViewBag.ProductosCompletos = productos ?? new List<ProductoModel>();
+                    ViewBag.Productos = new SelectList(productos ?? new List<ProductoModel>(), "IdProducto", "Nombre");
+                }
+                else
+                {
+                    Console.WriteLine($"Error al cargar productos: {productosResponse.StatusCode}");
+                    ViewBag.ProductosCompletos = new List<ProductoModel>();
+                    ViewBag.Productos = new SelectList(new List<ProductoModel>(), "IdProducto", "Nombre");
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                ViewBag.Productos = new SelectList(new List<ProductoModel>(), "Id", "Nombre");
+                Console.WriteLine($"Excepción al cargar productos: {ex.Message}");
+                ViewBag.ProductosCompletos = new List<ProductoModel>();
+                ViewBag.Productos = new SelectList(new List<ProductoModel>(), "IdProducto", "Nombre");
             }
 
             // Cargar tipos de pedido
             ViewBag.TiposPedido = new SelectList(new List<string> { "Mesa", "Telefono", "App" });
+        }
+
+        // GET: Pedidos/Seguimiento - PED-002
+        public IActionResult Seguimiento()
+        {
+            // Permitir acceso sin autenticación (solo lectura)
+            // Los usuarios no autenticados pueden ver pedidos pero no notificaciones personalizadas
+            var idUsuario = HttpContext.Session.GetInt32("IdUsuario");
+            Console.WriteLine($"Seguimiento - Usuario ID: {idUsuario}");
+            
+            // Agregar información del usuario a ViewBag para usar en la vista si es necesario
+            ViewBag.UsuarioAutenticado = idUsuario.HasValue && idUsuario.Value > 0;
+            ViewBag.IdUsuario = idUsuario ?? 0;
+
+            return View();
+        }
+
+        // GET: Pedidos/Detalle/{id} - TEMPORALMENTE DESHABILITADO
+        // GET: Pedidos/Detalle/5
+        public async Task<IActionResult> Detalle(int id)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var url = $"http://localhost:5062/api/Pedidos/ObtenerDetalle/{id}";
+
+            try
+            {
+                var response = await client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var pedido = JsonSerializer.Deserialize<PedidoModel>(json, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    return View(pedido);
+                }
+                else
+                {
+                    TempData["Error"] = "No se pudo cargar el detalle del pedido";
+                    return RedirectToAction("Seguimiento");
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error al cargar el detalle: {ex.Message}";
+                return RedirectToAction("Seguimiento");
+            }
+        }
+
+        // POST: Pedidos/ActualizarEstado (maneja tanto formularios HTML como AJAX)
+        [HttpPost]
+        public async Task<IActionResult> ActualizarEstado(int pedidoId, string nuevoEstado)
+        {
+            // Debug: mostrar los datos recibidos
+            Console.WriteLine($"ActualizarEstado - pedidoId: {pedidoId}, nuevoEstado: '{nuevoEstado}'");
+            
+            // Validar que se haya proporcionado un nuevo estado
+            if (string.IsNullOrWhiteSpace(nuevoEstado))
+            {
+                var errorMessage = "Debe seleccionar un nuevo estado para el pedido.";
+                Console.WriteLine($"Error: {errorMessage}");
+                
+                // Si es una petición AJAX, devolver JSON
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = false, message = errorMessage });
+                }
+                else
+                {
+                    // Si es un formulario HTML, redirigir con error
+                    TempData["Error"] = errorMessage;
+                    return RedirectToAction("ActualizarEstado", new { id = pedidoId });
+                }
+            }
+
+            var client = _httpClientFactory.CreateClient();
+            var url = $"http://localhost:5062/api/Pedidos/ActualizarEstadoSimple/{pedidoId}";
+
+            try
+            {
+                var usuarioId = HttpContext.Session.GetInt32("IdUsuario") ?? 1;
+                Console.WriteLine($"Usuario ID obtenido de sesión: {usuarioId}");
+                
+                var requestData = new
+                {
+                    NuevoEstado = nuevoEstado.Trim(),
+                    UsuarioId = usuarioId
+                };
+
+                Console.WriteLine($"Datos a enviar: NuevoEstado='{requestData.NuevoEstado}', UsuarioId={requestData.UsuarioId}");
+                Console.WriteLine($"URL del API: {url}");
+
+                var response = await client.PostAsJsonAsync(url, requestData);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    // Si es una petición AJAX, devolver JSON
+                    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                    {
+                        return Json(new { success = true, message = "Estado actualizado correctamente" });
+                    }
+                    else
+                    {
+                        // Si es un formulario HTML, redirigir con mensaje
+                        TempData["Success"] = "Estado del pedido actualizado correctamente";
+                        return RedirectToAction("Index");
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Error del API - Status: {response.StatusCode}");
+                    Console.WriteLine($"Error del API - Content: {errorContent}");
+                    
+                    // Intentar deserializar el error para obtener un mensaje más específico
+                    string errorMessage;
+                    try
+                    {
+                        var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent);
+                        
+                        if (errorObj.TryGetProperty("message", out var message))
+                        {
+                            errorMessage = message.GetString();
+                        }
+                        else if (errorObj.TryGetProperty("errors", out var errors))
+                        {
+                            // Manejar errores de validación
+                            var errorMessages = new List<string>();
+                            foreach (var error in errors.EnumerateObject())
+                            {
+                                if (error.Value.ValueKind == JsonValueKind.Array)
+                                {
+                                    foreach (var errorMsg in error.Value.EnumerateArray())
+                                    {
+                                        errorMessages.Add(errorMsg.GetString());
+                                    }
+                                }
+                            }
+                            errorMessage = string.Join(", ", errorMessages);
+                        }
+                        else
+                        {
+                            errorMessage = $"Error del servidor (código {response.StatusCode})";
+                        }
+                    }
+                    catch
+                    {
+                        errorMessage = $"Error del servidor (código {response.StatusCode})";
+                    }
+
+                    // Si es una petición AJAX, devolver JSON
+                    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                    {
+                        return Json(new { success = false, message = errorMessage });
+                    }
+                    else
+                    {
+                        // Si es un formulario HTML, redirigir con error
+                        TempData["Error"] = errorMessage;
+                        return RedirectToAction("ActualizarEstado", new { id = pedidoId });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = $"Error de conexión: {ex.Message}";
+                
+                // Si es una petición AJAX, devolver JSON
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = false, message = errorMessage });
+                }
+                else
+                {
+                    // Si es un formulario HTML, redirigir con error
+                    TempData["Error"] = errorMessage;
+                    return RedirectToAction("ActualizarEstado", new { id = pedidoId });
+                }
+            }
+        }
+
+        // Endpoints para seguimiento - PED-002
+        [HttpGet]
+        public async Task<IActionResult> ObtenerPedidosConSeguimiento(int? usuarioId = null, bool soloAtrasados = false)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var url = $"http://localhost:5062/api/Pedidos/ObtenerPedidosConSeguimiento?";
+            
+            var parameters = new List<string>();
+            if (usuarioId.HasValue)
+                parameters.Add($"usuarioId={usuarioId.Value}");
+            if (soloAtrasados)
+                parameters.Add($"soloAtrasados={soloAtrasados}");
+            
+            url += string.Join("&", parameters);
+
+            try
+            {
+                var response = await client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    var pedidos = JsonSerializer.Deserialize<List<object>>(jsonResponse, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    return Json(pedidos ?? new List<object>());
+                }
+                else
+                {
+                    return Json(new List<object>());
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ObtenerNotificaciones(int usuarioId, bool soloNoLeidas = false)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var url = $"http://localhost:5062/api/Pedidos/ObtenerNotificaciones/{usuarioId}?soloNoLeidas={soloNoLeidas}";
+
+            try
+            {
+                var response = await client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    var notificaciones = JsonSerializer.Deserialize<List<object>>(jsonResponse, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    return Json(notificaciones ?? new List<object>());
+                }
+                else
+                {
+                    return Json(new List<object>());
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DetectarPedidosAtrasados()
+        {
+            var client = _httpClientFactory.CreateClient();
+            var url = "http://localhost:5062/api/Pedidos/DetectarPedidosAtrasados";
+
+            try
+            {
+                var response = await client.PostAsync(url, null);
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    var resultado = JsonSerializer.Deserialize<object>(jsonResponse, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    return Json(resultado);
+                }
+                else
+                {
+                    return Json(new { error = "Error al detectar pedidos atrasados" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> MarcarNotificacionLeida(int notificacionId, [FromBody] int usuarioId)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var url = $"http://localhost:5062/api/Pedidos/MarcarNotificacionLeida/{notificacionId}";
+
+            try
+            {
+                var jsonContent = JsonContent.Create(usuarioId);
+                var response = await client.PostAsync(url, jsonContent);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return Json(new { success = true });
+                }
+                else
+                {
+                    return Json(new { success = false, error = "Error al marcar notificación como leída" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // Método proxy para obtener detalles de un pedido para AJAX
+        [HttpGet]
+        [Route("api/Pedidos/DetalleJson/{id:int}")]
+        public async Task<IActionResult> ObtenerDetallePedidoJson(int id)
+        {
+            Console.WriteLine($"Web - ObtenerDetallePedidoJson llamado con id: {id}");
+            Console.WriteLine($"Web - Request URL: {Request.Path}");
+            Console.WriteLine($"Web - Request Method: {Request.Method}");
+            
+            var client = _httpClientFactory.CreateClient();
+            var url = $"http://localhost:5062/api/Pedidos/ObtenerDetalle/{id}";
+
+            try
+            {
+                Console.WriteLine($"Web - Llamando API: {url}");
+                var response = await client.GetAsync(url);
+                
+                Console.WriteLine($"Web - Response status: {response.StatusCode}");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Web - Response content length: {jsonResponse.Length}");
+                    
+                    var detalle = JsonSerializer.Deserialize<object>(jsonResponse, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    return Json(detalle);
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Web - Error response: {errorContent}");
+                    return Json(new { success = false, error = "Error al obtener detalles del pedido" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
         }
     }
 }

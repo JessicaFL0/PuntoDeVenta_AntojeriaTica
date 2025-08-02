@@ -46,7 +46,12 @@
         }
         
         body {
-            padding-top: 120px; /* Espacio para el header completo fijo */
+            padding-top: 160px; /* Aumentado el espacio para el header completo fijo */
+        }
+        
+        /* Margen adicional para páginas específicas */
+        .container-fluid.mt-4 {
+            margin-top: 2rem !important;
         }
         
         .topbar .contact-info i {
@@ -130,6 +135,7 @@
                                 <ul>
                                     <li><a href="@Url.Action("Index", "Pedidos")">Ver Pedidos</a></li>
                                     <li><a href="@Url.Action("RegistrarPedido", "Pedidos")">Nuevo Pedido</a></li>
+                                    <li><a href="@Url.Action("Seguimiento", "Pedidos")"><i class="fas fa-tracking-circle"></i> Seguimiento de Pedidos</a></li>
                                     <li><a href="@Url.Action("Cocina", "Pedidos")">Vista Cocina</a></li>
                                 </ul>
                             </li>
@@ -188,9 +194,10 @@
 
     </header>
 
-    @RenderBody()
-
     <main class="main">
+        
+        <!-- Contenido específico de cada página -->
+        @RenderBody()
 
         <section id="hero" class="hero section dark-background">
 
@@ -1181,6 +1188,12 @@
     <script src="@Url.Content("~/Content/vendor/imagesloaded/imagesloaded.pkgd.min.js")"></script>
     <script src="@Url.Content("~/Content/vendor/isotope-layout/isotope.pkgd.min.js")"></script>
     <script src="@Url.Content("~/Content/vendor/swiper/swiper-bundle.min.js")"></script>
+
+    <!-- jQuery CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    
+    <!-- SweetAlert2 para notificaciones -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Main JS File -->
     <script src="@Url.Content("~/Content/js/main.js")"></script>

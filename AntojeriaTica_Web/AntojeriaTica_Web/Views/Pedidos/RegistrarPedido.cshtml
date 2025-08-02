@@ -14,6 +14,31 @@
                 </a>
             </div>
 
+            <!-- Mostrar errores de validación -->
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Error al registrar el pedido:</strong>
+                    <ul class="mb-0 mt-2">
+                        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                        {
+                            <li>@error.ErrorMessage</li>
+                        }
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <!-- Mostrar mensajes de éxito -->
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong><i class="fas fa-check-circle"></i> Éxito:</strong>
+                    @TempData["Success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
             <form asp-action="RegistrarPedido" method="post" id="formPedido">
                 <div class="row">
                     <div class="col-md-8">
@@ -124,11 +149,11 @@
             <div class="col-md-4">
                 <select name="Detalles[INDEX].ProductoId" class="form-select producto-select" onchange="actualizarPrecio(this)">
                     <option value="">Seleccionar producto...</option>
-                    @if (ViewBag.Productos != null)
+                    @if (ViewBag.ProductosCompletos != null)
                     {
-                        @foreach (var producto in (SelectList)ViewBag.Productos)
+                        @foreach (var producto in (List<AntojeriaTica_Web.Models.ProductoModel>)ViewBag.ProductosCompletos)
                         {
-                            <option value="@producto.Value">@producto.Text</option>
+                            <option value="@producto.IdProducto" data-precio="@producto.PrecioUnitario">@producto.Nombre</option>
                         }
                     }
                 </select>
@@ -159,21 +184,86 @@
         let productoIndex = 0;
 
         function agregarProducto() {
+            console.log('Iniciando agregarProducto()');
+            
             const template = document.getElementById('productoTemplate');
             const container = document.getElementById('productosContainer');
             const noProductos = document.getElementById('noProductos');
 
-            // Clonar el template
-            const clone = template.content.cloneNode(true);
-            
-            // Reemplazar INDEX con el índice actual
-            clone.innerHTML = clone.innerHTML.replace(/INDEX/g, productoIndex);
-            
-            container.appendChild(clone);
-            noProductos.style.display = 'none';
-            
-            productoIndex++;
-            actualizarTotal();
+            console.log('Template:', template);
+            console.log('Container:', container);
+
+            if (!template || !container) {
+                console.error('Template o container no encontrado');
+                console.error('Template existe:', !!template);
+                console.error('Container existe:', !!container);
+                return;
+            }
+
+            try {
+                // Clonar el template
+                const clone = template.content.cloneNode(true);
+                console.log('Clone creado:', clone);
+                
+                // Reemplazar INDEX en todos los elementos del clone
+                const elementos = clone.querySelectorAll('*');
+                console.log('Elementos encontrados:', elementos.length);
+                
+                elementos.forEach((elemento, index) => {
+                    console.log(`Procesando elemento ${index}:`, elemento);
+                    
+                    // Reemplazar en atributos name
+                    if (elemento.name) {
+                        console.log('Reemplazando name:', elemento.name);
+                        elemento.name = elemento.name.replace(/INDEX/g, productoIndex);
+                    }
+                    
+                    // Reemplazar en atributos id
+                    if (elemento.id) {
+                        console.log('Reemplazando id:', elemento.id);
+                        elemento.id = elemento.id.replace(/INDEX/g, productoIndex);
+                    }
+                    
+                    // Reemplazar en atributos data-*
+                    Array.from(elemento.attributes).forEach(attr => {
+                        if (attr.value && attr.value.includes && attr.value.includes('INDEX')) {
+                            console.log('Reemplazando atributo:', attr.name, attr.value);
+                            attr.value = attr.value.replace(/INDEX/g, productoIndex);
+                        }
+                    });
+                    
+                    // Reemplazar en el texto del elemento
+                    if (elemento.textContent && elemento.textContent.includes && elemento.textContent.includes('INDEX')) {
+                        console.log('Reemplazando textContent:', elemento.textContent);
+                        elemento.textContent = elemento.textContent.replace(/INDEX/g, productoIndex);
+                    }
+                });
+                
+                console.log('Agregando clone al container');
+                container.appendChild(clone);
+                
+                // Establecer valores por defecto después de agregar al DOM
+                const cantidadInput = container.querySelector(`input[name="Detalles[${productoIndex}].Cantidad"]`);
+                if (cantidadInput) {
+                    cantidadInput.value = 1;
+                    console.log('Cantidad establecida a 1 para índice:', productoIndex);
+                    
+                    // Agregar event listener para cambios
+                    cantidadInput.addEventListener('input', function() {
+                        console.log('Cantidad cambiada a:', this.value);
+                        actualizarTotal();
+                    });
+                }
+                
+                noProductos.style.display = 'none';
+                
+                productoIndex++;
+                console.log('Nuevo productoIndex:', productoIndex);
+                actualizarTotal();
+                
+            } catch (error) {
+                console.error('Error en agregarProducto:', error);
+            }
         }
 
         function eliminarProducto(button) {
@@ -191,12 +281,17 @@
         }
 
         function actualizarPrecio(select) {
+            console.log('Actualizando precio para:', select.value);
             const selectedOption = select.options[select.selectedIndex];
             const precio = selectedOption.getAttribute('data-precio') || 0;
+            console.log('Precio obtenido:', precio);
+            
             const productoItem = select.closest('.producto-item');
             const precioInput = productoItem.querySelector('.precio-input');
             
             precioInput.value = precio;
+            console.log('Precio establecido en input:', precioInput.value);
+            
             calcularSubtotal(precioInput);
         }
 
