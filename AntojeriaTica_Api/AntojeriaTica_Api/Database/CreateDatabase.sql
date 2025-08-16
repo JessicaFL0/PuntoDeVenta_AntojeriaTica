@@ -359,8 +359,15 @@ BEGIN
         FechaActualizacion datetime NULL,
         FechaInicioPreparacion datetime NULL, -- Cuando empezó la preparación
         FechaFinalizacion datetime NULL, -- Cuando se completó el pedido
+        -- Columnas para PED-004: Cancelación de pedidos
+        FechaCancelacion datetime NULL,
+        MotivoCancelacion nvarchar(500) NULL,
+        UsuarioCancelacion int NULL,
+        AutorizadoPor int NULL,
         CONSTRAINT PK_Pedido PRIMARY KEY (Id),
         CONSTRAINT FK_Pedido_Usuario FOREIGN KEY (UsuarioId) REFERENCES Usuario(Id),
+        CONSTRAINT FK_Pedido_UsuarioCancelacion FOREIGN KEY (UsuarioCancelacion) REFERENCES Usuario(Id),
+        CONSTRAINT FK_Pedido_AutorizadoPor FOREIGN KEY (AutorizadoPor) REFERENCES Usuario(Id),
         CONSTRAINT UQ_Pedido_Numero UNIQUE (NumeroPedido)
     );
     PRINT 'Tabla Pedido creada';
@@ -592,7 +599,7 @@ GO
 -- STORED PROCEDURES BÁSICOS
 -- =============================================
 
--- SP: Insertar Usuario
+-- SP: Insertar Usuario - CORREGIDO
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarUsuario')
     DROP PROCEDURE sp_InsertarUsuario;
 GO
@@ -600,7 +607,7 @@ GO
 CREATE PROCEDURE sp_InsertarUsuario
     @NombreCompleto NVARCHAR(100),
     @Correo NVARCHAR(255),
-    @Cedula NVARCHAR(50) = NULL,
+    @Cedula NVARCHAR(50) = NULL, -- Este parámetro se ignora ya que no existe en la tabla
     @ContrasenaHash NVARCHAR(255),
     @Estado NVARCHAR(20) = 'Activo',
     @IdRol INT = 2
@@ -616,7 +623,7 @@ BEGIN
             RETURN;
         END
 
-        -- Insertar usuario
+        -- Insertar usuario (ignoramos @Cedula ya que no existe esa columna)
         INSERT INTO Usuario (Nombre, Email, Password, RolId, Activo)
         VALUES (@NombreCompleto, @Correo, @ContrasenaHash, @IdRol,
                 CASE WHEN @Estado = 'Activo' THEN 1 ELSE 0 END);
@@ -631,7 +638,7 @@ BEGIN
 END
 GO
 
--- SP: Obtener Usuario por ID
+-- SP: Obtener Usuario por ID - CORREGIDO
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuario')
     DROP PROCEDURE sp_ObtenerUsuario;
 GO
@@ -646,7 +653,7 @@ BEGIN
         u.Id as IdUsuario,
         u.Nombre as NombreCompleto,
         u.Email as Correo,
-        '' as Cedula, -- Campo no existe en la tabla actual
+        '' as Cedula, -- Campo no existe en la tabla actual, retornar vacío
         CASE WHEN u.Activo = 1 THEN 'Activo' ELSE 'Inactivo' END as Estado,
         u.RolId as IdRol,
         r.Nombre as NombreRol,
@@ -658,7 +665,7 @@ BEGIN
 END
 GO
 
--- SP: Obtener Todos los Usuarios
+-- SP: Obtener Todos los Usuarios - CORREGIDO
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuarios')
     DROP PROCEDURE sp_ObtenerUsuarios;
 GO
@@ -672,7 +679,7 @@ BEGIN
         u.Id as IdUsuario,
         u.Nombre as NombreCompleto,
         u.Email as Correo,
-        '' as Cedula, -- Campo no existe en la tabla actual
+        '' as Cedula, -- Campo no existe en la tabla actual, retornar vacío
         CASE WHEN u.Activo = 1 THEN 'Activo' ELSE 'Inactivo' END as Estado,
         u.RolId as IdRol,
         r.Nombre as NombreRol,
@@ -735,6 +742,131 @@ BEGIN
     FROM Rol
     WHERE Activo = 1
     ORDER BY Nombre;
+END
+GO
+
+-- SP: Actualizar Usuario - NUEVO (requerido por AccountController)
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ActualizarUsuario')
+    DROP PROCEDURE sp_ActualizarUsuario;
+GO
+
+CREATE PROCEDURE sp_ActualizarUsuario
+    @IdUsuario INT,
+    @NombreCompleto NVARCHAR(100),
+    @Correo NVARCHAR(255),
+    @Cedula NVARCHAR(50) = NULL, -- Este parámetro se ignora ya que no existe en la tabla
+    @Estado NVARCHAR(20) = 'Activo',
+    @IdRol INT = 2
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        -- Verificar que el usuario existe
+        IF NOT EXISTS (SELECT 1 FROM Usuario WHERE Id = @IdUsuario)
+        BEGIN
+            RAISERROR('El usuario no existe', 16, 1);
+            RETURN;
+        END
+
+        -- Verificar si el email ya existe para otro usuario
+        IF EXISTS (SELECT 1 FROM Usuario WHERE Email = @Correo AND Id != @IdUsuario)
+        BEGIN
+            RAISERROR('El email ya está registrado por otro usuario', 16, 1);
+            RETURN;
+        END
+
+        -- Actualizar usuario
+        UPDATE Usuario 
+        SET 
+            Nombre = @NombreCompleto,
+            Email = @Correo,
+            RolId = @IdRol,
+            Activo = CASE WHEN @Estado = 'Activo' THEN 1 ELSE 0 END
+        WHERE Id = @IdUsuario;
+
+        -- Retornar número de filas afectadas
+        SELECT @@ROWCOUNT as FilasAfectadas;
+
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Eliminar Usuario - NUEVO (requerido por AccountController)
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_EliminarUsuario')
+    DROP PROCEDURE sp_EliminarUsuario;
+GO
+
+CREATE PROCEDURE sp_EliminarUsuario
+    @IdUsuario INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        -- Verificar que el usuario existe
+        IF NOT EXISTS (SELECT 1 FROM Usuario WHERE Id = @IdUsuario)
+        BEGIN
+            RAISERROR('El usuario no existe', 16, 1);
+            RETURN;
+        END
+
+        -- En lugar de eliminar físicamente, marcar como inactivo
+        UPDATE Usuario 
+        SET Activo = 0
+        WHERE Id = @IdUsuario;
+
+        -- Retornar número de filas afectadas
+        SELECT @@ROWCOUNT as FilasAfectadas;
+
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Eliminar Rol - NUEVO (requerido por AccountController)
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_EliminarRol')
+    DROP PROCEDURE sp_EliminarRol;
+GO
+
+CREATE PROCEDURE sp_EliminarRol
+    @IdRol INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        -- Verificar que el rol existe
+        IF NOT EXISTS (SELECT 1 FROM Rol WHERE Id = @IdRol)
+        BEGIN
+            RAISERROR('El rol no existe', 16, 1);
+            RETURN;
+        END
+
+        -- Verificar que no hay usuarios usando este rol
+        IF EXISTS (SELECT 1 FROM Usuario WHERE RolId = @IdRol)
+        BEGIN
+            RAISERROR('No se puede eliminar el rol porque está en uso por usuarios', 16, 1);
+            RETURN;
+        END
+
+        -- Marcar rol como inactivo en lugar de eliminarlo
+        UPDATE Rol 
+        SET Activo = 0
+        WHERE Id = @IdRol;
+
+        -- Retornar número de filas afectadas
+        SELECT @@ROWCOUNT as FilasAfectadas;
+
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH
 END
 GO
 
@@ -1785,8 +1917,18 @@ GO
 IF NOT EXISTS (SELECT 1 FROM Usuario WHERE Email = 'admin@antojeria.com')
 BEGIN
     INSERT INTO Usuario (Nombre, Email, Password, RolId, Activo)
-    VALUES ('Administrador', 'admin@antojeria.com', 'admin123', 1, 1);
-    PRINT 'Usuario administrador creado';
+    VALUES ('Administrador', 'admin@antojeria.com', '$2a$12$tSK4PGHN.MJWqn3QB9hSm.r47IyY2q7212SdPsa4c3z1Kf/LE9bDa', 1, 1);
+    PRINT 'Usuario administrador creado con contraseña: admin123';
+END
+
+-- Insertar usuario de prueba para login si no existe
+IF NOT EXISTS (SELECT 1 FROM Usuario WHERE Email = 'pepe@pepe')
+BEGIN
+    -- Generar hash BCrypt para la contraseña 'pepe123'
+    -- Para pruebas, usaremos un hash simple, pero en producción debe ser BCrypt
+    INSERT INTO Usuario (Nombre, Email, Password, RolId, Activo)
+    VALUES ('Pepe Usuario', 'pepe@pepe', '$2a$12$qtb6J12SO7AG32l9HZjhs.OtT.oV8C6sWt4H1E.0vJ/5kgazCmsSu', 2, 1);
+    PRINT 'Usuario de prueba pepe@pepe creado con contraseña: pepe123';
 END
 
 -- Insertar algunos productos de ejemplo si la tabla está vacía
@@ -1876,6 +2018,72 @@ END
 GO
 
 PRINT 'Stored procedure ObtenerPedidosConSeguimiento creado para PED-002';
+
+-- =============================================
+-- VERIFICACIÓN FINAL DE STORED PROCEDURES
+-- =============================================
+
+-- Verificar que todos los stored procedures requeridos existen
+PRINT '=============================================';
+PRINT 'VERIFICANDO STORED PROCEDURES REQUERIDOS:';
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarUsuario')
+    PRINT '✓ sp_InsertarUsuario existe';
+ELSE
+    PRINT '✗ sp_InsertarUsuario NO existe';
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuario')
+    PRINT '✓ sp_ObtenerUsuario existe';
+ELSE
+    PRINT '✗ sp_ObtenerUsuario NO existe';
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerUsuarios')
+    PRINT '✓ sp_ObtenerUsuarios existe';
+ELSE
+    PRINT '✗ sp_ObtenerUsuarios NO existe';
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ActualizarUsuario')
+    PRINT '✓ sp_ActualizarUsuario existe';
+ELSE
+    PRINT '✗ sp_ActualizarUsuario NO existe';
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_EliminarUsuario')
+    PRINT '✓ sp_EliminarUsuario existe';
+ELSE
+    PRINT '✗ sp_EliminarUsuario NO existe';
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ListarRoles')
+    PRINT '✓ sp_ListarRoles existe';
+ELSE
+    PRINT '✗ sp_ListarRoles NO existe';
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_EliminarRol')
+    PRINT '✓ sp_EliminarRol existe';
+ELSE
+    PRINT '✗ sp_EliminarRol NO existe';
+
+-- Mostrar estructura actual de la tabla Usuario para confirmar
+PRINT '=============================================';
+PRINT 'ESTRUCTURA DE LA TABLA USUARIO:';
+SELECT 
+    COLUMN_NAME as 'Columna',
+    DATA_TYPE as 'Tipo',
+    IS_NULLABLE as 'Permite NULL',
+    COLUMN_DEFAULT as 'Valor por defecto'
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'Usuario' 
+ORDER BY ORDINAL_POSITION;
+
+PRINT '=============================================';
+PRINT 'USUARIOS DISPONIBLES PARA PRUEBAS:';
+SELECT u.Email, u.Nombre, 
+       CASE WHEN u.Activo = 1 THEN 'Activo' ELSE 'Inactivo' END as Estado,
+       r.Nombre as Rol
+FROM Usuario u
+INNER JOIN Rol r ON u.RolId = r.Id
+ORDER BY u.Email;
+
+PRINT '=============================================';
 
 -- =============================================
 -- MENSAJE FINAL
