@@ -139,6 +139,15 @@
                                     <li><a href="@Url.Action("Cocina", "Pedidos")">Vista Cocina</a></li>
                                 </ul>
                             </li>
+                            <li class="dropdown">
+                                <a href="#"><span>Reportes</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                                <ul>
+                                    <li><a href="@Url.Action("VentasAnuales", "Reporte")">Reporte de Ventas por año</a></li>
+                                    <li><a href="@Url.Action("Dashboard", "Reporte")">Dashboard del dia</a></li>
+                                    <li><a href="@Url.Action("GenerarReporte", "Reporte")">Generar reporte</a></li>
+                                  
+                                </ul>
+                            </li>
                             <li class="nav-item"><span
                                     class="badge bg-success me-2">@Context.Session.GetString("NombreRol")</span></li>
                         }

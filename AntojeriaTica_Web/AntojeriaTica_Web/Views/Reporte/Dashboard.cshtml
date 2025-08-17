@@ -1,0 +1,101 @@
+﻿@model AntojeriaTica_Web.Models.DashboardModel
+@{
+    ViewData["Title"] = "Dashboard de Ventas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+   
+    .card-body h5 {
+        color: #333 !important; 
+        font-weight: 600;
+    }
+</style>
+
+<div class="container mt-5 pt-4">
+    <h2 class="mb-4">📊 Dashboard en tiempo real de ventas</h2>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger">@ViewBag.Error</div>
+    }
+    else
+    {
+        <div class="row">
+           
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body text-center">
+                        <h5>💰 Total Ventas Hoy</h5>
+                        <h3 class="text-success">@Model.TotalVentasHoy.ToString("C")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body text-center">
+                        <h5>📦 Pedidos Hoy</h5>
+                        <h3 class="text-primary">@Model.CantidadPedidosHoy</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body text-center">
+                        <h5>📈 Tendencia Semana</h5>
+                        <h3 class="@(Model.TendenciaSemana >= 0 ? "text-success" : "text-danger")">
+                            @Model.TendenciaSemana.ToString("N2") %
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+       
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">📉 Ventas últimos días</h5>
+                        <canvas id="ventasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('ventasChart').getContext('2d');
+        const ventasChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(Json.Serialize(Model.UltimosDias)),
+                datasets: [{
+                    label: 'Ventas',
+                    data: @Html.Raw(Json.Serialize(Model.VentasUltimosDias)),
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(75, 192, 192, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+}

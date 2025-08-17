@@ -1,0 +1,41 @@
+﻿@model List<AntojeriaTica_Web.Models.ReporteVentasAnualesResponse>
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container pt-5 mt-5">
+    <h2>Reporte de Ventas</h2>
+
+    <form method="get" asp-action="VentasAnuales">
+        <div class="d-flex mb-3">
+            <input type="number" name="anio" value="@ViewBag.Anio" class="form-control me-2" />
+            <button type="submit" class="btn btn-primary">Generar</button>
+        </div>
+    </form>
+
+    <div class="mb-3">
+        <a class="btn btn-danger" href="@Url.Action("ExportarPDF", new { anio = ViewBag.Anio })">Exportar a PDF</a>
+        <a class="btn btn-success" href="@Url.Action("ExportarHTML", new { anio = ViewBag.Anio })">Exportar a HTML</a>
+    </div>
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Mes</th>
+                <th>Total Ventas</th>
+                <th>Cantidad Ventas</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.NombreMes</td>
+                    <td>@item.TotalVentas.ToString("N2")</td>
+                    <td>@item.CantidadVentas</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -2098,3 +2098,84 @@ PRINT '- Facturación electrónica completa';
 PRINT '- Stored procedures optimizados';
 PRINT '- Datos iniciales';
 PRINT '=========================================';
+
+
+
+--- MR--001
+
+CREATE OR ALTER PROCEDURE sp_ReporteVentasAnual
+    @Anio INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        MONTH(Fecha) AS Mes,
+        DATENAME(MONTH, Fecha) AS NombreMes,
+        SUM(Total) AS TotalVentas,
+        COUNT(*) AS CantidadVentas
+    FROM Venta
+    WHERE YEAR(Fecha) = @Anio
+    GROUP BY MONTH(Fecha), DATENAME(MONTH, Fecha)
+    ORDER BY Mes;
+END
+
+----INCLUIR DATOS EN EL AÑO 2024
+
+INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones) VALUES
+('2024-01-15', 2, N'Cliente mostrador', 20000, 2600, 0, 22600, N'Efectivo',     N'Completada', N'Venta de refrescos y casados'),
+('2024-02-10', 2, N'Cliente mostrador', 18000, 2340, 0, 20340, N'Tarjeta',      N'Completada', N'Venta de desayunos'),
+('2024-03-12', 2, N'Cliente mostrador', 25000, 3250, 0, 28250, N'Transferencia',N'Completada', N'Venta de almuerzos'),
+('2024-04-08', 2, N'Cliente mostrador', 22000, 2860, 0, 24860, N'SINPE Móvil',  N'Completada', N'Venta variada'),
+('2024-05-22', 2, N'Cliente mostrador', 18000, 2340, 0, 20340, N'Efectivo',     N'Completada', N'Postres y café'),
+('2024-06-05', 2, N'Cliente mostrador', 30000, 3900, 0, 33900, N'Tarjeta',      N'Completada', N'Cenas'),
+('2024-07-18', 2, N'Cliente mostrador', 21000, 2730, 0, 23730, N'Efectivo',     N'Completada', N'Merienda del día'),
+('2024-08-09', 2, N'Cliente mostrador', 26000, 3380, 0, 29380, N'Transferencia',N'Completada', N'Almuerzos'),
+('2024-09-14', 2, N'Cliente mostrador', 19500, 2535, 0, 22035, N'SINPE Móvil',  N'Completada', N'Desayunos'),
+('2024-10-03', 2, N'Cliente mostrador', 28000, 3640, 0, 31640, N'Efectivo',     N'Completada', N'Venta general'),
+('2024-11-18', 2, N'Cliente mostrador', 22000, 2860, 0, 24860, N'Tarjeta',      N'Completada', N'Café y postres'),
+('2024-12-22', 2, N'Cliente mostrador', 35000, 4550, 0, 39550, N'Efectivo',     N'Completada', N'Temporada alta');
+GO
+
+-- Verificar ventas de Pepe en 2024
+SELECT * 
+FROM Venta
+WHERE UsuarioId = 2 AND YEAR(Fecha) = 2024
+ORDER BY Fecha;
+
+
+--- MR--002 
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_DashboardVentas')
+BEGIN
+    DROP PROCEDURE sp_DashboardVentas;
+END
+GO
+
+CREATE PROCEDURE sp_DashboardVentas
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    
+    SELECT 
+        ISNULL(SUM(Total), 0) AS TotalVentasHoy,
+        COUNT(*) AS CantidadPedidosHoy,
+        (
+            SELECT ISNULL(SUM(Total),0)
+            FROM Venta
+            WHERE Fecha >= DATEADD(DAY, -7, CAST(GETDATE() AS DATE))
+        ) AS TendenciaSemana
+    FROM Venta
+    WHERE CAST(Fecha AS DATE) = CAST(GETDATE() AS DATE);
+
+
+    SELECT 
+        CONVERT(VARCHAR(10), CAST(Fecha AS DATE), 103) AS Dia,
+        ISNULL(SUM(Total), 0) AS Total
+    FROM Venta
+    WHERE Fecha >= DATEADD(DAY, -7, CAST(GETDATE() AS DATE))
+    GROUP BY CAST(Fecha AS DATE)
+    ORDER BY CAST(Fecha AS DATE);
+END
+GO

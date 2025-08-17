@@ -1,0 +1,62 @@
+﻿@model List<AntojeriaTica_Web.Models.VentaModel>
+
+@{
+    ViewData["Title"] = "Generar Reporte de Ventas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container pt-5 mt-5">
+    <h2>Generar Reporte de Ventas</h2>
+
+  
+    <form method="get" asp-action="GenerarReporte">
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" name="busqueda" placeholder="Buscar por producto o cliente"
+                   value="@Context.Request.Query["busqueda"]" />
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+        </div>
+    </form>
+
+  
+    <div class="mb-3">
+        <a class="btn btn-danger" href="@Url.Action("ExportarReporte", "Reporte")">Exportar a PDF</a>
+        <a class="btn btn-success" href="@Url.Action("ExportarReporteHTML", "Reporte")">Exportar a HTML</a>
+    </div>
+
+ 
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Producto ID</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Método Pago</th>
+                <th>Cupón</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var venta in Model)
+                {
+                    foreach (var detalle in venta.Detalles)
+                    {
+                        <tr>
+                            <td>@detalle.ProductoId</td>
+                            <td>@detalle.Cantidad</td>
+                            <td>@detalle.PrecioUnitario.ToString("N2")</td>
+                            <td>@venta.MetodoPago</td>
+                            <td>@venta.CodigoCupon</td>
+                        </tr>
+                    }
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5" class="text-center">No hay ventas registradas</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
