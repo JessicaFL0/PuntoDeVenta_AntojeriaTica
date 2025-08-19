@@ -1,11 +1,11 @@
 ﻿using AntojeriaTica_Api.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Data;
 
 namespace AntojeriaTica_Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/Impuestos")]
     [ApiController]
     public class ImpuestoController : ControllerBase
     {
@@ -19,24 +19,25 @@ namespace AntojeriaTica_Api.Controllers
         [HttpGet("Listar")]
         public IActionResult Listar()
         {
-            List<Impuesto> lista = new List<Impuesto>();
+            var lista = new List<Impuesto>();
 
             using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
                 conn.Open();
-                var cmd = new SqlCommand("SELECT * FROM Impuesto", conn);
-                var reader = cmd.ExecuteReader();
+                using var cmd = new SqlCommand("SELECT Id, Nombre, Porcentaje, Activo FROM Impuesto", conn);
+                using var reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
+                    var nombre = reader["Nombre"].ToString() ?? string.Empty;
                     lista.Add(new Impuesto
                     {
-                        IdImpuesto = Convert.ToInt32(reader["IdImpuesto"]),
-                        Nombre = reader["Nombre"].ToString(),
-                        Tipo = reader["Tipo"].ToString(),
+                        IdImpuesto = Convert.ToInt32(reader["Id"]),
+                        Nombre = nombre,
+                        Tipo = nombre.ToUpper() == "IVA" ? "IVA" : "ISC",
                         Porcentaje = Convert.ToDecimal(reader["Porcentaje"]),
-                        AplicaEnRestaurante = Convert.ToBoolean(reader["AplicaEnRestaurante"]),
-                        EsExonerado = Convert.ToBoolean(reader["EsExonerado"]),
-                        Estado = Convert.ToBoolean(reader["Estado"])
+                        AplicaEnRestaurante = false,
+                        EsExonerado = nombre.ToUpper() == "EXENTO",
+                        Estado = Convert.ToBoolean(reader["Activo"])
                     });
                 }
             }
@@ -50,15 +51,10 @@ namespace AntojeriaTica_Api.Controllers
             using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
                 conn.Open();
-                var cmd = new SqlCommand(@"INSERT INTO Impuesto (Nombre, Tipo, Porcentaje, AplicaEnRestaurante, EsExonerado, Estado) 
-                                           VALUES (@Nombre, @Tipo, @Porcentaje, @AplicaEnRestaurante, @EsExonerado, 1)", conn);
-
-                cmd.Parameters.AddWithValue("@Nombre", imp.Nombre);
-                cmd.Parameters.AddWithValue("@Tipo", imp.Tipo);
+                using var cmd = new SqlCommand(@"INSERT INTO Impuesto (Nombre, Porcentaje, Activo) 
+                                                VALUES (@Nombre, @Porcentaje, 1)", conn);
+                cmd.Parameters.AddWithValue("@Nombre", (object?)imp.Nombre ?? string.Empty);
                 cmd.Parameters.AddWithValue("@Porcentaje", imp.Porcentaje);
-                cmd.Parameters.AddWithValue("@AplicaEnRestaurante", imp.AplicaEnRestaurante);
-                cmd.Parameters.AddWithValue("@EsExonerado", imp.EsExonerado);
-
                 cmd.ExecuteNonQuery();
             }
 
@@ -71,7 +67,7 @@ namespace AntojeriaTica_Api.Controllers
             using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
                 conn.Open();
-                var cmd = new SqlCommand("UPDATE Impuesto SET Estado = CASE WHEN Estado = 1 THEN 0 ELSE 1 END WHERE IdImpuesto = @Id", conn);
+                using var cmd = new SqlCommand("UPDATE Impuesto SET Activo = CASE WHEN Activo = 1 THEN 0 ELSE 1 END WHERE Id = @Id", conn);
                 cmd.Parameters.AddWithValue("@Id", id);
                 cmd.ExecuteNonQuery();
             }

@@ -82,6 +82,22 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpGet]
+        public IActionResult CerrarSesion()
+        {
+            try
+            {
+                HttpContext.Session.Clear();
+                TempData["Mensaje"] = "Sesión cerrada correctamente";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al cerrar sesión");
+                TempData["Error"] = "No se pudo cerrar la sesión";
+            }
+            return RedirectToAction("IniciarSesion");
+        }
+
+        [HttpGet]
         public IActionResult Principal()
         {
             var token = HttpContext.Session.GetString("JWToken");
@@ -98,13 +114,14 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpGet]
-        public IActionResult RecuperarContrasena()
+    public IActionResult RecuperarContrasena()
         {
             return View();
         }
 
         [HttpPost]
-        public IActionResult RecuperarContraseña(UsuarioModel model)
+    [HttpPost]
+    public IActionResult RecuperarContrasena(UsuarioModel model)
         {
             using (var httpClient = new HttpClient())
             {
@@ -569,7 +586,7 @@ namespace AntojeriaTica_Web.Controllers
                                         HttpContext.Session.SetString("NombreCompleto", apiResponse.User.NombreCompleto ?? string.Empty);
                                     }
 
-                                    return RedirectToAction("Principal", "Login");
+                                    return RedirectToAction("Index", "Home");
                                 }
                                 else
                                 {

@@ -2,8 +2,8 @@
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-<div class="container pt-5 mt-5">
-    <h2>Lista de Productos</h2>
+<div class="container pt-4">
+    <h2 class="mb-3">Lista de Productos</h2>
 
     @if (TempData["Mensaje"] != null)
     {
@@ -14,7 +14,7 @@
         <a asp-action="RegistrarProducto" class="btn btn-primary">Nuevo Producto</a>
     </div>
 
-    <table class="table table-bordered">
+    <table class="table table-bordered table-striped table-hover align-middle">
         <thead>
             <tr>
                 <th>ID</th>
@@ -32,7 +32,7 @@
                     <td>@p.IdProducto</td>
                     <td>@p.Codigo</td>
                     <td>@p.Nombre</td>
-                    <td>@p.PrecioUnitario</td>
+                    <td class="text-end">@p.PrecioUnitario.ToString("N2")</td>
                     <td>@p.Existencias</td>
                     <td>
                         <a asp-action="EditarProducto" asp-route-id="@p.IdProducto" class="btn btn-sm btn-warning">Editar</a>

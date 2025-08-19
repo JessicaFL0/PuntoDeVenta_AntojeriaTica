@@ -23,7 +23,15 @@ namespace AntojeriaTica_Web.Controllers
         public async Task<IActionResult> Index()
         {
             var client = _httpClientFactory.CreateClient();
-            var url = "http://localhost:5062/api/Pedidos/BuscarPedidos";
+            var rol = HttpContext.Session.GetString("NombreRol") ?? string.Empty;
+            var isAdmin = rol.ToLowerInvariant().Contains("admin");
+            var idUsuario = HttpContext.Session.GetInt32("IdUsuario");
+
+            string url = "http://localhost:5062/api/Pedidos/BuscarPedidos";
+            if (!isAdmin && idUsuario.HasValue)
+            {
+                url += $"?usuarioId={idUsuario.Value}";
+            }
 
             try
             {

@@ -243,7 +243,9 @@ namespace AntojeriaTica_Api.Controllers
             [FromQuery] DateTime? fechaFin = null,
             [FromQuery] string? estado = null,
             [FromQuery] string? tipoPedido = null,
-            [FromQuery] int? pedidoId = null)
+            [FromQuery] int? pedidoId = null,
+            [FromQuery] int? usuarioId = null,
+            [FromQuery] bool soloAtrasados = false)
         {
             try
             {
@@ -259,6 +261,9 @@ namespace AntojeriaTica_Api.Controllers
                         cmd.Parameters.AddWithValue("@Estado", string.IsNullOrEmpty(estado) ? (object)DBNull.Value : estado);
                         cmd.Parameters.AddWithValue("@TipoPedido", string.IsNullOrEmpty(tipoPedido) ? (object)DBNull.Value : tipoPedido);
                         cmd.Parameters.AddWithValue("@PedidoId", pedidoId.HasValue ? (object)pedidoId.Value : DBNull.Value);
+                        // Filtros adicionales (si el SP los soporta)
+                        cmd.Parameters.AddWithValue("@UsuarioId", usuarioId ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@SoloAtrasados", soloAtrasados);
 
                         using (SqlDataReader reader = cmd.ExecuteReader())
                         {

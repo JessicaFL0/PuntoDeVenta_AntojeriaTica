@@ -15,6 +15,255 @@ BEGIN
 END
 GO
 
+-- =============================================
+-- TODOs y notas de mantenimiento (Ejemplos)
+-- =============================================
+-- Este bloque solo contiene comentarios con ejemplos de TODO para guiar trabajos futuros.
+-- No impacta la ejecución del script.
+
+/*
+Formato sugerido de TODO:
+TODO [CATEGORIA][ID opcional]: Título corto y claro
+- Contexto: breve explicación del porqué.
+- Acción/Enfoque: pasos propuestos o decisión pendiente.
+- Riesgos/Dependencias: si aplica.
+- Responsable/ETA: si aplica.
+*/
+
+-- TODO [DB-PERF][PERF-001]: Índices para acelerar reportes
+-- - Contexto: Consultas frecuentes por fecha y joins de ventas/detalles.
+-- - Acción: Crear índices no-clustered en Venta(Fecha), DetalleVenta(VentaId), Producto(Codigo) INCLUDE(Nombre,Precio).
+--   Ejemplos:
+--   CREATE INDEX IX_Venta_Fecha ON Venta(Fecha);
+--   CREATE INDEX IX_DetalleVenta_VentaId ON DetalleVenta(VentaId);
+--   CREATE INDEX IX_Producto_Codigo ON Producto(Codigo) INCLUDE (Nombre, Precio);
+
+-- TODO [DB-SEC][SEC-001]: Endurecer seguridad de base de datos
+-- - Contexto: Separar permisos por roles de app (lectura/escritura/reportes).
+-- - Acción: Crear esquemas/roles (app_reader, app_writer, app_report) y aplicar GRANT mínimos a SPs.
+-- - Revisar mascarado/datos sensibles (clientes) y políticas de acceso.
+
+-- TODO [DB-OBS][OBS-001]: Telemetría y auditoría
+-- - Contexto: Necesitamos trazabilidad de ejecuciones de SPs críticos.
+-- - Acción: Tabla de auditoría (ExecLog) + capturar parámetros/tiempos/errores; activar XE o Query Store para SPs clave.
+
+-- TODO [DB-CLEANUP][CLN-001]: Archivado histórico
+-- - Contexto: Tablas de ventas crecerán rápidamente.
+-- - Acción: Estrategia de particionamiento por Fecha o tablas *_Archive con jobs mensuales.
+
+-- TODO [DB-CI][CI-001]: Versionado de esquema
+-- - Contexto: Necesitamos control de versiones e idempotencia en despliegues.
+-- - Acción: Tabla __SchemaVersion y convención de scripts (Up/Down); integrar en pipeline CI/CD.
+
+-- TODO [DB-API-CONTRACT][API-001]: Contratos SP ↔ modelos
+-- - Contexto: Validar que columnas devueltas por SPs coincidan con modelos de la Web/API.
+-- - Acción: Documentar contratos en comentarios sobre cada SP y añadir pruebas de integración básicas.
+
+-- TODO [DB-TEST][TST-001]: Dataset de prueba y validaciones
+-- - Contexto: Validar reportes (diarios/anuales) y cierres de caja.
+-- - Acción: Script de seed adicional con diferentes métodos de pago/fechas y consultas de verificación.
+
+-- TODO [DB-LOCALE][LOC-001]: Configuración regional/zonas horarias
+-- - Contexto: Formateos de mes/nombre de día y TZ.
+-- - Acción: Normalizar a UTC en base y presentar en app con TZ; o usar AT TIME ZONE 'Central America Standard Time' cuando aplique.
+
+-- TODO [DB-BACKUP][BKP-001]: Plan de respaldo y restauración
+-- - Contexto: Definir RPO/RTO.
+-- - Acción: Backups diferenciales/diarios, verificación RESTORE WITH VERIFYONLY y procedimiento de DR.
+
+-- TODO [DB-MAINT][MTN-001]: Mantenimiento de índices y estadísticas
+-- - Contexto: Evitar degradación de rendimiento.
+-- - Acción: Jobs para reorganize/rebuild y UPDATE STATISTICS según fragmentación/tamaño.
+
+-- TODO [DB-TXN][TXN-001]: Consistencia transaccional
+-- - Contexto: SPs con múltiples writes.
+-- - Acción: Asegurar TRY/CATCH + TRAN + SET XACT_ABORT ON en SPs críticos.
+
+-- TODO [DB-FE][FE-001]: Facturación electrónica avanzada
+-- - Contexto: Integración con Hacienda y colas de envío.
+-- - Acción: Tabla de colas (EmailQueue/FEQueue), reintentos y DLQ; validar estados con timeouts.
+
+-- TODO [DB-MONITOR][MON-001]: Monitoreo de salud
+-- - Contexto: Alertas proactivas.
+-- - Acción: Métricas de bloqueo/lentitud, espacio en disco, tiempos de SPs; exponer a dashboard.
+
+-- TODO [DB-ANON][ANON-001]: Anonimización para entornos de prueba
+-- - Contexto: Cumplimiento y privacidad.
+-- - Acción: Rutina de scramble para datos de clientes al refrescar ambientes no productivos.
+
+-- TODO [DB-ENV][ENV-001]: Parámetros por entorno
+-- - Contexto: Diferencias Dev/QA/Prod (porcentajes, seeds, flags).
+-- - Acción: Variables/parametrización y toggles en script o uso de DACPAC con perfiles.
+
+-- TODO [DB-NAMING][STD-001]: Convenciones de nombres
+-- - Contexto: Homogeneidad de objetos.
+-- - Acción: Documentar prefijos de SP (sp_), índices (IX_), FKs (FK_Tabla_Ref) y aplicar en objetos nuevos.
+
+-- TODO [DB-REPORT][RPT-001]: Mejoras de reportes
+-- - Contexto: Dashboard y ventas anuales.
+-- - Acción: SPs con filtros por rango/usuario, cacheo temporal y vistas materializadas si procede.
+
+/*
+Plantilla rápida para nuevos TODOs
+---------------------------------
+TODO [CATEGORIA][ID]: <Resumen>
+- Contexto:
+- Acción:
+- Dependencias:
+- Responsable/ETA:
+*/
+
+-- =============================================
+-- DATOS DE EJEMPLO PARA PRUEBAS (SOLO DEV)
+-- =============================================
+-- Notas:
+-- - Inserciones idempotentes: solo se agregan si no existen datos para la fecha objetivo.
+-- - Crea ventas y detalles para hoy y días recientes, movimientos de caja del día, y un cierre de caja de ayer.
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    DECLARE @UsuarioPepe INT = (SELECT TOP 1 Id FROM Usuario WHERE Email = 'pepe@pepe');
+    IF @UsuarioPepe IS NULL
+        SET @UsuarioPepe = (SELECT TOP 1 Id FROM Usuario ORDER BY Id);
+
+    DECLARE @ProdP001 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P001');
+    DECLARE @ProdP002 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P002');
+    DECLARE @ProdP003 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P003');
+    DECLARE @ProdP004 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P004');
+
+    -- Ventas de HOY si no hay ninguna aún
+    IF NOT EXISTS (SELECT 1 FROM Venta WHERE CAST(Fecha AS DATE) = CAST(GETDATE() AS DATE))
+    BEGIN
+        DECLARE @v1 INT, @v2 INT;
+
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones)
+        VALUES (GETDATE(), @UsuarioPepe, N'Cliente mostrador', 0, 0, 0, 0, N'Efectivo', N'Completada', N'Venta demo Efectivo');
+        SET @v1 = SCOPE_IDENTITY();
+
+        IF @ProdP001 IS NOT NULL
+        BEGIN
+            DECLARE @p1 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP001);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v1, @ProdP001, 2, @p1, 0, 0, 2*@p1);
+        END
+        IF @ProdP003 IS NOT NULL
+        BEGIN
+            DECLARE @p3 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP003);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v1, @ProdP003, 1, @p3, 0, 0, 1*@p3);
+        END
+
+        -- Recalcular totales de @v1
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            LEFT JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @v1;
+
+        -- Segunda venta de hoy con Tarjeta
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones)
+        VALUES (GETDATE(), @UsuarioPepe, N'Cliente mostrador', 0, 0, 0, 0, N'Tarjeta', N'Completada', N'Venta demo Tarjeta');
+        SET @v2 = SCOPE_IDENTITY();
+
+        IF @ProdP002 IS NOT NULL
+        BEGIN
+            DECLARE @p2 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP002);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v2, @ProdP002, 1, @p2, 0, 0, 1*@p2);
+        END
+        IF @ProdP004 IS NOT NULL
+        BEGIN
+            DECLARE @p4 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP004);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v2, @ProdP004, 2, @p4, 0, 0, 2*@p4);
+        END
+
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            LEFT JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @v2;
+    END
+
+    -- Venta reciente (ayer) si no existe
+    IF NOT EXISTS (SELECT 1 FROM Venta WHERE CAST(Fecha AS DATE) = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE))
+    BEGIN
+        DECLARE @vAyer INT;
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones)
+        VALUES (DATEADD(DAY,-1,GETDATE()), @UsuarioPepe, N'Cliente mostrador', 0, 0, 0, 0, N'Efectivo', N'Completada', N'Venta demo Ayer');
+        SET @vAyer = SCOPE_IDENTITY();
+        IF @ProdP001 IS NOT NULL
+        BEGIN
+            DECLARE @p1y DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP001);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@vAyer, @ProdP001, 1, @p1y, 0, 0, 1*@p1y);
+        END
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            LEFT JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @vAyer;
+    END
+
+    -- Movimientos de caja para HOY si no hay registros
+    IF NOT EXISTS (SELECT 1 FROM MovimientoDiario WHERE CAST(Fecha AS DATE) = CAST(GETDATE() AS DATE))
+    BEGIN
+        INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Descripcion, Categoria, Monto, UsuarioId)
+        VALUES (GETDATE(), 'Entrada', N'Caja inicial', 'Caja', 50000, @UsuarioPepe);
+        INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Descripcion, Categoria, Monto, UsuarioId)
+        VALUES (GETDATE(), 'Venta', N'Ingresos de ventas del día', 'Ingresos', 30000, @UsuarioPepe);
+        INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Descripcion, Categoria, Monto, UsuarioId)
+        VALUES (GETDATE(), 'Gasto', N'Compra de insumos', 'Gastos', 10000, @UsuarioPepe);
+    END
+
+    -- Cierre de caja de AYER para listado si no existe
+    IF NOT EXISTS (SELECT 1 FROM CierreCaja WHERE CAST(Fecha AS DATE) = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE))
+    BEGIN
+        INSERT INTO CierreCaja (
+            Fecha, UsuarioId, MontoInicial, TotalVentas, TotalEfectivo, TotalTarjeta, TotalOtros,
+            MontoFinal, Diferencia, Observaciones, Estado, FechaCierre)
+        VALUES (
+            CAST(DATEADD(DAY,-1,GETDATE()) AS DATE), @UsuarioPepe, 50000, 65000, 45000, 15000, 5000,
+            114000, 0, N'Cierre demo de ayer', 'Cerrado', DATEADD(DAY,-1,GETDATE())
+        );
+    END
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    -- Registrar el error si fuese necesario
+END CATCH
+
+
 USE AntojeriaTica;
 GO
 
@@ -140,22 +389,44 @@ BEGIN
     CREATE TABLE Impuesto (
         Id int IDENTITY(1,1) NOT NULL,
         Nombre nvarchar(50) NOT NULL,
+        -- Ampliado para compatibilidad con capa Web/API
+        Tipo nvarchar(50) NULL, -- IVA, ISC, etc.
         Porcentaje decimal(5,2) NOT NULL,
+        AplicaEnRestaurante bit NOT NULL DEFAULT 0,
+        EsExonerado bit NOT NULL DEFAULT 0,
         Activo bit NOT NULL DEFAULT 1,
         FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
         CONSTRAINT PK_Impuesto PRIMARY KEY (Id)
     );
 
     -- Insertar impuestos por defecto
-    INSERT INTO Impuesto (Nombre, Porcentaje) VALUES
-    ('IVA', 13.00),
-    ('Exento', 0.00);
+    INSERT INTO Impuesto (Nombre, Tipo, Porcentaje, AplicaEnRestaurante, EsExonerado) VALUES
+    ('IVA', 'IVA', 13.00, 0, 0),
+    ('Exento', 'IVA', 0.00, 0, 1);
 
     PRINT 'Tabla Impuesto creada con datos iniciales';
 END
 ELSE
 BEGIN
     PRINT 'Tabla Impuesto ya existe';
+    -- Agregar columnas faltantes si no existen para compatibilidad con la Web
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Impuesto') AND name = 'Tipo')
+    BEGIN
+        ALTER TABLE Impuesto ADD Tipo nvarchar(50) NULL;
+        -- Rellenar valor por defecto basado en Nombre cuando sea posible
+        UPDATE Impuesto SET Tipo = CASE WHEN Nombre LIKE '%IVA%' THEN 'IVA' ELSE 'IVA' END WHERE Tipo IS NULL;
+        PRINT 'Columna Tipo agregada a Impuesto';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Impuesto') AND name = 'AplicaEnRestaurante')
+    BEGIN
+        ALTER TABLE Impuesto ADD AplicaEnRestaurante bit NOT NULL DEFAULT 0;
+        PRINT 'Columna AplicaEnRestaurante agregada a Impuesto';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Impuesto') AND name = 'EsExonerado')
+    BEGIN
+        ALTER TABLE Impuesto ADD EsExonerado bit NOT NULL DEFAULT 0;
+        PRINT 'Columna EsExonerado agregada a Impuesto';
+    END
 END
 GO
 
@@ -239,6 +510,8 @@ BEGIN
         Fecha datetime NOT NULL DEFAULT GETDATE(),
         TipoMovimiento nvarchar(50) NOT NULL, -- Entrada, Salida, Venta, Devolucion
         Descripcion nvarchar(500) NOT NULL,
+        -- Compatibilidad: algunas capas esperan una columna 'Categoria'
+        Categoria nvarchar(50) NOT NULL DEFAULT 'Otros',
         Monto decimal(10,2) NOT NULL,
         UsuarioId int NOT NULL,
         VentaId int NULL,
@@ -251,6 +524,87 @@ END
 ELSE
 BEGIN
     PRINT 'Tabla MovimientoDiario ya existe';
+    -- Agregar columna Categoria si no existe, para compatibilidad con la API/Web
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MovimientoDiario') AND name = 'Categoria')
+    BEGIN
+        ALTER TABLE MovimientoDiario ADD Categoria nvarchar(50) NOT NULL DEFAULT 'Otros';
+        PRINT 'Columna Categoria agregada a MovimientoDiario';
+    END
+END
+GO
+
+-- =============================================
+-- SPs de MovimientoDiario necesarios por la API/Web
+-- =============================================
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='InsertarMovimientoDiario')
+    DROP PROCEDURE InsertarMovimientoDiario;
+GO
+CREATE PROCEDURE InsertarMovimientoDiario
+    @TipoMovimiento nvarchar(50),
+    @Categoria nvarchar(50),
+    @Monto decimal(10,2),
+    @Descripcion nvarchar(500),
+    @IdUsuario int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Categoria, Monto, Descripcion, UsuarioId)
+    VALUES (GETDATE(), @TipoMovimiento, @Categoria, @Monto, @Descripcion, @IdUsuario);
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ActualizarMovimientoDiario')
+    DROP PROCEDURE ActualizarMovimientoDiario;
+GO
+CREATE PROCEDURE ActualizarMovimientoDiario
+    @IdMovimiento int,
+    @TipoMovimiento nvarchar(50),
+    @Categoria nvarchar(50),
+    @Monto decimal(10,2),
+    @Descripcion nvarchar(500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE MovimientoDiario
+    SET TipoMovimiento = @TipoMovimiento,
+        Categoria = @Categoria,
+        Monto = @Monto,
+        Descripcion = @Descripcion
+    WHERE Id = @IdMovimiento;
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='EliminarMovimientoDiario')
+    DROP PROCEDURE EliminarMovimientoDiario;
+GO
+CREATE PROCEDURE EliminarMovimientoDiario
+    @IdMovimiento int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM MovimientoDiario WHERE Id = @IdMovimiento;
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ListarMovimientosConNombre')
+    DROP PROCEDURE sp_ListarMovimientosConNombre;
+GO
+CREATE PROCEDURE sp_ListarMovimientosConNombre
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        md.Id            AS IdMovimiento,
+        md.Fecha         AS FechaHora,
+        md.TipoMovimiento,
+        md.Categoria,
+        md.Monto,
+        md.Descripcion,
+        md.UsuarioId     AS IdUsuario,
+        u.Nombre         AS NombreUsuario
+    FROM MovimientoDiario md
+    INNER JOIN Usuario u ON u.Id = md.UsuarioId
+    ORDER BY md.Fecha DESC;
 END
 GO
 
@@ -306,6 +660,44 @@ END
 ELSE
 BEGIN
     PRINT 'Tabla CierreCaja ya existe';
+END
+GO
+
+-- Totales de caja del día actual (compatibilidad con API)
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_CierreCajaDiario')
+    DROP PROCEDURE sp_CierreCajaDiario;
+GO
+CREATE PROCEDURE sp_CierreCajaDiario
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+    ISNULL(SUM(CASE WHEN md.TipoMovimiento IN ('Entrada','Venta') THEN md.Monto ELSE 0 END), 0) AS TotalIngresos,
+    ISNULL(SUM(CASE WHEN md.TipoMovimiento IN ('Salida','Devolucion','Gasto') THEN md.Monto ELSE 0 END), 0) AS TotalEgresos
+    FROM MovimientoDiario md
+    WHERE CAST(md.Fecha AS DATE) = CAST(GETDATE() AS DATE);
+END
+GO
+
+-- Listado de cierres de caja (compatibilidad con vistas Web)
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ListarCierresDeCaja')
+    DROP PROCEDURE sp_ListarCierresDeCaja;
+GO
+CREATE PROCEDURE sp_ListarCierresDeCaja
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        cc.Id                              AS IdMovimiento,
+        cc.Fecha                           AS FechaHora,
+        (cc.TotalEfectivo + cc.TotalTarjeta + cc.TotalOtros) AS TotalIngresos,
+        CAST(0 AS decimal(10,2))           AS TotalEgresos,
+        cc.MontoFinal                      AS MontoFisico,
+        cc.Observaciones                   AS NotaJustificativa,
+        u.Nombre                           AS NombreUsuario
+    FROM CierreCaja cc
+    INNER JOIN Usuario u ON u.Id = cc.UsuarioId
+    ORDER BY cc.Fecha DESC;
 END
 GO
 
@@ -598,6 +990,72 @@ GO
 -- =============================================
 -- STORED PROCEDURES BÁSICOS
 -- =============================================
+
+-- Productos con estado de stock para pantalla de inventario
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerProductosConEstado')
+    DROP PROCEDURE sp_ObtenerProductosConEstado;
+GO
+CREATE PROCEDURE sp_ObtenerProductosConEstado
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        p.Id              AS IdProducto,
+        p.Nombre,
+        p.Descripcion,
+        p.Precio          AS PrecioUnitario,
+        p.Stock           AS Existencias,
+        CASE 
+            WHEN p.Stock <= 0 THEN 'Agotado'
+            WHEN p.Stock <= p.StockMinimo THEN 'Bajo stock'
+            ELSE 'En stock'
+        END               AS EstadoStock
+    FROM Producto p
+    WHERE p.Activo = 1
+    ORDER BY p.Nombre;
+END
+GO
+
+-- Reporte de ventas por día (resumen, por método y por producto)
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ReporteVentasDia')
+    DROP PROCEDURE ReporteVentasDia;
+GO
+CREATE PROCEDURE ReporteVentasDia
+    @Fecha DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    -- Totales del día (usar totales de la venta para estabilidad)
+    SELECT 
+        COUNT(*) AS TotalVentas,
+        ISNULL(SUM(v.Total), 0) AS MontoTotal
+    FROM Venta v
+    WHERE CAST(v.Fecha AS DATE) = @Fecha;
+
+    -- Ventas por método de pago (usar totales de la venta)
+    SELECT 
+        v.MetodoPago,
+        COUNT(*) AS CantidadVentas,
+        ISNULL(SUM(v.Total), 0) AS MontoTotal
+    FROM Venta v
+    WHERE CAST(v.Fecha AS DATE) = @Fecha
+    GROUP BY v.MetodoPago
+    ORDER BY MontoTotal DESC;
+
+    -- Productos vendidos
+    SELECT 
+        p.Codigo AS ProductoCodigo,
+        p.Nombre AS ProductoNombre,
+        ISNULL(SUM(dv.Cantidad),0) AS CantidadVendida,
+        ISNULL(SUM(dv.Cantidad * dv.PrecioUnitario),0) AS MontoTotal
+    FROM Venta v
+    INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+    INNER JOIN Producto p ON dv.ProductoId = p.Id
+    WHERE CAST(v.Fecha AS DATE) = @Fecha
+    GROUP BY p.Codigo, p.Nombre
+    ORDER BY CantidadVendida DESC;
+END
+GO
 
 -- SP: Insertar Usuario - CORREGIDO
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarUsuario')
@@ -2103,6 +2561,7 @@ PRINT '=========================================';
 
 --- MR--001
 
+GO
 CREATE OR ALTER PROCEDURE sp_ReporteVentasAnual
     @Anio INT
 AS
