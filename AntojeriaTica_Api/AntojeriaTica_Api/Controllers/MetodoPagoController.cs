@@ -1,7 +1,7 @@
 ﻿using AntojeriaTica_Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace AntojeriaTica_Api.Controllers
 {
@@ -23,15 +23,15 @@ namespace AntojeriaTica_Api.Controllers
             using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
                 conn.Open();
-                SqlCommand cmd = new SqlCommand("SELECT * FROM MetodoPago", conn);
+                SqlCommand cmd = new SqlCommand("SELECT Id, Nombre, Activo FROM MetodoPago", conn);
                 SqlDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
                     lista.Add(new MetodoPago
                     {
-                        IdMetodoPago = Convert.ToInt32(reader["IdMetodoPago"]),
+                        IdMetodoPago = Convert.ToInt32(reader["Id"]),
                         Nombre = reader["Nombre"].ToString(),
-                        EstaActivo = Convert.ToBoolean(reader["EstaActivo"])
+                        EstaActivo = Convert.ToBoolean(reader["Activo"])
                     });
                 }
             }
@@ -44,7 +44,7 @@ namespace AntojeriaTica_Api.Controllers
             using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
                 conn.Open();
-                SqlCommand cmd = new SqlCommand("INSERT INTO MetodoPago (Nombre, EstaActivo) VALUES (@Nombre, 1)", conn);
+                SqlCommand cmd = new SqlCommand("INSERT INTO MetodoPago (Nombre, Activo) VALUES (@Nombre, 1)", conn);
                 cmd.Parameters.AddWithValue("@Nombre", metodo.Nombre);
                 cmd.ExecuteNonQuery();
             }
@@ -58,9 +58,9 @@ namespace AntojeriaTica_Api.Controllers
             {
                 conn.Open();
                 SqlCommand cmd = new SqlCommand(@"
-                    UPDATE MetodoPago SET EstaActivo = 
-                    CASE WHEN EstaActivo = 1 THEN 0 ELSE 1 END 
-                    WHERE IdMetodoPago = @Id", conn);
+                    UPDATE MetodoPago SET Activo = 
+                    CASE WHEN Activo = 1 THEN 0 ELSE 1 END 
+                    WHERE Id = @Id", conn);
                 cmd.Parameters.AddWithValue("@Id", id);
                 cmd.ExecuteNonQuery();
             }
@@ -74,18 +74,18 @@ namespace AntojeriaTica_Api.Controllers
             using (SqlConnection conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
                 conn.Open();
-                SqlCommand cmd = new SqlCommand("SELECT * FROM HistorialMetodoPago WHERE IdMetodoPago = @Id", conn);
+                SqlCommand cmd = new SqlCommand("SELECT Id, MetodoPagoId, FechaPago, Monto FROM HistorialMetodoPago WHERE MetodoPagoId = @Id ORDER BY FechaPago DESC", conn);
                 cmd.Parameters.AddWithValue("@Id", id);
                 SqlDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
                     historial.Add(new HistorialMetodoPago
                     {
-                        IdHistorial = Convert.ToInt32(reader["IdHistorial"]),
-                        IdMetodoPago = Convert.ToInt32(reader["IdMetodoPago"]),
-                        FechaModificacion = Convert.ToDateTime(reader["FechaModificacion"]),
-                        Accion = reader["Accion"].ToString(),
-                        UsuarioModificador = reader["UsuarioModificador"].ToString()
+                        IdHistorial = Convert.ToInt32(reader["Id"]),
+                        IdMetodoPago = Convert.ToInt32(reader["MetodoPagoId"]),
+                        FechaModificacion = Convert.ToDateTime(reader["FechaPago"]),
+                        Accion = "Pago",
+                        UsuarioModificador = "Sistema"
                     });
                 }
             }

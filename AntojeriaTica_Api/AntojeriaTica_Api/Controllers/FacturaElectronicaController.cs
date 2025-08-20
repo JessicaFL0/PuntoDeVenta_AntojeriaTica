@@ -25,9 +25,8 @@ namespace AntojeriaTica_Api.Controllers
             _facturaService = facturaService;
         }
 
-        // Escenario 1: Generar factura electrónica para una venta
         [HttpPost("GenerarFactura")]
-        public IActionResult GenerarFacturaElectronica([FromBody] GenerarFacturaRequest request)
+    public IActionResult GenerarFacturaElectronica([FromBody] GenerarFacturaRequest request)
         {
             try
             {
@@ -41,7 +40,7 @@ namespace AntojeriaTica_Api.Controllers
                         cmd.Parameters.AddWithValue("@ClienteNombre", request.ClienteNombre);
                         cmd.Parameters.AddWithValue("@ClienteEmail", request.ClienteEmail ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@ClienteTelefono", request.ClienteTelefono ?? (object)DBNull.Value);
-                        cmd.Parameters.AddWithValue("@ClienteIdentificacion", request.ClienteIdentificacion ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@IdentificacionCliente", request.ClienteIdentificacion ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@CreadoPor", "Sistema");
 
                         using (SqlDataReader reader = cmd.ExecuteReader())
@@ -51,26 +50,22 @@ namespace AntojeriaTica_Api.Controllers
                                 var response = new FacturaResponse
                                 {
                                     IdFactura = Convert.ToInt32(reader["IdFactura"]),
-                                    NumeroFactura = reader["NumeroFactura"].ToString(),
-                                    ClaveNumerica = reader["ClaveNumerica"].ToString(),
+                                    NumeroFactura = reader["NumeroFactura"]?.ToString() ?? string.Empty,
+                                    ClaveNumerica = reader["ClaveNumerica"]?.ToString() ?? string.Empty,
                                     FechaEmision = Convert.ToDateTime(reader["FechaEmision"]),
                                     SubTotal = Convert.ToDecimal(reader["SubTotal"]),
                                     MontoImpuesto = Convert.ToDecimal(reader["MontoImpuesto"]),
                                     MontoTotal = Convert.ToDecimal(reader["MontoTotal"]),
-                                    EstadoHacienda = reader["EstadoHacienda"].ToString()
+                                    EstadoHacienda = reader["EstadoHacienda"]?.ToString() ?? string.Empty
                                 };
 
-                                // Cerrar reader antes de hacer otras operaciones
                                 reader.Close();
 
-                                // Simular envío a Hacienda
                                 var estadoSimulado = SimularEnvioHacienda(response.ClaveNumerica ?? "");
                                 response.EstadoHacienda = estadoSimulado;
                                 
-                                // Actualizar estado en base de datos
                                 ActualizarEstadoHacienda(conn, response.IdFactura, estadoSimulado);
 
-                                // Enviar email si se proporciona (asíncrono)
                                 if (!string.IsNullOrEmpty(request.ClienteEmail))
                                 {
                                     _ = Task.Run(async () => await _facturaService.EnviarEmailFacturaAsync(response.IdFactura, request.ClienteEmail));
@@ -90,10 +85,9 @@ namespace AntojeriaTica_Api.Controllers
             return BadRequest("No se pudo generar la factura");
         }
 
-        // Escenario 2: Buscar facturas electrónicas
         [HttpGet("BuscarFacturas")]
         public IActionResult BuscarFacturas(DateTime? fechaInicio = null, DateTime? fechaFin = null, 
-            string numeroFactura = null, string clienteNombre = null, string estadoHacienda = null)
+            string? numeroFactura = null, string? clienteNombre = null, string? estadoHacienda = null)
         {
             try
             {
@@ -118,13 +112,13 @@ namespace AntojeriaTica_Api.Controllers
                                 facturas.Add(new FacturaElectronica
                                 {
                                     Id = Convert.ToInt32(reader["IdFactura"]),
-                                    NumeroFactura = reader["NumeroFactura"].ToString() ?? "",
-                                    ClaveNumerica = reader["ClaveNumerica"].ToString() ?? "",
-                                    NombreCliente = reader["ClienteNombre"].ToString() ?? "",
+                                    NumeroFactura = reader["NumeroFactura"]?.ToString() ?? "",
+                                    ClaveNumerica = reader["ClaveNumerica"]?.ToString() ?? "",
+                                    NombreCliente = reader["ClienteNombre"]?.ToString() ?? "",
                                     CorreoCliente = reader["ClienteEmail"]?.ToString(),
                                     FechaGeneracion = Convert.ToDateTime(reader["FechaEmision"]),
                                     TotalComprobante = Convert.ToDecimal(reader["MontoTotal"]),
-                                    EstadoHacienda = reader["EstadoHacienda"].ToString() ?? "",
+                                    EstadoHacienda = reader["EstadoHacienda"]?.ToString() ?? "",
                                     VentaId = Convert.ToInt32(reader["VentaId"])
                                 });
                             }
@@ -140,7 +134,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Escenario 3: Obtener detalle de factura
         [HttpGet("DetalleFactura/{id}")]
         public IActionResult DetalleFactura(int id)
         {
@@ -161,9 +154,9 @@ namespace AntojeriaTica_Api.Controllers
                                 var detalle = new DetalleFacturaElectronica
                                 {
                                     IdFactura = Convert.ToInt32(reader["IdFactura"]),
-                                    NumeroFactura = reader["NumeroFactura"].ToString(),
-                                    ClaveNumerica = reader["ClaveNumerica"].ToString(),
-                                    ClienteNombre = reader["ClienteNombre"].ToString(),
+                                    NumeroFactura = reader["NumeroFactura"]?.ToString() ?? string.Empty,
+                                    ClaveNumerica = reader["ClaveNumerica"]?.ToString() ?? string.Empty,
+                                    ClienteNombre = reader["ClienteNombre"]?.ToString() ?? string.Empty,
                                     ClienteEmail = reader["ClienteEmail"]?.ToString(),
                                     ClienteTelefono = reader["ClienteTelefono"]?.ToString(),
                                     ClienteIdentificacion = reader["ClienteIdentificacion"]?.ToString(),
@@ -171,7 +164,7 @@ namespace AntojeriaTica_Api.Controllers
                                     SubTotal = Convert.ToDecimal(reader["SubTotal"]),
                                     MontoImpuesto = Convert.ToDecimal(reader["MontoImpuesto"]),
                                     MontoTotal = Convert.ToDecimal(reader["MontoTotal"]),
-                                    EstadoHacienda = reader["EstadoHacienda"].ToString(),
+                                    EstadoHacienda = reader["EstadoHacienda"]?.ToString() ?? string.Empty,
                                     MensajeHacienda = reader["MensajeHacienda"]?.ToString(),
                                     EmailEnviado = Convert.ToBoolean(reader["EmailEnviado"]),
                                     FechaEnvioEmail = reader["FechaEnvioEmail"] != DBNull.Value 
@@ -180,7 +173,6 @@ namespace AntojeriaTica_Api.Controllers
                                     FechaVenta = Convert.ToDateTime(reader["FechaVenta"])
                                 };
 
-                                // Obtener productos (segundo result set)
                                 if (reader.NextResult())
                                 {
                                     detalle.Productos = new List<DetalleProductoFactura>();
@@ -190,7 +182,7 @@ namespace AntojeriaTica_Api.Controllers
                                         {
                                             IdProducto = Convert.ToInt32(reader["IdProducto"]),
                                             Codigo = reader["Codigo"]?.ToString(),
-                                            Nombre = reader["Nombre"].ToString(),
+                                            Nombre = reader["Nombre"]?.ToString() ?? string.Empty,
                                             Descripcion = reader["Descripcion"]?.ToString(),
                                             Cantidad = Convert.ToInt32(reader["Cantidad"]),
                                             PrecioUnitario = Convert.ToDecimal(reader["PrecioUnitario"]),
@@ -201,7 +193,6 @@ namespace AntojeriaTica_Api.Controllers
                                     }
                                 }
 
-                                // Obtener historial (tercer result set)
                                 if (reader.NextResult())
                                 {
                                     detalle.HistorialEnvios = new List<HistorialEnvioFactura>();
@@ -210,9 +201,9 @@ namespace AntojeriaTica_Api.Controllers
                                         detalle.HistorialEnvios.Add(new HistorialEnvioFactura
                                         {
                                             IdHistorial = Convert.ToInt32(reader["IdHistorial"]),
-                                            TipoEnvio = reader["TipoEnvio"].ToString(),
+                                            TipoEnvio = reader["TipoEnvio"]?.ToString() ?? string.Empty,
                                             Destinatario = reader["Destinatario"]?.ToString(),
-                                            EstadoEnvio = reader["EstadoEnvio"].ToString(),
+                                            EstadoEnvio = reader["EstadoEnvio"]?.ToString() ?? string.Empty,
                                             MensajeRespuesta = reader["MensajeRespuesta"]?.ToString(),
                                             FechaEnvio = Convert.ToDateTime(reader["FechaEnvio"])
                                         });
@@ -235,7 +226,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Escenario 4: Reenviar factura por email
         [HttpPost("ReenviarFactura/{id}")]
         public async Task<IActionResult> ReenviarFactura(int id, [FromBody] ReenvioFacturaRequest request)
         {
@@ -258,7 +248,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Escenario 5: Descargar PDF de factura
         [HttpGet("DescargarPDF/{id}")]
         public IActionResult DescargarPDF(int id)
         {
@@ -273,11 +262,10 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        #region Métodos Privados
+    #region Métodos Privados
 
         private string SimularEnvioHacienda(string claveNumerica)
         {
-            // Simulación simple: 90% de éxito
             var random = new Random();
             return random.NextDouble() > 0.1 ? "Aceptado" : "Rechazado";
         }
@@ -299,7 +287,6 @@ namespace AntojeriaTica_Api.Controllers
         {
             try
             {
-                // Simular envío de email
                 using (SqlCommand cmd = new SqlCommand("RegistrarEnvioFactura", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -320,7 +307,6 @@ namespace AntojeriaTica_Api.Controllers
 
         private byte[] GenerarPDFSimulado(int idFactura)
         {
-            // Contenido PDF simulado
             var content = $"Factura Electrónica #{idFactura}\nGenerada el: {DateTime.Now}\nEste es un PDF de prueba.";
             return Encoding.UTF8.GetBytes(content);
         }

@@ -16,7 +16,6 @@ namespace AntojeriaTica_Web.Controllers
             _configuration = configuration;
         }
 
-        // GET: FacturacionElectronica/GenerarDesdeVenta
         public IActionResult GenerarDesdeVenta(int ventaId)
         {
             var model = new GenerarFacturaElectronicaViewModel
@@ -26,7 +25,6 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        // POST: FacturacionElectronica/GenerarDesdeVenta
         [HttpPost]
         public async Task<IActionResult> GenerarDesdeVenta(GenerarFacturaElectronicaViewModel model)
         {
@@ -77,14 +75,18 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // GET: FacturacionElectronica
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var model = new BusquedaFacturasElectronicasViewModel();
+            var model = new BusquedaFacturasElectronicasViewModel
+            {
+                FechaInicio = DateTime.Today,
+                FechaFin = DateTime.Today
+            };
+
+            await BuscarFacturas(model);
             return View(model);
         }
 
-        // POST: FacturacionElectronica/BuscarFacturas
         [HttpPost]
         public async Task<IActionResult> BuscarFacturas(BusquedaFacturasElectronicasViewModel model)
         {
@@ -138,7 +140,6 @@ namespace AntojeriaTica_Web.Controllers
             return View("Index", model);
         }
 
-        // GET: FacturacionElectronica/Detalle/5
         public async Task<IActionResult> Detalle(int id)
         {
             try
@@ -168,7 +169,6 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // POST: FacturacionElectronica/ReenviarEmail
         [HttpPost]
         public async Task<JsonResult> ReenviarEmail(int idFactura, string email)
         {
@@ -199,7 +199,6 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // GET: FacturacionElectronica/DescargarPDF/5
         public async Task<IActionResult> DescargarPDF(int id)
         {
             try

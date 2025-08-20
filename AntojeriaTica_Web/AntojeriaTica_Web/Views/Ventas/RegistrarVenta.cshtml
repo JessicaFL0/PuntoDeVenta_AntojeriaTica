@@ -4,110 +4,279 @@
     ViewData["Title"] = "Registrar Venta";
 }
 
-<h2>Registrar Venta</h2>
-
-<form asp-action="RegistrarVenta" method="post">
-    <div class="form-group">
-        <label>Método de Pago</label>
-        <select asp-for="MetodoPago" class="form-control" required>
-            <option value="">-- Seleccione --</option>
-            <option value="Efectivo">Efectivo</option>
-            <option value="Tarjeta">Tarjeta</option>
-            <option value="Sinpe Móvil">Sinpe Móvil</option>
-        </select>
-        <div class="form-group mt-3">
-            <label for="CodigoCupon">Código de Cupón o Descuento</label>
-            <input asp-for="CodigoCupon" class="form-control" placeholder="Ingrese el código si aplica" />
-            <div class="input-group mt-2">
-                <button type="button" class="btn btn-outline-primary" onclick="validarCupon()">Validar Cupón</button>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-cash-register"></i> Nueva Venta</h2>
+                <a asp-action="BuscarVentas" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver</a>
             </div>
-            <small id="mensajeCupon" class="form-text text-muted"></small>
+
+            <form asp-action="RegistrarVenta" method="post" id="formVenta">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Origen de la venta</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Basar en pedido</label>
+                                        <div class="input-group">
+                                            <select id="pedidoSelect" class="form-select" title="Pedidos listos">
+                                                <option value="">-- Seleccione un pedido listo --</option>
+                                            </select>
+                                            <button type="button" class="btn btn-outline-primary" id="btnCargarPedido" title="Cargar pedido seleccionado"><i class="fas fa-download"></i></button>
+                                        </div>
+                                        <input asp-for="PedidoId" type="hidden" />
+                                        <small class="text-muted">Solo se listan pedidos en estado "Listo" de hoy</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-block"><i class="fas fa-credit-card"></i> Método de Pago</label>
+                                        <div class="btn-group w-100 flex-wrap" role="group" aria-label="Método de pago">
+                                            <input type="radio" class="btn-check" name="MetodoPago" id="mp-efectivo" value="Efectivo" autocomplete="off" required>
+                                            <label class="btn btn-outline-success m-1" for="mp-efectivo"><i class="fas fa-money-bill-wave"></i> Efectivo</label>
+
+                                            <input type="radio" class="btn-check" name="MetodoPago" id="mp-tarjeta" value="Tarjeta" autocomplete="off">
+                                            <label class="btn btn-outline-primary m-1" for="mp-tarjeta"><i class="fas fa-credit-card"></i> Tarjeta</label>
+
+                                            <input type="radio" class="btn-check" name="MetodoPago" id="mp-sinpe" value="SINPE Móvil" autocomplete="off">
+                                            <label class="btn btn-outline-info m-1" for="mp-sinpe"><i class="fas fa-mobile-alt"></i> SINPE Móvil</label>
+                                        </div>
+                                        <small class="text-muted">Seleccione una opción para continuar</small>
+                                    </div>
+                                </div>
+                                <div class="row g-3 mt-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Código de Cupón o Descuento</label>
+                                        <input asp-for="CodigoCupon" class="form-control" placeholder="Ingrese el código si aplica" />
+                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="validarCupon()">Validar Cupón</button>
+                                        <small id="mensajeCupon" class="form-text text-muted"></small>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <button type="button" id="btnVentaRapida" class="btn btn-success w-100">
+                                            <i class="fas fa-bolt"></i> Cobrar venta actual
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Productos</h5>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="agregarProducto()">
+                                    <i class="fas fa-plus"></i> Agregar Producto
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="productosContainer"></div>
+                                <div id="noProductos" class="text-center text-muted py-4">
+                                    <i class="fas fa-box-open fa-2x mb-2"></i>
+                                    <p>No hay productos en la venta</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card sticky-top">
+                            <div class="card-header"><h5 class="card-title mb-0">Resumen</h5></div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between"><span>Subtotal:</span><span id="subtotal">₡0.00</span></div>
+                                    <div class="d-flex justify-content-between"><span>Impuesto:</span><span id="impuesto">₡0.00</span></div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between h5">
+                                        <strong>Total:</strong><strong id="total">₡0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-check"></i> Registrar Venta</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
-
     </div>
-
-    <hr />
-
-    <h4>Productos</h4>
-    <div id="productos">
-        <div class="producto row mb-2">
-            <div class="col">
-                <input type="number" name="Detalles[0].ProductoId" class="form-control" placeholder="ID Producto" required />
-            </div>
-            <div class="col">
-                <input type="number" name="Detalles[0].Cantidad" class="form-control" placeholder="Cantidad" required />
-            </div>
-            <div class="col">
-                <input type="number" step="0.01" name="Detalles[0].PrecioUnitario" class="form-control" placeholder="Precio Unitario" required />
-            </div>
-        </div>
-    </div>
-
-    <button type="button" class="btn btn-secondary mb-3" onclick="agregarProducto()">+ Agregar Producto</button>
-
-    <div class="mb-3">
-    <label>Total (₡)</label>
-    <input type="text" id="totalVenta" class="form-control" readonly />
 </div>
 
-    <div>
-        <button type="submit" class="btn btn-primary">Registrar Venta</button>
+<template id="productoTemplate">
+    <div class="producto-item border rounded p-3 mb-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <select name="Detalles[INDEX].ProductoId" class="form-select producto-select" onchange="actualizarPrecio(this)">
+                    <option value="">Seleccionar producto...</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input name="Detalles[INDEX].Cantidad" type="number" class="form-control cantidad-input" min="1" value="1" onchange="calcularSubtotal(this)">
+            </div>
+            <div class="col-md-3">
+                <input name="Detalles[INDEX].PrecioUnitario" type="number" class="form-control precio-input" step="0.01" min="0" readonly>
+            </div>
+            <div class="col-md-1 d-grid">
+                <button type="button" class="btn btn-sm btn-danger" onclick="eliminarProducto(this)"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
     </div>
-</form>
+</template>
 
 @section Scripts {
     <script>
-        let contador = 1;
+        let productoIndex = 0;
+        let catalogo = [];
+    let pedidosListos = [];
+
+        async function cargarCatalogo() {
+            try {
+                const res = await fetch('http://localhost:5062/api/Producto/ListarProductos');
+                if (res.ok) {
+                    catalogo = await res.json();
+                }
+            } catch {}
+        }
+
+        async function cargarPedidosListos() {
+            try {
+                const inicio = new Date(); inicio.setHours(0,0,0,0);
+                const fin = new Date(); fin.setDate(fin.getDate()+1); fin.setHours(0,0,0,0);
+                const qs = `estado=${encodeURIComponent('Listo')}&fechaInicio=${encodeURIComponent(inicio.toISOString())}&fechaFin=${encodeURIComponent(fin.toISOString())}`;
+                const url = `http://localhost:5062/api/Pedidos/BuscarPedidos?${qs}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                    pedidosListos = await res.json();
+                    const sel = document.getElementById('pedidoSelect');
+                    if (sel) {
+                        sel.innerHTML = '<option value="">-- Seleccione un pedido listo --</option>' +
+                            (pedidosListos || []).map(p => {
+                                const quien = (p.mesa && p.mesa.trim() !== '') ? `Mesa ${p.mesa}` : (p.cliente || 'Sin nombre');
+                                const label = `${p.numeroPedido} - ${quien}`;
+                                return `<option value="${p.id}">${label}</option>`;
+                            }).join('');
+                    }
+                }
+            } catch { /* noop */ }
+        }
 
         function agregarProducto() {
-            const container = document.getElementById("productos");
+            const template = document.getElementById('productoTemplate');
+            const container = document.getElementById('productosContainer');
+            const noProductos = document.getElementById('noProductos');
 
-            const row = document.createElement("div");
-            row.classList.add("producto", "row", "mb-2");
+            const clone = template.content.cloneNode(true);
+            clone.querySelectorAll('*').forEach(el => {
+                if (el.name) el.name = el.name.replace(/INDEX/g, productoIndex);
+                if (el.id) el.id = el.id.replace(/INDEX/g, productoIndex);
+            });
 
-            row.innerHTML = `
-                <div class="col">
-                    <input type="number" name="Detalles[${contador}].ProductoId" class="form-control" placeholder="ID Producto" required />
-                </div>
-                <div class="col">
-                    <input type="number" name="Detalles[${contador}].Cantidad" class="form-control" placeholder="Cantidad" required />
-                </div>
-                <div class="col">
-                    <input type="number" step="0.01" name="Detalles[${contador}].PrecioUnitario" class="form-control" placeholder="Precio Unitario" required />
-                </div>
-            `;
-
-            container.appendChild(row);
-            contador++;
-        }
-    </script>
-    <script>
-        async function validarCupon() {
-            const codigo = document.getElementById("CodigoCupon").value.trim();
-            const mensaje = document.getElementById("mensajeCupon");
-
-            if (!codigo) {
-                mensaje.innerText = "Por favor, ingrese un código.";
-                mensaje.className = "form-text text-danger";
-                return;
+            container.appendChild(clone);
+            const select = container.querySelector(`select[name="Detalles[${productoIndex}].ProductoId"]`);
+            if (select) {
+                // Llenar opciones
+                select.innerHTML = '<option value="">Seleccionar producto...</option>' + catalogo.map(p => `<option value="${p.idProducto}" data-precio="${p.precioUnitario}">${p.nombre}</option>`).join('');
             }
 
+            noProductos.style.display = 'none';
+            productoIndex++;
+        }
+
+        function eliminarProducto(button) {
+            const item = button.closest('.producto-item');
+            item.remove();
+            const container = document.getElementById('productosContainer');
+            const noProductos = document.getElementById('noProductos');
+            if (container.children.length === 0) noProductos.style.display = 'block';
+            actualizarTotal();
+        }
+
+        function actualizarPrecio(select) {
+            const precio = select.options[select.selectedIndex]?.getAttribute('data-precio') || 0;
+            const item = select.closest('.producto-item');
+            const precioInput = item.querySelector('.precio-input');
+            precioInput.value = precio;
+            calcularSubtotal(precioInput);
+        }
+
+        function calcularSubtotal(input) {
+            actualizarTotal();
+        }
+
+        function actualizarTotal() {
+            let subtotal = 0;
+            document.querySelectorAll('.producto-item').forEach(item => {
+                const cantidad = parseFloat(item.querySelector('.cantidad-input').value) || 0;
+                const precio = parseFloat(item.querySelector('.precio-input').value) || 0;
+                subtotal += cantidad * precio;
+            });
+            const impuesto = subtotal * 0.13;
+            const total = subtotal + impuesto;
+            document.getElementById('subtotal').textContent = formatCurrency(subtotal);
+            document.getElementById('impuesto').textContent = formatCurrency(impuesto);
+            document.getElementById('total').textContent = formatCurrency(total);
+        }
+
+        function formatCurrency(amount) {
+            return '₡' + amount.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        async function validarCupon() {
+            const codigo = document.getElementById('CodigoCupon')?.value?.trim();
+            const mensaje = document.getElementById('mensajeCupon');
+            if (!codigo) { if(mensaje){mensaje.innerText='Ingrese un código'; mensaje.className='form-text text-danger';} return; }
             try {
                 const response = await fetch(`http://localhost:5062/api/Descuento/ValidarCupon/${codigo}`);
                 if (response.ok) {
                     const data = await response.json();
-                    mensaje.innerText = `Cupón válido: ${data.Tipo === 'porcentaje' ? data.Valor + '% de descuento' : '₡' + data.Valor}`;
-                    mensaje.className = "form-text text-success";
-                } else {
-                    mensaje.innerText = "Cupón inválido o expirado.";
-                    mensaje.className = "form-text text-danger";
-                }
-            } catch (err) {
-                mensaje.innerText = "Error al validar el cupón.";
-                mensaje.className = "form-text text-danger";
-            }
+                    if(mensaje){mensaje.innerText = `Cupón válido: ${data.Tipo === 'porcentaje' ? data.Valor + '% de descuento' : '₡' + data.Valor}`; mensaje.className = 'form-text text-success';}
+                } else { if(mensaje){mensaje.innerText = 'Cupón inválido o expirado.'; mensaje.className = 'form-text text-danger';} }
+            } catch { if(mensaje){mensaje.innerText = 'Error al validar el cupón.'; mensaje.className = 'form-text text-danger';} }
         }
-    </script>
 
+        async function cargarPedido(pedidoId) {
+            const res = await fetch(`http://localhost:5062/api/Pedidos/ObtenerDetalle/${pedidoId}`);
+            if (!res.ok) { alert('Pedido no encontrado'); return; }
+            const pedido = await res.json();
+            document.getElementById('productosContainer').innerHTML = '';
+            productoIndex = 0;
+            (pedido.detalles || []).forEach(d => {
+                agregarProducto();
+                const select = document.querySelector(`select[name="Detalles[${productoIndex-1}].ProductoId"]`);
+                const cantidad = document.querySelector(`input[name="Detalles[${productoIndex-1}].Cantidad"]`);
+                const precio = document.querySelector(`input[name="Detalles[${productoIndex-1}].PrecioUnitario"]`);
+                if (select) { select.value = d.productoId; actualizarPrecio(select); }
+                if (cantidad) { cantidad.value = d.cantidad; }
+                if (precio) { precio.value = d.precioUnitario; }
+            });
+            actualizarTotal();
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cargarCatalogo();
+            agregarProducto();
+
+            const pedidoSelect = document.getElementById('pedidoSelect');
+            if (pedidoSelect) {
+                pedidoSelect.addEventListener('change', (e) => {
+                    const value = e.target.value;
+                    document.querySelector('input[name="PedidoId"]').value = value || '';
+                });
+            }
+
+            document.getElementById('btnCargarPedido').addEventListener('click', () => {
+                const pedidoId = document.querySelector('input[name="PedidoId"]').value;
+                if (pedidoId) cargarPedido(pedidoId);
+            });
+
+            await cargarPedidosListos();
+
+            document.getElementById('btnVentaRapida').addEventListener('click', () => {
+                document.getElementById('formVenta').requestSubmit();
+            });
+        });
+    </script>
 }
 

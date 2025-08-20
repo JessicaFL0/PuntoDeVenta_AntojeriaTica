@@ -37,7 +37,7 @@
                         </div>
                     }
 
-                    <!-- Formulario de Búsqueda -->
+                    
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card bg-gradient-light border-0 shadow-sm">
@@ -73,12 +73,12 @@
                                                     <option value="">
                                                         <i class="fas fa-list me-1"></i>-- Todos los métodos --
                                                     </option>
-                                                    @foreach (var metodo in Model.MetodosPago)
+                            @foreach (var metodo in Model.MetodosPago)
                                                     {
                                                         <option value="@metodo">
-                                                            @if(metodo == "Efectivo") { <text>💵</text> }
-                                                            else if(metodo == "Tarjeta") { <text>💳</text> }
-                                                            else if(metodo == "Sinpe Móvil") { <text>📱</text> }
+                                @if(metodo == "Efectivo") { <text>💵</text> }
+                                else if(metodo == "Tarjeta") { <text>💳</text> }
+                                else if(metodo == "SINPE Móvil") { <text>📱</text> }
                                                             @metodo
                                                         </option>
                                                     }
@@ -113,7 +113,7 @@
                         </div>
                     </div>
 
-                    <!-- Resultados -->
+                    
                     @if (Model.Resultados.Any())
                     {
                         <div class="row">
@@ -132,9 +132,6 @@
                                     <table class="table table-hover align-items-center mb-0 border">
                                         <thead class="table-dark">
                                             <tr>
-                                                <th>
-                                                    <i class="fas fa-hashtag me-1"></i>ID
-                                                </th>
                                                 <th>
                                                     <i class="fas fa-calendar-day me-1"></i>Fecha y Hora
                                                 </th>
@@ -157,14 +154,6 @@
                                             {
                                                 <tr class="border-bottom">
                                                     <td>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar avatar-sm rounded-circle bg-gradient-info me-2">
-                                                                <span class="text-white text-xs font-weight-bold">@venta.Id.ToString().Substring(Math.Max(0, venta.Id.ToString().Length - 2))</span>
-                                                            </div>
-                                                            <span class="text-sm font-weight-bold">#@venta.Id</span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
                                                         <div class="d-flex flex-column justify-content-center">
                                                             <h6 class="mb-0 text-sm fecha-visible">
                                                                 <i class="fas fa-calendar-alt text-info me-1"></i>
@@ -178,21 +167,22 @@
                                                     </td>
                                                     <td>
                                                         @{
-                                                            var metodoBadgeClass = venta.MetodoPago switch {
-                                                                "Efectivo" => "bg-gradient-success",
-                                                                "Tarjeta" => "bg-gradient-primary", 
-                                                                "Sinpe Móvil" => "bg-gradient-warning",
-                                                                _ => "bg-gradient-secondary"
+                                                            var metodo = (venta.MetodoPago ?? string.Empty).Trim();
+                                                            var metodoBadgeClass = metodo switch {
+                                                                "Efectivo" => "bg-success text-white",
+                                                                "Tarjeta" => "bg-primary text-white", 
+                                                                "SINPE Móvil" => "bg-info text-dark",
+                                                                _ => "bg-secondary text-white"
                                                             };
-                                                            var metodoIcon = venta.MetodoPago switch {
+                                                            var metodoIcon = metodo switch {
                                                                 "Efectivo" => "fas fa-money-bill-wave",
                                                                 "Tarjeta" => "fas fa-credit-card",
-                                                                "Sinpe Móvil" => "fas fa-mobile-alt",
+                                                                "SINPE Móvil" => "fas fa-mobile-alt",
                                                                 _ => "fas fa-question"
                                                             };
                                                         }
-                                                        <span class="badge @metodoBadgeClass">
-                                                            <i class="@metodoIcon me-1"></i>@venta.MetodoPago
+                                                        <span class="badge @metodoBadgeClass" style="font-size:0.85rem;">
+                                                            <i class="@metodoIcon me-1"></i>@metodo
                                                         </span>
                                                     </td>
                                                     <td>
@@ -257,7 +247,7 @@
                         </div>
                     }
 
-                    <!-- Información de Escenarios de Uso -->
+                    
                     <div class="row mt-4">
                         <div class="col-12">
                             <div class="card bg-gradient-secondary">
@@ -290,18 +280,14 @@
 
 @section Scripts {
     <script>
-        // Inicializar tooltips
         document.addEventListener('DOMContentLoaded', function() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
-
-            // Auto-rellenar fecha de hoy para búsquedas rápidas
             const fechaInicio = document.querySelector('input[name="FechaInicio"]');
             const fechaFin = document.querySelector('input[name="FechaFin"]');
             
-            // Botón para búsqueda del día de hoy
             const buscarHoyBtn = document.createElement('button');
             buscarHoyBtn.type = 'button';
             buscarHoyBtn.className = 'btn btn-outline-primary btn-sm mt-2 me-2';
@@ -315,7 +301,6 @@
                 fechaFin.value = finDelDia.toISOString().slice(0, 16);
             };
 
-            // Botón para búsqueda de ayer
             const buscarAyerBtn = document.createElement('button');
             buscarAyerBtn.type = 'button';
             buscarAyerBtn.className = 'btn btn-outline-warning btn-sm mt-2 me-2';
@@ -330,7 +315,6 @@
                 fechaFin.value = finDelDia.toISOString().slice(0, 16);
             };
 
-            // Botón para búsqueda de esta semana
             const buscarSemanaBtn = document.createElement('button');
             buscarSemanaBtn.type = 'button';
             buscarSemanaBtn.className = 'btn btn-outline-info btn-sm mt-2';
@@ -344,7 +328,6 @@
                 fechaFin.value = new Date(finSemana.setHours(23, 59)).toISOString().slice(0, 16);
             };
 
-            // Agregar botones al formulario
             const formRow = document.querySelector('.card-body .row');
             if (formRow) {
                 const buttonContainer = document.createElement('div');
@@ -355,8 +338,6 @@
                 buttonContainer.appendChild(buscarSemanaBtn);
                 formRow.appendChild(buttonContainer);
             }
-
-            // Destacar filas al pasar el mouse
             const tableRows = document.querySelectorAll('tbody tr');
             tableRows.forEach(row => {
                 row.addEventListener('mouseenter', function() {
@@ -367,8 +348,6 @@
                 });
             });
         });
-
-        // Validación del formulario
         function validarFormulario() {
             const fechaInicio = document.querySelector('input[name="FechaInicio"]').value;
             const fechaFin = document.querySelector('input[name="FechaFin"]').value;
@@ -387,8 +366,6 @@
 
             return true;
         }
-
-        // Agregar validación al formulario
         document.querySelector('form').addEventListener('submit', function(e) {
             if (!validarFormulario()) {
                 e.preventDefault();
@@ -422,7 +399,6 @@
         padding: 0.4rem 0.6rem;
     }
     
-    /* Mejorar visibilidad de fechas */
     .fecha-visible {
         color: #212529 !important;
         font-weight: 600 !important;

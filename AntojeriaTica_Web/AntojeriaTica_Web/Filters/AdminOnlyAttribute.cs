@@ -5,12 +5,10 @@ using System.Collections.Generic;
 
 namespace AntojeriaTica_Web.Filters
 {
-    // Simple session-based admin check. Adjust role value as needed.
     public class AdminOnlyAttribute : Attribute, IAuthorizationFilter
     {
         private readonly HashSet<string> _roles;
 
-        // Permitir pasar uno o más roles permitidos. Por defecto "Admin".
         public AdminOnlyAttribute(params string[] roles)
         {
             _roles = roles.Length > 0

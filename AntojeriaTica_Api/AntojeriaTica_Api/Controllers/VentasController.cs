@@ -20,7 +20,7 @@ namespace AntojeriaTica_Api.Controllers
         }
 
         [HttpPost("RegistrarVenta")]
-        public IActionResult RegistrarVenta([FromBody] Venta venta)
+    public IActionResult RegistrarVenta([FromBody] Venta venta)
         {
             try
             {
@@ -42,6 +42,7 @@ namespace AntojeriaTica_Api.Controllers
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         cmd.Parameters.AddWithValue("@MetodoPago", venta.MetodoPago);
+                        cmd.Parameters.AddWithValue("@PedidoId", (object?)venta.PedidoId ?? DBNull.Value);
 
                         SqlParameter tvpParam = cmd.Parameters.AddWithValue("@DetallesVenta", detalleVentaTable);
                         tvpParam.SqlDbType = SqlDbType.Structured;
@@ -102,7 +103,6 @@ namespace AntojeriaTica_Api.Controllers
             }
             catch (System.Exception ex)
             {
-                // Log más detallado del error
                 return BadRequest(new { 
                     error = ex.Message, 
                     stackTrace = ex.StackTrace,

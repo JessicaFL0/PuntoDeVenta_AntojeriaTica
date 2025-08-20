@@ -9,11 +9,11 @@ namespace AntojeriaTica_Web.Models
         public string NumeroFactura { get; set; }
         public string ClaveNumerica { get; set; }
         
-        [JsonPropertyName("nombreCliente")]
-        public string ClienteNombre { get; set; }
+    [JsonPropertyName("nombreCliente")]
+    public string ClienteNombre { get; set; }
         
-        [JsonPropertyName("correoCliente")]
-        public string ClienteEmail { get; set; }
+    [JsonPropertyName("correoCliente")]
+    public string ClienteEmail { get; set; }
         
         public DateTime FechaGeneracion { get; set; }
         public decimal TotalComprobante { get; set; }
@@ -21,7 +21,6 @@ namespace AntojeriaTica_Web.Models
         public bool EmailEnviado { get; set; }
         public int VentaId { get; set; }
         
-        // Para compatibilidad con el código existente
         public int IdFactura => Id;
         public DateTime FechaEmision => FechaGeneracion;
         public decimal MontoTotal => TotalComprobante;
@@ -82,7 +81,6 @@ namespace AntojeriaTica_Web.Models
 
     public class DetalleFacturaElectronicaModel
     {
-        // Información general de la factura
         public int IdFactura { get; set; }
         public string NumeroFactura { get; set; }
         public string ClaveNumerica { get; set; }
@@ -102,10 +100,8 @@ namespace AntojeriaTica_Web.Models
         public int VentaId { get; set; }
         public DateTime FechaVenta { get; set; }
 
-        // Detalle de productos
         public List<DetalleProductoFacturaModel> Productos { get; set; } = new List<DetalleProductoFacturaModel>();
 
-        // Historial de envíos
         public List<HistorialEnvioFacturaModel> HistorialEnvios { get; set; } = new List<HistorialEnvioFacturaModel>();
     }
 

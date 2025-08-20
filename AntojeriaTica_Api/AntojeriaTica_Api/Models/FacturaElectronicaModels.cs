@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AntojeriaTica_Api.Models
 {
-    // Modelos para Facturación Electrónica
     public class FacturaElectronica
     {
         public int Id { get; set; }
@@ -10,23 +9,21 @@ namespace AntojeriaTica_Api.Models
         public string NumeroFactura { get; set; } = string.Empty;
         public string ClaveNumerica { get; set; } = string.Empty;
         public DateTime FechaGeneracion { get; set; }
-        public string TipoDocumento { get; set; } = "01"; // 01 = Factura Electrónica
+    public string TipoDocumento { get; set; } = "01";
         public string CodigoMoneda { get; set; } = "CRC";
         public decimal TipoCambio { get; set; } = 1.0m;
-        public string EstadoHacienda { get; set; } = "Pendiente"; // Pendiente, Aceptado, Rechazado
+    public string EstadoHacienda { get; set; } = "Pendiente";
         public string? MensajeHacienda { get; set; }
         public DateTime? FechaRespuestaHacienda { get; set; }
         public string XmlFactura { get; set; } = string.Empty;
         public string? XmlRespuesta { get; set; }
         
-        // Información del Cliente
-        public string TipoIdentificacionCliente { get; set; } = "05"; // 05 = Otros
+    public string TipoIdentificacionCliente { get; set; } = "05";
         public string? IdentificacionCliente { get; set; }
         public string NombreCliente { get; set; } = "Cliente Contado";
         public string? CorreoCliente { get; set; }
         public string? TelefonoCliente { get; set; }
         
-        // Totales
         public decimal SubtotalServGravados { get; set; }
         public decimal SubtotalMercanciasGravadas { get; set; }
         public decimal SubtotalMercanciasExentas { get; set; }
@@ -42,7 +39,6 @@ namespace AntojeriaTica_Api.Models
         public DateTime FechaCreacion { get; set; } = DateTime.Now;
     }
 
-    // Request para generar factura
     public class GenerarFacturaRequest
     {
         public int VentaId { get; set; }
@@ -58,7 +54,6 @@ namespace AntojeriaTica_Api.Models
         public string? ClienteIdentificacion { get; set; }
     }
 
-    // Request para reenviar factura
     public class ReenviarFacturaRequest
     {
         public int FacturaId { get; set; }
@@ -67,7 +62,6 @@ namespace AntojeriaTica_Api.Models
         public string CorreoDestino { get; set; } = string.Empty;
     }
 
-    // Response de operaciones de facturación
     public class FacturaResponse
     {
         public int IdFactura { get; set; }
@@ -82,7 +76,6 @@ namespace AntojeriaTica_Api.Models
         public string? UrlDescarga { get; set; }
     }
 
-    // Modelo para consulta de facturas
     public class BusquedaFacturasModel
     {
         public DateTime? FechaInicio { get; set; }
@@ -107,7 +100,6 @@ namespace AntojeriaTica_Api.Models
         public string? MensajeHacienda { get; set; }
     }
 
-    // Detalle completo de factura
     public class FacturaCompleta
     {
         public int Id { get; set; }
@@ -119,23 +111,19 @@ namespace AntojeriaTica_Api.Models
         public string EstadoHacienda { get; set; } = string.Empty;
         public string? MensajeHacienda { get; set; }
         
-        // Cliente
         public string TipoIdentificacionCliente { get; set; } = string.Empty;
         public string IdentificacionCliente { get; set; } = string.Empty;
         public string NombreCliente { get; set; } = string.Empty;
         public string? CorreoCliente { get; set; }
         
-        // Venta relacionada
         public DateTime FechaVenta { get; set; }
         public string MetodoPagoVenta { get; set; } = string.Empty;
         
-        // Totales
         public decimal SubtotalGravado { get; set; }
         public decimal SubtotalExento { get; set; }
         public decimal MontoImpuesto { get; set; }
         public decimal TotalComprobante { get; set; }
         
-        // Productos
         public List<DetalleFactura> Detalles { get; set; } = new List<DetalleFactura>();
     }
 
@@ -148,18 +136,16 @@ namespace AntojeriaTica_Api.Models
         public decimal PrecioUnitario { get; set; }
         public decimal MontoTotal { get; set; }
         public decimal BaseImponible { get; set; }
-        public string TipoImpuesto { get; set; } = "01"; // 01 = IVA
+    public string TipoImpuesto { get; set; } = "01";
         public decimal TarifaImpuesto { get; set; }
         public decimal MontoImpuesto { get; set; }
     }
 
-    // Modelo para reenvío de factura
     public class ReenvioFacturaRequest
     {
         public string Email { get; set; } = string.Empty;
     }
 
-    // Modelos adicionales para la API
     public class DetalleFacturaElectronica
     {
         public int IdFactura { get; set; }

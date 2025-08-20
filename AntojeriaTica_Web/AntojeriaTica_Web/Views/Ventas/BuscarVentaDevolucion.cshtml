@@ -11,22 +11,31 @@
                 </div>
                 <div class="card-body">
                     <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-receipt"></i></span>
-                                <input type="number" id="ventaId" class="form-control" placeholder="Ingrese el ID de la venta" min="1">
-                                <button class="btn btn-primary" type="button" onclick="buscarVenta()">
-                                    <i class="fas fa-search me-1"></i>Buscar
-                                </button>
-                            </div>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                IDs de ventas disponibles para prueba: 9, 10, 11, 12, 13
+                        <div class="col-md-7">
+                            <div class="row g-2">
+                                <div class="col-8">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-list"></i></span>
+                                        <select id="ventasDropdown" class="form-select" onchange="buscarVenta()"></select>
+                                    </div>
+                                    <div class="form-text">
+                                        Se cargan las ventas del día. Puede pegar un ID manualmente si lo conoce.
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
+                                        <input type="number" id="ventaId" class="form-control" placeholder="ID manual" min="1">
+                                        <button class="btn btn-primary" type="button" onclick="buscarVenta()">
+                                            <i class="fas fa-search me-1"></i>Buscar
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Área de resultados -->
+                    
                     <div id="resultadoVenta" style="display: none;">
                         <div class="card border-success">
                             <div class="card-header bg-success text-white">
@@ -73,7 +82,7 @@
                         </div>
                     </div>
 
-                    <!-- Área de error -->
+                    
                     <div id="errorVenta" class="alert alert-danger" style="display: none;">
                         <i class="fas fa-exclamation-triangle me-2"></i>
                         <span id="mensajeError"></span>
@@ -172,8 +181,28 @@
 <script>
 let ventaActual = null;
 
+async function cargarVentasDropdown() {
+    const dd = document.getElementById('ventasDropdown');
+    dd.innerHTML = '<option value="">Cargando ventas de hoy...</option>';
+    try {
+        const resp = await fetch('/Ventas/ListarVentasParaDevolucion');
+        const lista = await resp.json();
+        dd.innerHTML = '<option value="">Seleccione una venta...</option>';
+        lista.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.label;
+            dd.appendChild(opt);
+        });
+    } catch (e) {
+        dd.innerHTML = '<option value="">No se pudieron cargar ventas</option>';
+    }
+}
+
 function buscarVenta() {
-    const ventaId = document.getElementById('ventaId').value;
+    const ventaIdManual = document.getElementById('ventaId').value;
+    const ventaIdDrop = document.getElementById('ventasDropdown').value;
+    const ventaId = ventaIdManual && ventaIdManual > 0 ? ventaIdManual : ventaIdDrop;
     
     if (!ventaId || ventaId < 1) {
         mostrarError('Por favor ingrese un ID de venta válido');
@@ -203,7 +232,7 @@ function buscarVenta() {
                 mostrarError(data.error);
             }
         } else if (!data || data.id === 0 || !data.detalles || data.detalles.length === 0) {
-            mostrarError('No se encontró la venta con ese ID. Pruebe con los IDs: 9, 10, 11, 12, 13');
+            mostrarError('No se encontró la venta con ese ID.');
         } else {
             mostrarVenta(data);
         }
@@ -525,7 +554,6 @@ function procesarDevolucion(datosDevolucion) {
     });
 }
 
-// Manejar cambio de motivo para mostrar campo "Otro"
 document.getElementById('motivoTotal').addEventListener('change', function() {
     const div = document.getElementById('otroMotivoTotalDiv');
     div.style.display = this.value === 'Otro' ? 'block' : 'none';
@@ -536,15 +564,14 @@ document.getElementById('motivoParcial').addEventListener('change', function() {
     div.style.display = this.value === 'Otro' ? 'block' : 'none';
 });
 
-// Permitir buscar con Enter
 document.getElementById('ventaId').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         buscarVenta();
     }
 });
 
-// Auto-buscar si hay ventaId en la URL
 document.addEventListener('DOMContentLoaded', function() {
+    cargarVentasDropdown();
     const urlParams = new URLSearchParams(window.location.search);
     const ventaId = urlParams.get('ventaId');
     

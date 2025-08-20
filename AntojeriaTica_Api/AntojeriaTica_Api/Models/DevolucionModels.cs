@@ -8,8 +8,8 @@ namespace AntojeriaTica_Api.Models
         public int Id { get; set; }
         public int VentaOriginalId { get; set; }
         public DateTime Fecha { get; set; }
-        public string TipoDevolucion { get; set; } = string.Empty; // 'Total', 'Parcial'
-        public string TipoReembolso { get; set; } = string.Empty; // 'Efectivo', 'Tarjeta', 'Credito'
+    public string TipoDevolucion { get; set; } = string.Empty; 
+    public string TipoReembolso { get; set; } = string.Empty;
         public string MetodoPagoOriginal { get; set; } = string.Empty;
         public decimal MontoTotal { get; set; }
         public decimal MontoDevuelto { get; set; }
@@ -47,14 +47,14 @@ namespace AntojeriaTica_Api.Models
         public int VentaOriginalId { get; set; }
     }
 
-    // Request Models
+    
     public class DevolucionTotalRequest
     {
         public int VentaId { get; set; }
-        public string TipoReembolso { get; set; } = string.Empty; // 'Efectivo', 'Tarjeta', 'Credito'
+    public string TipoReembolso { get; set; } = string.Empty; 
         public string? Motivo { get; set; }
-        public string? NumeroIdentificacion { get; set; } // Solo para crédito
-        public string? NombreCliente { get; set; } // Solo para crédito
+    public string? NumeroIdentificacion { get; set; }
+    public string? NombreCliente { get; set; }
         public int DiasVencimientoCredito { get; set; } = 90;
     }
 
@@ -82,7 +82,7 @@ namespace AntojeriaTica_Api.Models
         public decimal MontoAplicar { get; set; }
     }
 
-    // Response Models
+    
     public class DevolucionResponse
     {
         public int Id { get; set; }

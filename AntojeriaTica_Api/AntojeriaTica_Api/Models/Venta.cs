@@ -7,7 +7,8 @@ namespace AntojeriaTica_Api.Models
     {
         public int Id { get; set; }
         public DateTime Fecha { get; set; }
-        public string MetodoPago { get; set; }
-        public List<DetalleVenta> Detalles { get; set; }
+    public string MetodoPago { get; set; } = string.Empty;
+    public int? PedidoId { get; set; }
+    public List<DetalleVenta> Detalles { get; set; } = new List<DetalleVenta>();
     }
 }

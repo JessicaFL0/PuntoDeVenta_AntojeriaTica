@@ -117,16 +117,12 @@
 
 @section Scripts {
     <script>
-        // Auto-refresh cada 15 segundos para la cocina
         setTimeout(function() {
             location.reload();
         }, 15000);
-
-        // Mostrar notificación cuando hay pedidos pendientes hace mucho tiempo
         document.addEventListener('DOMContentLoaded', function() {
             const pedidosUrgentes = document.querySelectorAll('.badge.bg-danger');
             if (pedidosUrgentes.length > 0) {
-                // Aquí se podría agregar una notificación sonora o visual
                 console.log('Hay pedidos pendientes hace más de 15 minutos');
             }
         });

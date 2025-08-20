@@ -1,7 +1,7 @@
 ﻿using AntojeriaTica_Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace AntojeriaTica_Api.Controllers
 {
@@ -58,13 +58,13 @@ namespace AntojeriaTica_Api.Controllers
                     lista.Add(new MovimientoDiario
                     {
                         IdMovimiento = (int)reader["IdMovimiento"],
-                        Fecha = (DateTime)reader["FechaHora"], // <- Corregido
+                        Fecha = (DateTime)reader["FechaHora"],
                         TipoMovimiento = reader["TipoMovimiento"].ToString(),
                         Categoria = reader["Categoria"].ToString(),
                         Monto = Convert.ToDecimal(reader["Monto"]),
                         Descripcion = reader["Descripcion"].ToString(),
                         IdUsuario = (int)reader["IdUsuario"],
-                        NombreUsuario = reader["NombreUsuario"].ToString() // <- este lo devuelve el SP correctamente
+                        NombreUsuario = reader["NombreUsuario"].ToString()
                     });
                 }
             }

@@ -81,7 +81,6 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     conn.Open();
 
-                    // Crear tabla de productos para devolver
                     DataTable productosTable = new DataTable();
                     productosTable.Columns.Add("ProductoId", typeof(int));
                     productosTable.Columns.Add("CantidadDevolver", typeof(int));
@@ -291,18 +290,17 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     conn.Open();
                     
-                    // Verificar si la venta existe y obtener detalles
                     using (SqlCommand cmd = new SqlCommand(@"
                         SELECT 
                             v.Id,
                             v.Fecha,
                             v.MetodoPago,
-                            SUM(dv.Cantidad * dv.PrecioUnitario) AS Total,
+                            ISNULL(SUM(dv.Cantidad * dv.PrecioUnitario), 0) AS Total,
                             COUNT(dv.Id) AS CantidadProductos,
                             CASE WHEN EXISTS(SELECT 1 FROM Devolucion WHERE VentaOriginalId = v.Id AND Estado = 'Procesada') 
                                  THEN 1 ELSE 0 END AS YaDevuelta
                         FROM Venta v
-                        INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+                        LEFT JOIN DetalleVenta dv ON v.Id = dv.VentaId
                         WHERE v.Id = @VentaId
                         GROUP BY v.Id, v.Fecha, v.MetodoPago", conn))
                     {
@@ -312,14 +310,18 @@ namespace AntojeriaTica_Api.Controllers
                         {
                             if (reader.Read())
                             {
+                                int cantidadProductos = Convert.ToInt32(reader["CantidadProductos"]);
+                                bool yaDevuelta = Convert.ToBoolean(reader["YaDevuelta"]);
+                                bool valida = !yaDevuelta && cantidadProductos > 0;
+
                                 return Ok(new {
                                     ventaId = Convert.ToInt32(reader["Id"]),
                                     fecha = Convert.ToDateTime(reader["Fecha"]),
                                     metodoPago = reader["MetodoPago"]?.ToString(),
                                     total = Convert.ToDecimal(reader["Total"]),
-                                    cantidadProductos = Convert.ToInt32(reader["CantidadProductos"]),
-                                    yaDevuelta = Convert.ToBoolean(reader["YaDevuelta"]),
-                                    valida = !Convert.ToBoolean(reader["YaDevuelta"])
+                                    cantidadProductos,
+                                    yaDevuelta,
+                                    valida
                                 });
                             }
                             else

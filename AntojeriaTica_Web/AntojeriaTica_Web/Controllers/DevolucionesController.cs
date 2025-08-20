@@ -18,14 +18,12 @@ namespace AntojeriaTica_Web.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
-        // Página principal de devoluciones
         [HttpGet]
         public IActionResult Index()
         {
             return View();
         }
 
-        // Validar venta antes de procesar devolución
         [HttpPost]
         public async Task<IActionResult> ValidarVenta(int ventaId, string tipoDevolucion)
         {
@@ -67,7 +65,6 @@ namespace AntojeriaTica_Web.Controllers
             return RedirectToAction("Index");
         }
 
-        // Devolución total
         [HttpGet]
         public async Task<IActionResult> DevolucionTotal(int ventaId)
         {
@@ -149,7 +146,6 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        // Devolución parcial
         [HttpGet]
         public async Task<IActionResult> DevolucionParcial(int ventaId)
         {
@@ -159,7 +155,6 @@ namespace AntojeriaTica_Web.Controllers
             {
                 var client = _httpClientFactory.CreateClient();
                 
-                // Obtener información de la venta
                 var urlVenta = $"http://localhost:5062/api/Ventas/DetalleVenta/{ventaId}";
                 var ventaResponse = await client.GetAsync(urlVenta);
                 
@@ -172,7 +167,6 @@ namespace AntojeriaTica_Web.Controllers
                         model.MetodoPagoOriginal = ventaCompleta.MetodoPago;
                         model.MontoTotalVenta = ventaCompleta.Total;
                         
-                        // Crear lista de productos disponibles para devolución
                         model.ProductosDisponibles = ventaCompleta.Detalles.Select(d => new ProductoDevolucionModel
                         {
                             ProductoId = d.ProductoId,
@@ -255,7 +249,6 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        // Buscar créditos de cliente
         [HttpGet]
         public IActionResult BuscarCreditos()
         {
@@ -290,7 +283,6 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        // Historial de devoluciones
         [HttpGet]
         public IActionResult Historial()
         {
@@ -340,7 +332,6 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        // Comprobante de devolución
         [HttpGet]
         public IActionResult ComprobanteDevolucion()
         {

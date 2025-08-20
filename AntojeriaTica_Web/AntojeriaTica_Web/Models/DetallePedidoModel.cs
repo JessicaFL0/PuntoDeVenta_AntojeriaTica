@@ -28,7 +28,6 @@ namespace AntojeriaTica_Web.Models
         [Display(Name = "Observaciones del Item")]
         public string? ObservacionesItem { get; set; }
         
-        // Propiedades adicionales para mostrar información del producto
         [Display(Name = "Código")]
         public string? ProductoCodigo { get; set; }
         

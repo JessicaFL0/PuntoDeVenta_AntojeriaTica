@@ -45,7 +45,8 @@
 
                         <div class="form-group mb-3">
                             <label asp-for="Cedula" class="form-label">Cédula</label>
-                            <input asp-for="Cedula" class="form-control" placeholder="Ingrese su cédula" required />
+                            <input asp-for="Cedula" class="form-control" placeholder="Ingrese su cédula" />
+                            <small class="form-text text-muted">Opcional. Se autocompleta si existe en el sistema.</small>
                             <span asp-validation-for="Cedula" class="text-danger"></span>
                         </div>
 
@@ -66,7 +67,7 @@
                                 {
                                     @foreach (var rol in (List<AntojeriaTica_Web.Models.Rol>)ViewBag.Roles)
                                     {
-                                        <option value="@rol.IdRol" selected="@(rol.IdRol == Model.IdRol ? "selected" : null)">
+                                        <option value="@rol.IdRol">
                                             @rol.Nombre
                                         </option>
                                     }

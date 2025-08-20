@@ -1,9 +1,4 @@
--- =============================================
--- Base de datos AntojeriaTica - Script Consolidado
--- Incluye todas las funcionalidades: básica + facturación electrónica + pedidos
--- =============================================
 
--- Crear la base de datos si no existe
 IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'AntojeriaTica')
 BEGIN
     CREATE DATABASE AntojeriaTica;
@@ -15,6 +10,168 @@ BEGIN
 END
 GO
 
+
+IF DB_ID('AntojeriaTica') IS NOT NULL
+BEGIN
+    USE AntojeriaTica;
+END
+GO
+
+IF DB_ID('AntojeriaTica') IS NOT NULL
+AND OBJECT_ID('dbo.Usuario','U') IS NOT NULL
+AND OBJECT_ID('dbo.Producto','U') IS NOT NULL
+AND OBJECT_ID('dbo.Venta','U') IS NOT NULL
+AND OBJECT_ID('dbo.DetalleVenta','U') IS NOT NULL
+AND OBJECT_ID('dbo.MovimientoDiario','U') IS NOT NULL
+AND OBJECT_ID('dbo.CierreCaja','U') IS NOT NULL
+BEGIN
+
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    DECLARE @UsuarioPepe INT = (SELECT TOP 1 Id FROM Usuario WHERE Email = 'pepe@pepe');
+    IF @UsuarioPepe IS NULL
+        SET @UsuarioPepe = (SELECT TOP 1 Id FROM Usuario ORDER BY Id);
+
+    DECLARE @ProdP001 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P001');
+    DECLARE @ProdP002 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P002');
+    DECLARE @ProdP003 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P003');
+    DECLARE @ProdP004 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P004');
+
+    IF NOT EXISTS (SELECT 1 FROM Venta WHERE CAST(Fecha AS DATE) = CAST(GETDATE() AS DATE))
+    BEGIN
+        DECLARE @v1 INT, @v2 INT;
+
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones)
+        VALUES (GETDATE(), @UsuarioPepe, N'Cliente mostrador', 0, 0, 0, 0, N'Efectivo', N'Completada', N'Venta demo Efectivo');
+        SET @v1 = SCOPE_IDENTITY();
+
+        IF @ProdP001 IS NOT NULL
+        BEGIN
+            DECLARE @p1 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP001);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v1, @ProdP001, 2, @p1, 0, 0, 2*@p1);
+        END
+        IF @ProdP003 IS NOT NULL
+        BEGIN
+            DECLARE @p3 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP003);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v1, @ProdP003, 1, @p3, 0, 0, 1*@p3);
+        END
+
+        -- Recalcular totales de @v1
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            LEFT JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @v1;
+
+        -- Segunda venta de hoy con Tarjeta
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones)
+        VALUES (GETDATE(), @UsuarioPepe, N'Cliente mostrador', 0, 0, 0, 0, N'Tarjeta', N'Completada', N'Venta demo Tarjeta');
+        SET @v2 = SCOPE_IDENTITY();
+
+        IF @ProdP002 IS NOT NULL
+        BEGIN
+            DECLARE @p2 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP002);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v2, @ProdP002, 1, @p2, 0, 0, 1*@p2);
+        END
+        IF @ProdP004 IS NOT NULL
+        BEGIN
+            DECLARE @p4 DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP004);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@v2, @ProdP004, 2, @p4, 0, 0, 2*@p4);
+        END
+
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            LEFT JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @v2;
+    END
+
+    -- Venta reciente (ayer) si no existe
+    IF NOT EXISTS (SELECT 1 FROM Venta WHERE CAST(Fecha AS DATE) = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE))
+    BEGIN
+        DECLARE @vAyer INT;
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones)
+        VALUES (DATEADD(DAY,-1,GETDATE()), @UsuarioPepe, N'Cliente mostrador', 0, 0, 0, 0, N'Efectivo', N'Completada', N'Venta demo Ayer');
+        SET @vAyer = SCOPE_IDENTITY();
+        IF @ProdP001 IS NOT NULL
+        BEGIN
+            DECLARE @p1y DECIMAL(10,2) = (SELECT Precio FROM Producto WHERE Id=@ProdP001);
+            INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+            VALUES (@vAyer, @ProdP001, 1, @p1y, 0, 0, 1*@p1y);
+        END
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            LEFT JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @vAyer;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM MovimientoDiario WHERE CAST(Fecha AS DATE) = CAST(GETDATE() AS DATE))
+    BEGIN
+        INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Descripcion, Categoria, Monto, UsuarioId)
+        VALUES (GETDATE(), 'Entrada', N'Caja inicial', 'Caja', 50000, @UsuarioPepe);
+        INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Descripcion, Categoria, Monto, UsuarioId)
+        VALUES (GETDATE(), 'Venta', N'Ingresos de ventas del día', 'Ingresos', 30000, @UsuarioPepe);
+        INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Descripcion, Categoria, Monto, UsuarioId)
+        VALUES (GETDATE(), 'Gasto', N'Compra de insumos', 'Gastos', 10000, @UsuarioPepe);
+    END
+
+    -- Cierre de caja de AYER para listado si no existe
+    IF NOT EXISTS (SELECT 1 FROM CierreCaja WHERE CAST(Fecha AS DATE) = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE))
+    BEGIN
+        INSERT INTO CierreCaja (
+            Fecha, UsuarioId, MontoInicial, TotalVentas, TotalEfectivo, TotalTarjeta, TotalOtros,
+            MontoFinal, Diferencia, Observaciones, Estado, FechaCierre)
+        VALUES (
+            CAST(DATEADD(DAY,-1,GETDATE()) AS DATE), @UsuarioPepe, 50000, 65000, 45000, 15000, 5000,
+            114000, 0, N'Cierre demo de ayer', 'Cerrado', DATEADD(DAY,-1,GETDATE())
+        );
+    END
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    -- Registrar el error si fuese necesario
+END CATCH
+
+END -- FIN IF de datos DEV (solo si tablas existen)
+
+
+-- (Contexto ya establecido arriba; repetimos por seguridad)
 USE AntojeriaTica;
 GO
 
@@ -140,22 +297,44 @@ BEGIN
     CREATE TABLE Impuesto (
         Id int IDENTITY(1,1) NOT NULL,
         Nombre nvarchar(50) NOT NULL,
+        -- Ampliado para compatibilidad con capa Web/API
+        Tipo nvarchar(50) NULL, -- IVA, ISC, etc.
         Porcentaje decimal(5,2) NOT NULL,
+        AplicaEnRestaurante bit NOT NULL DEFAULT 0,
+        EsExonerado bit NOT NULL DEFAULT 0,
         Activo bit NOT NULL DEFAULT 1,
         FechaCreacion datetime NOT NULL DEFAULT GETDATE(),
         CONSTRAINT PK_Impuesto PRIMARY KEY (Id)
     );
 
     -- Insertar impuestos por defecto
-    INSERT INTO Impuesto (Nombre, Porcentaje) VALUES
-    ('IVA', 13.00),
-    ('Exento', 0.00);
+    INSERT INTO Impuesto (Nombre, Tipo, Porcentaje, AplicaEnRestaurante, EsExonerado) VALUES
+    ('IVA', 'IVA', 13.00, 0, 0),
+    ('Exento', 'IVA', 0.00, 0, 1);
 
     PRINT 'Tabla Impuesto creada con datos iniciales';
 END
 ELSE
 BEGIN
     PRINT 'Tabla Impuesto ya existe';
+    -- Agregar columnas faltantes si no existen para compatibilidad con la Web
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Impuesto') AND name = 'Tipo')
+    BEGIN
+        ALTER TABLE Impuesto ADD Tipo nvarchar(50) NULL;
+        -- Rellenar valor por defecto basado en Nombre cuando sea posible
+        UPDATE Impuesto SET Tipo = CASE WHEN Nombre LIKE '%IVA%' THEN 'IVA' ELSE 'IVA' END WHERE Tipo IS NULL;
+        PRINT 'Columna Tipo agregada a Impuesto';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Impuesto') AND name = 'AplicaEnRestaurante')
+    BEGIN
+        ALTER TABLE Impuesto ADD AplicaEnRestaurante bit NOT NULL DEFAULT 0;
+        PRINT 'Columna AplicaEnRestaurante agregada a Impuesto';
+    END
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Impuesto') AND name = 'EsExonerado')
+    BEGIN
+        ALTER TABLE Impuesto ADD EsExonerado bit NOT NULL DEFAULT 0;
+        PRINT 'Columna EsExonerado agregada a Impuesto';
+    END
 END
 GO
 
@@ -207,6 +386,20 @@ BEGIN
 END
 GO
 
+-- Agregar columna PedidoId a Venta si no existe y crear FK a Pedido
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Venta') AND name = 'PedidoId')
+BEGIN
+    ALTER TABLE Venta ADD PedidoId int NULL;
+    PRINT 'Columna PedidoId agregada a Venta';
+END
+-- Nota: La FK depende de la existencia de la tabla Pedido; se crea más adelante tras crear Pedido
+IF OBJECT_ID('Pedido','U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Venta_Pedido')
+BEGIN
+    ALTER TABLE Venta WITH CHECK ADD CONSTRAINT FK_Venta_Pedido FOREIGN KEY (PedidoId) REFERENCES Pedido(Id);
+    PRINT 'FK_Venta_Pedido creada';
+END
+GO
+
 -- 8. Tabla DetalleVenta
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DetalleVenta' AND xtype='U')
 BEGIN
@@ -231,6 +424,15 @@ BEGIN
 END
 GO
 
+-- Crear FK Venta(PedidoId) -> Pedido(Id) después de asegurar que Pedido existe
+IF OBJECT_ID('dbo.Pedido','U') IS NOT NULL AND OBJECT_ID('dbo.Venta','U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Venta_Pedido')
+BEGIN
+    ALTER TABLE Venta WITH CHECK ADD CONSTRAINT FK_Venta_Pedido FOREIGN KEY (PedidoId) REFERENCES Pedido(Id);
+    PRINT 'FK_Venta_Pedido creada';
+END
+GO
+
 -- 9. Tabla MovimientoDiario
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='MovimientoDiario' AND xtype='U')
 BEGIN
@@ -239,6 +441,8 @@ BEGIN
         Fecha datetime NOT NULL DEFAULT GETDATE(),
         TipoMovimiento nvarchar(50) NOT NULL, -- Entrada, Salida, Venta, Devolucion
         Descripcion nvarchar(500) NOT NULL,
+        -- Compatibilidad: algunas capas esperan una columna 'Categoria'
+        Categoria nvarchar(50) NOT NULL DEFAULT 'Otros',
         Monto decimal(10,2) NOT NULL,
         UsuarioId int NOT NULL,
         VentaId int NULL,
@@ -251,6 +455,87 @@ END
 ELSE
 BEGIN
     PRINT 'Tabla MovimientoDiario ya existe';
+    -- Agregar columna Categoria si no existe, para compatibilidad con la API/Web
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('MovimientoDiario') AND name = 'Categoria')
+    BEGIN
+        ALTER TABLE MovimientoDiario ADD Categoria nvarchar(50) NOT NULL DEFAULT 'Otros';
+        PRINT 'Columna Categoria agregada a MovimientoDiario';
+    END
+END
+GO
+
+-- =============================================
+-- SPs de MovimientoDiario necesarios por la API/Web
+-- =============================================
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='InsertarMovimientoDiario')
+    DROP PROCEDURE InsertarMovimientoDiario;
+GO
+CREATE PROCEDURE InsertarMovimientoDiario
+    @TipoMovimiento nvarchar(50),
+    @Categoria nvarchar(50),
+    @Monto decimal(10,2),
+    @Descripcion nvarchar(500),
+    @IdUsuario int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Categoria, Monto, Descripcion, UsuarioId)
+    VALUES (GETDATE(), @TipoMovimiento, @Categoria, @Monto, @Descripcion, @IdUsuario);
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ActualizarMovimientoDiario')
+    DROP PROCEDURE ActualizarMovimientoDiario;
+GO
+CREATE PROCEDURE ActualizarMovimientoDiario
+    @IdMovimiento int,
+    @TipoMovimiento nvarchar(50),
+    @Categoria nvarchar(50),
+    @Monto decimal(10,2),
+    @Descripcion nvarchar(500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE MovimientoDiario
+    SET TipoMovimiento = @TipoMovimiento,
+        Categoria = @Categoria,
+        Monto = @Monto,
+        Descripcion = @Descripcion
+    WHERE Id = @IdMovimiento;
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='EliminarMovimientoDiario')
+    DROP PROCEDURE EliminarMovimientoDiario;
+GO
+CREATE PROCEDURE EliminarMovimientoDiario
+    @IdMovimiento int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM MovimientoDiario WHERE Id = @IdMovimiento;
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ListarMovimientosConNombre')
+    DROP PROCEDURE sp_ListarMovimientosConNombre;
+GO
+CREATE PROCEDURE sp_ListarMovimientosConNombre
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        md.Id            AS IdMovimiento,
+        md.Fecha         AS FechaHora,
+        md.TipoMovimiento,
+        md.Categoria,
+        md.Monto,
+        md.Descripcion,
+        md.UsuarioId     AS IdUsuario,
+        u.Nombre         AS NombreUsuario
+    FROM MovimientoDiario md
+    INNER JOIN Usuario u ON u.Id = md.UsuarioId
+    ORDER BY md.Fecha DESC;
 END
 GO
 
@@ -306,6 +591,44 @@ END
 ELSE
 BEGIN
     PRINT 'Tabla CierreCaja ya existe';
+END
+GO
+
+-- Totales de caja del día actual (compatibilidad con API)
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_CierreCajaDiario')
+    DROP PROCEDURE sp_CierreCajaDiario;
+GO
+CREATE PROCEDURE sp_CierreCajaDiario
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+    ISNULL(SUM(CASE WHEN md.TipoMovimiento IN ('Entrada','Venta') THEN md.Monto ELSE 0 END), 0) AS TotalIngresos,
+    ISNULL(SUM(CASE WHEN md.TipoMovimiento IN ('Salida','Devolucion','Gasto') THEN md.Monto ELSE 0 END), 0) AS TotalEgresos
+    FROM MovimientoDiario md
+    WHERE CAST(md.Fecha AS DATE) = CAST(GETDATE() AS DATE);
+END
+GO
+
+-- Listado de cierres de caja (compatibilidad con vistas Web)
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ListarCierresDeCaja')
+    DROP PROCEDURE sp_ListarCierresDeCaja;
+GO
+CREATE PROCEDURE sp_ListarCierresDeCaja
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT
+        cc.Id                              AS IdMovimiento,
+        cc.Fecha                           AS FechaHora,
+        (cc.TotalEfectivo + cc.TotalTarjeta + cc.TotalOtros) AS TotalIngresos,
+        CAST(0 AS decimal(10,2))           AS TotalEgresos,
+        cc.MontoFinal                      AS MontoFisico,
+        cc.Observaciones                   AS NotaJustificativa,
+        u.Nombre                           AS NombreUsuario
+    FROM CierreCaja cc
+    INNER JOIN Usuario u ON u.Id = cc.UsuarioId
+    ORDER BY cc.Fecha DESC;
 END
 GO
 
@@ -598,6 +921,72 @@ GO
 -- =============================================
 -- STORED PROCEDURES BÁSICOS
 -- =============================================
+
+-- Productos con estado de stock para pantalla de inventario
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_ObtenerProductosConEstado')
+    DROP PROCEDURE sp_ObtenerProductosConEstado;
+GO
+CREATE PROCEDURE sp_ObtenerProductosConEstado
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        p.Id              AS IdProducto,
+        p.Nombre,
+        p.Descripcion,
+        p.Precio          AS PrecioUnitario,
+        p.Stock           AS Existencias,
+        CASE 
+            WHEN p.Stock <= 0 THEN 'Agotado'
+            WHEN p.Stock <= p.StockMinimo THEN 'Bajo stock'
+            ELSE 'En stock'
+        END               AS EstadoStock
+    FROM Producto p
+    WHERE p.Activo = 1
+    ORDER BY p.Nombre;
+END
+GO
+
+-- Reporte de ventas por día (resumen, por método y por producto)
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ReporteVentasDia')
+    DROP PROCEDURE ReporteVentasDia;
+GO
+CREATE PROCEDURE ReporteVentasDia
+    @Fecha DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    -- Totales del día (usar totales de la venta para estabilidad)
+    SELECT 
+        COUNT(*) AS TotalVentas,
+        ISNULL(SUM(v.Total), 0) AS MontoTotal
+    FROM Venta v
+    WHERE CAST(v.Fecha AS DATE) = @Fecha;
+
+    -- Ventas por método de pago (usar totales de la venta)
+    SELECT 
+        v.MetodoPago,
+        COUNT(*) AS CantidadVentas,
+        ISNULL(SUM(v.Total), 0) AS MontoTotal
+    FROM Venta v
+    WHERE CAST(v.Fecha AS DATE) = @Fecha
+    GROUP BY v.MetodoPago
+    ORDER BY MontoTotal DESC;
+
+    -- Productos vendidos
+    SELECT 
+        p.Codigo AS ProductoCodigo,
+        p.Nombre AS ProductoNombre,
+        ISNULL(SUM(dv.Cantidad),0) AS CantidadVendida,
+        ISNULL(SUM(dv.Cantidad * dv.PrecioUnitario),0) AS MontoTotal
+    FROM Venta v
+    INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+    INNER JOIN Producto p ON dv.ProductoId = p.Id
+    WHERE CAST(v.Fecha AS DATE) = @Fecha
+    GROUP BY p.Codigo, p.Nombre
+    ORDER BY CantidadVendida DESC;
+END
+GO
 
 -- SP: Insertar Usuario - CORREGIDO
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertarUsuario')
@@ -1257,6 +1646,230 @@ GO
 -- STORED PROCEDURES DE PEDIDOS
 -- =============================================
 
+-- =============================================
+-- SPs de soporte para Facturación Electrónica (faltantes)
+-- =============================================
+
+-- Actualizar estado en Hacienda para una factura electrónica
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'ActualizarEstadoFacturaHacienda')
+    DROP PROCEDURE ActualizarEstadoFacturaHacienda;
+GO
+CREATE PROCEDURE ActualizarEstadoFacturaHacienda
+    @IdFactura INT,
+    @EstadoHacienda NVARCHAR(50),
+    @MensajeHacienda NVARCHAR(MAX) = NULL,
+    @XMLGenerado NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Actualizar encabezado de factura
+    UPDATE FacturaElectronica
+    SET 
+        EstadoHacienda = @EstadoHacienda,
+        MensajeHacienda = COALESCE(@MensajeHacienda, MensajeHacienda),
+        FechaRespuestaHacienda = GETDATE(),
+        ModificadoPor = 'Sistema',
+        FechaModificacion = GETDATE()
+    WHERE Id = @IdFactura;
+
+    -- Registrar historial del cambio
+    INSERT INTO HistorialFacturacionElectronica (IdFactura, TipoEvento, Detalle, Estado, Mensaje, FechaEvento)
+    VALUES (@IdFactura, 'Hacienda', 'Actualización de estado', @EstadoHacienda, ISNULL(@MensajeHacienda, 'Actualización automática'), GETDATE());
+END
+GO
+
+-- Registrar evento de envío (Email u otros) asociado a la factura
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'RegistrarEnvioFactura')
+    DROP PROCEDURE RegistrarEnvioFactura;
+GO
+CREATE PROCEDURE RegistrarEnvioFactura
+    @IdFactura INT,
+    @TipoEnvio NVARCHAR(50),
+    @Destinatario NVARCHAR(255) = NULL,
+    @EstadoEnvio NVARCHAR(50) = 'Enviado',
+    @MensajeRespuesta NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Marcar envío de email si corresponde
+    IF @TipoEnvio = 'Email'
+    BEGIN
+        UPDATE FacturaElectronica
+        SET EmailEnviado = CASE WHEN @EstadoEnvio IN ('Enviado','Exitoso') THEN 1 ELSE EmailEnviado END,
+            FechaEnvioEmail = GETDATE(),
+            ModificadoPor = 'Sistema',
+            FechaModificacion = GETDATE()
+        WHERE Id = @IdFactura;
+    END
+
+    -- Insertar en historial
+    INSERT INTO HistorialFacturacionElectronica (IdFactura, TipoEvento, Detalle, Estado, Mensaje, FechaEvento)
+    VALUES (@IdFactura, @TipoEnvio, @Destinatario, @EstadoEnvio, @MensajeRespuesta, GETDATE());
+END
+GO
+
+-- =============================================
+-- TIPOS Y STORED PROCEDURES DE VENTAS (FALTANTES)
+-- =============================================
+
+-- Tipo de tabla para registrar detalles de venta
+IF NOT EXISTS (
+    SELECT 1 FROM sys.types st
+    JOIN sys.schemas ss ON st.schema_id = ss.schema_id
+    WHERE st.name = 'TipoDetalleVenta' AND ss.name = 'dbo'
+)
+BEGIN
+    CREATE TYPE dbo.TipoDetalleVenta AS TABLE (
+        ProductoId INT NOT NULL,
+        Cantidad   INT NOT NULL,
+        PrecioUnitario DECIMAL(10,2) NOT NULL
+    );
+    PRINT 'Tipo TipoDetalleVenta creado';
+END
+GO
+
+-- Registrar venta a partir de TVP
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'RegistrarVenta') AND type = 'P')
+    DROP PROCEDURE RegistrarVenta;
+GO
+CREATE PROCEDURE RegistrarVenta
+    @MetodoPago NVARCHAR(50),
+    @DetallesVenta dbo.TipoDetalleVenta READONLY,
+    @PedidoId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @VentaId INT;
+    DECLARE @UsuarioId INT;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Obtener un UsuarioId válido (fallback a cualquier usuario activo)
+        SELECT TOP 1 @UsuarioId = u.Id
+        FROM Usuario u
+        WHERE u.Activo = 1
+        ORDER BY CASE WHEN u.Email = 'pepe@pepe' THEN 0 ELSE 1 END, u.Id;
+
+        IF @UsuarioId IS NULL
+        BEGIN
+            -- Si no hay usuarios activos, tomar cualquier usuario disponible
+            SELECT TOP 1 @UsuarioId = u.Id FROM Usuario u ORDER BY u.Id;
+        END
+
+        -- Crear encabezado de venta con totales en 0
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones, PedidoId)
+        VALUES (GETDATE(), @UsuarioId, NULL, 0, 0, 0, 0, @MetodoPago, N'Completada', NULL, @PedidoId);
+        SET @VentaId = SCOPE_IDENTITY();
+
+        -- Insertar detalles
+        INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+        SELECT 
+            @VentaId,
+            dv.ProductoId,
+            dv.Cantidad,
+            dv.PrecioUnitario,
+            0 AS Descuento,
+            CASE WHEN ISNULL(p.Gravado,1)=1 THEN (dv.Cantidad * dv.PrecioUnitario * 0.13) ELSE 0 END AS Impuesto,
+            (dv.Cantidad * dv.PrecioUnitario) AS Subtotal
+        FROM @DetallesVenta dv
+        INNER JOIN Producto p ON p.Id = dv.ProductoId;
+
+        -- Recalcular totales
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total    = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            INNER JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @VentaId;
+
+        -- Si la venta corresponde a un pedido, marcarlo como Entregado
+        IF @PedidoId IS NOT NULL
+        BEGIN
+            UPDATE Pedido
+            SET Estado = 'Entregado',
+                FechaActualizacion = GETDATE(),
+                FechaFinalizacion = COALESCE(FechaFinalizacion, GETDATE())
+            WHERE Id = @PedidoId;
+        END
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- Buscar ventas (filtros por fecha, método, id)
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'BuscarVentas') AND type = 'P')
+    DROP PROCEDURE BuscarVentas;
+GO
+CREATE PROCEDURE BuscarVentas
+    @FechaInicio DATETIME = NULL,
+    @FechaFin    DATETIME = NULL,
+    @MetodoPago  NVARCHAR(50) = NULL,
+    @VentaId     INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        v.Id,
+        v.Fecha,
+        v.MetodoPago,
+        SUM(dv.Cantidad * dv.PrecioUnitario) AS Total,
+        SUM(dv.Cantidad) AS CantidadProductos
+    FROM Venta v
+    INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+    WHERE 
+        (@FechaInicio IS NULL OR v.Fecha >= @FechaInicio)
+        AND (@FechaFin IS NULL OR v.Fecha <= @FechaFin)
+        AND (@MetodoPago IS NULL OR v.MetodoPago = @MetodoPago)
+        AND (@VentaId IS NULL OR v.Id = @VentaId)
+    GROUP BY v.Id, v.Fecha, v.MetodoPago
+    ORDER BY v.Fecha DESC, v.Id DESC;
+END
+GO
+
+-- Obtener detalle completo de una venta
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'ObtenerDetalleVenta') AND type = 'P')
+    DROP PROCEDURE ObtenerDetalleVenta;
+GO
+CREATE PROCEDURE ObtenerDetalleVenta
+    @VentaId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        v.Id AS VentaId,
+        v.Fecha,
+        v.MetodoPago,
+        SUM(dv.Cantidad * dv.PrecioUnitario) OVER(PARTITION BY v.Id) AS TotalVenta,
+        dv.ProductoId,
+        p.Nombre AS ProductoNombre,
+        p.Codigo AS ProductoCodigo,
+        dv.Cantidad,
+        dv.PrecioUnitario,
+        (dv.Cantidad * dv.PrecioUnitario) AS Subtotal
+    FROM Venta v
+    INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+    INNER JOIN Producto p ON dv.ProductoId = p.Id
+    WHERE v.Id = @VentaId
+    ORDER BY dv.ProductoId;
+END
+GO
+
 -- Crear tipo de tabla para detalles de pedido
 IF NOT EXISTS (SELECT * FROM sys.types st JOIN sys.schemas ss ON st.schema_id = ss.schema_id WHERE st.name = 'TipoDetallePedido' AND ss.name = 'dbo')
 BEGIN
@@ -1530,7 +2143,12 @@ BEGIN
     WHERE
         (@FechaInicio IS NULL OR p.Fecha >= @FechaInicio)
         AND (@FechaFin IS NULL OR p.Fecha <= @FechaFin)
-        AND (@Estado IS NULL OR p.Estado = @Estado)
+        AND (
+            @Estado IS NULL 
+            OR p.Estado = @Estado 
+            -- Compatibilidad por datos con codificación inválida ('En preparaciÃ³n')
+            OR (@Estado = N'En preparación' AND p.Estado = N'En preparaciÃ³n')
+        )
         AND (@TipoPedido IS NULL OR p.TipoPedido = @TipoPedido)
         AND (@PedidoId IS NULL OR p.Id = @PedidoId)
         AND (@UsuarioId IS NULL OR p.UsuarioId = @UsuarioId)
@@ -1563,7 +2181,7 @@ BEGIN
     SELECT Id, UsuarioId, NumeroPedido,
            DATEDIFF(MINUTE, FechaEstimadaEntrega, GETDATE()) as MinutosAtraso
     FROM Pedido
-    WHERE Estado IN ('En preparación')
+    WHERE Estado IN (N'En preparación', N'En preparaciÃ³n')
       AND FechaEstimadaEntrega < GETDATE()
       AND EsAtrasado = 0; -- Solo los que no han sido marcados como atrasados
 
@@ -1910,8 +2528,399 @@ END
 GO
 
 -- =============================================
+-- TABLAS Y PROCEDIMIENTOS PARA DEVOLUCIONES Y CRÉDITOS
+-- =============================================
+
+-- Tabla Devolucion
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Devolucion' AND xtype='U')
+BEGIN
+    CREATE TABLE Devolucion (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        VentaOriginalId INT NOT NULL,
+        Fecha DATETIME NOT NULL DEFAULT GETDATE(),
+        TipoDevolucion NVARCHAR(20) NOT NULL, -- 'Total', 'Parcial'
+        TipoReembolso NVARCHAR(20) NOT NULL, -- 'Efectivo', 'Tarjeta', 'Credito'
+        MetodoPagoOriginal NVARCHAR(50) NOT NULL,
+        MontoTotal DECIMAL(10,2) NOT NULL,
+        MontoDevuelto DECIMAL(10,2) NOT NULL,
+        Motivo NVARCHAR(500) NULL,
+        Estado NVARCHAR(20) NOT NULL DEFAULT 'Procesada', -- 'Procesada', 'Cancelada'
+        UsuarioId INT NULL,
+        NumeroComprobante NVARCHAR(50) NULL,
+        CONSTRAINT FK_Devolucion_Venta FOREIGN KEY (VentaOriginalId) REFERENCES Venta(Id)
+    );
+END
+GO
+
+-- Tabla DetalleDevolucion
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DetalleDevolucion' AND xtype='U')
+BEGIN
+    CREATE TABLE DetalleDevolucion (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        DevolucionId INT NOT NULL,
+        ProductoId INT NOT NULL,
+        CantidadDevuelta INT NOT NULL,
+        PrecioUnitario DECIMAL(10,2) NOT NULL,
+        SubtotalDevolucion DECIMAL(10,2) NOT NULL,
+        CONSTRAINT FK_DetalleDevolucion_Devolucion FOREIGN KEY (DevolucionId) REFERENCES Devolucion(Id),
+        CONSTRAINT FK_DetalleDevolucion_Producto FOREIGN KEY (ProductoId) REFERENCES Producto(Id)
+    );
+END
+GO
+
+-- Tabla CreditoCliente
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CreditoCliente' AND xtype='U')
+BEGIN
+    CREATE TABLE CreditoCliente (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        DevolucionId INT NOT NULL,
+        NumeroIdentificacion NVARCHAR(50) NOT NULL,
+        NombreCliente NVARCHAR(200) NOT NULL,
+        MontoCredito DECIMAL(10,2) NOT NULL,
+        MontoUtilizado DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        SaldoDisponible AS (MontoCredito - MontoUtilizado),
+        FechaCreacion DATETIME NOT NULL DEFAULT GETDATE(),
+        FechaVencimiento DATETIME NOT NULL,
+        Estado NVARCHAR(20) NOT NULL DEFAULT 'Activo', -- 'Activo', 'Utilizado', 'Vencido'
+        CONSTRAINT FK_CreditoCliente_Devolucion FOREIGN KEY (DevolucionId) REFERENCES Devolucion(Id)
+    );
+END
+GO
+
+-- Tipo de tabla para productos a devolver (devolución parcial)
+IF TYPE_ID(N'TipoProductosDevolucion') IS NULL
+BEGIN
+    CREATE TYPE TipoProductosDevolucion AS TABLE
+    (
+        ProductoId INT,
+        CantidadDevolver INT
+    );
+END
+GO
+
+-- SP: Procesar Devolución Total
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ProcesarDevolucionTotal')
+    DROP PROCEDURE ProcesarDevolucionTotal;
+GO
+CREATE PROCEDURE ProcesarDevolucionTotal
+    @VentaId INT,
+    @TipoReembolso NVARCHAR(20), -- 'Efectivo', 'Tarjeta', 'Credito'
+    @Motivo NVARCHAR(500) = NULL,
+    @NumeroIdentificacion NVARCHAR(50) = NULL, -- Solo para crédito
+    @NombreCliente NVARCHAR(200) = NULL,       -- Solo para crédito
+    @DiasVencimientoCredito INT = 90
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        DECLARE @MetodoPagoOriginal NVARCHAR(50);
+        DECLARE @MontoTotal DECIMAL(10,2);
+
+        -- Verificar venta y calcular total
+        SELECT 
+            @MetodoPagoOriginal = v.MetodoPago,
+            @MontoTotal = SUM(dv.Cantidad * dv.PrecioUnitario)
+        FROM Venta v
+        INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+        WHERE v.Id = @VentaId
+        GROUP BY v.MetodoPago;
+
+        IF @MetodoPagoOriginal IS NULL
+        BEGIN
+            RAISERROR(N'La venta especificada no existe', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Evitar devoluciones duplicadas
+        IF EXISTS (SELECT 1 FROM Devolucion WHERE VentaOriginalId = @VentaId AND Estado = N'Procesada')
+        BEGIN
+            RAISERROR(N'Esta venta ya ha sido devuelta anteriormente', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Comprobante
+        DECLARE @NumeroComprobante NVARCHAR(50) = N'DEV' + FORMAT(GETDATE(), 'yyyyMMdd') + N'-' + CAST(@VentaId AS NVARCHAR(10));
+
+        -- Registrar devolución
+        INSERT INTO Devolucion (VentaOriginalId, TipoDevolucion, TipoReembolso, MetodoPagoOriginal, MontoTotal, MontoDevuelto, Motivo, NumeroComprobante)
+        VALUES (@VentaId, N'Total', @TipoReembolso, @MetodoPagoOriginal, @MontoTotal, @MontoTotal, @Motivo, @NumeroComprobante);
+
+        DECLARE @DevolucionId INT = SCOPE_IDENTITY();
+
+        -- Detalles devueltos
+        INSERT INTO DetalleDevolucion (DevolucionId, ProductoId, CantidadDevuelta, PrecioUnitario, SubtotalDevolucion)
+        SELECT @DevolucionId, dv.ProductoId, dv.Cantidad, dv.PrecioUnitario, dv.Cantidad * dv.PrecioUnitario
+        FROM DetalleVenta dv
+        WHERE dv.VentaId = @VentaId;
+
+        -- Crédito en cuenta si aplica
+        IF @TipoReembolso = N'Credito'
+        BEGIN
+            IF @NumeroIdentificacion IS NULL OR @NombreCliente IS NULL
+            BEGIN
+                RAISERROR(N'Para crédito se requiere identificación y nombre del cliente', 16, 1);
+                ROLLBACK TRANSACTION; RETURN;
+            END
+
+            INSERT INTO CreditoCliente (DevolucionId, NumeroIdentificacion, NombreCliente, MontoCredito, FechaVencimiento)
+            VALUES (@DevolucionId, @NumeroIdentificacion, @NombreCliente, @MontoTotal, DATEADD(DAY, @DiasVencimientoCredito, GETDATE()));
+        END
+
+        -- Resultado
+        SELECT 
+            d.Id,
+            d.NumeroComprobante,
+            d.MontoDevuelto,
+            d.TipoReembolso,
+            d.Fecha,
+            CASE WHEN d.TipoReembolso = N'Credito' THEN cc.Id ELSE NULL END AS CreditoId
+        FROM Devolucion d
+        LEFT JOIN CreditoCliente cc ON d.Id = cc.DevolucionId
+        WHERE d.Id = @DevolucionId;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Procesar Devolución Parcial
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ProcesarDevolucionParcial')
+    DROP PROCEDURE ProcesarDevolucionParcial;
+GO
+CREATE PROCEDURE ProcesarDevolucionParcial
+    @VentaId INT,
+    @ProductosDevolver TipoProductosDevolucion READONLY,
+    @TipoReembolso NVARCHAR(20),
+    @Motivo NVARCHAR(500) = NULL,
+    @NumeroIdentificacion NVARCHAR(50) = NULL,
+    @NombreCliente NVARCHAR(200) = NULL,
+    @DiasVencimientoCredito INT = 90
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        DECLARE @MetodoPagoOriginal NVARCHAR(50);
+        DECLARE @MontoTotalVenta DECIMAL(10,2);
+
+        SELECT 
+            @MetodoPagoOriginal = v.MetodoPago,
+            @MontoTotalVenta = SUM(dv.Cantidad * dv.PrecioUnitario)
+        FROM Venta v
+        INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+        WHERE v.Id = @VentaId
+        GROUP BY v.MetodoPago;
+
+        IF @MetodoPagoOriginal IS NULL
+        BEGIN
+            RAISERROR(N'La venta especificada no existe', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Monto a devolver
+        DECLARE @MontoDevolver DECIMAL(10,2);
+        SELECT @MontoDevolver = SUM(pd.CantidadDevolver * dv.PrecioUnitario)
+        FROM @ProductosDevolver pd
+        INNER JOIN DetalleVenta dv ON pd.ProductoId = dv.ProductoId AND dv.VentaId = @VentaId;
+
+        IF @MontoDevolver IS NULL OR @MontoDevolver <= 0
+        BEGIN
+            RAISERROR(N'No hay productos válidos para devolver', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Validar cantidades
+        IF EXISTS (
+            SELECT 1
+            FROM @ProductosDevolver pd
+            INNER JOIN DetalleVenta dv ON pd.ProductoId = dv.ProductoId AND dv.VentaId = @VentaId
+            WHERE pd.CantidadDevolver > dv.Cantidad
+        )
+        BEGIN
+            RAISERROR(N'No se puede devolver más cantidad de la vendida', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        DECLARE @NumeroComprobante NVARCHAR(50) = N'DEV-P' + FORMAT(GETDATE(), 'yyyyMMdd') + N'-' + CAST(@VentaId AS NVARCHAR(10));
+
+        INSERT INTO Devolucion (VentaOriginalId, TipoDevolucion, TipoReembolso, MetodoPagoOriginal, MontoTotal, MontoDevuelto, Motivo, NumeroComprobante)
+        VALUES (@VentaId, N'Parcial', @TipoReembolso, @MetodoPagoOriginal, @MontoTotalVenta, @MontoDevolver, @Motivo, @NumeroComprobante);
+
+        DECLARE @DevolucionId INT = SCOPE_IDENTITY();
+
+        INSERT INTO DetalleDevolucion (DevolucionId, ProductoId, CantidadDevuelta, PrecioUnitario, SubtotalDevolucion)
+        SELECT @DevolucionId, pd.ProductoId, pd.CantidadDevolver, dv.PrecioUnitario, pd.CantidadDevolver * dv.PrecioUnitario
+        FROM @ProductosDevolver pd
+        INNER JOIN DetalleVenta dv ON pd.ProductoId = dv.ProductoId AND dv.VentaId = @VentaId;
+
+        IF @TipoReembolso = N'Credito'
+        BEGIN
+            IF @NumeroIdentificacion IS NULL OR @NombreCliente IS NULL
+            BEGIN
+                RAISERROR(N'Para crédito se requiere identificación y nombre del cliente', 16, 1);
+                ROLLBACK TRANSACTION; RETURN;
+            END
+
+            INSERT INTO CreditoCliente (DevolucionId, NumeroIdentificacion, NombreCliente, MontoCredito, FechaVencimiento)
+            VALUES (@DevolucionId, @NumeroIdentificacion, @NombreCliente, @MontoDevolver, DATEADD(DAY, @DiasVencimientoCredito, GETDATE()));
+        END
+
+        SELECT 
+            d.Id,
+            d.NumeroComprobante,
+            d.MontoDevuelto,
+            d.TipoReembolso,
+            d.Fecha,
+            CASE WHEN d.TipoReembolso = N'Credito' THEN cc.Id ELSE NULL END AS CreditoId
+        FROM Devolucion d
+        LEFT JOIN CreditoCliente cc ON d.Id = cc.DevolucionId
+        WHERE d.Id = @DevolucionId;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Buscar créditos disponibles de cliente
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='BuscarCreditosCliente')
+    DROP PROCEDURE BuscarCreditosCliente;
+GO
+CREATE PROCEDURE BuscarCreditosCliente
+    @NumeroIdentificacion NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        cc.Id,
+        cc.NumeroIdentificacion,
+        cc.NombreCliente,
+        cc.MontoCredito,
+        cc.MontoUtilizado,
+        cc.SaldoDisponible,
+        cc.FechaCreacion,
+        cc.FechaVencimiento,
+        cc.Estado,
+        d.NumeroComprobante AS ComprobanteDevolucion,
+        d.VentaOriginalId
+    FROM CreditoCliente cc
+    INNER JOIN Devolucion d ON cc.DevolucionId = d.Id
+    WHERE cc.NumeroIdentificacion = @NumeroIdentificacion
+      AND cc.Estado = N'Activo'
+      AND cc.SaldoDisponible > 0
+      AND cc.FechaVencimiento > GETDATE()
+    ORDER BY cc.FechaCreacion DESC;
+END
+GO
+
+-- SP: Aplicar crédito a una venta
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='AplicarCreditoAVenta')
+    DROP PROCEDURE AplicarCreditoAVenta;
+GO
+CREATE PROCEDURE AplicarCreditoAVenta
+    @CreditoId INT,
+    @VentaId INT,
+    @MontoAplicar DECIMAL(10,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        DECLARE @SaldoDisponible DECIMAL(10,2);
+        SELECT @SaldoDisponible = SaldoDisponible
+        FROM CreditoCliente
+        WHERE Id = @CreditoId AND Estado = N'Activo' AND FechaVencimiento > GETDATE();
+
+        IF @SaldoDisponible IS NULL
+        BEGIN
+            RAISERROR(N'El crédito especificado no existe o no está disponible', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        IF @MontoAplicar > @SaldoDisponible
+        BEGIN
+            RAISERROR(N'El monto a aplicar excede el saldo disponible del crédito', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        UPDATE CreditoCliente
+        SET MontoUtilizado = MontoUtilizado + @MontoAplicar,
+            Estado = CASE WHEN (MontoCredito - (MontoUtilizado + @MontoAplicar)) <= 0 THEN N'Utilizado' ELSE N'Activo' END
+        WHERE Id = @CreditoId;
+
+        SELECT 
+            N'Crédito aplicado exitosamente' AS Mensaje,
+            @MontoAplicar AS MontoAplicado,
+            (SELECT SaldoDisponible FROM CreditoCliente WHERE Id = @CreditoId) AS SaldoRestante;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Consultar historial de devoluciones
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ConsultarHistorialDevoluciones')
+    DROP PROCEDURE ConsultarHistorialDevoluciones;
+GO
+CREATE PROCEDURE ConsultarHistorialDevoluciones
+    @FechaInicio DATETIME = NULL,
+    @FechaFin DATETIME = NULL,
+    @TipoDevolucion NVARCHAR(20) = NULL,
+    @TipoReembolso NVARCHAR(20) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        d.Id,
+        d.NumeroComprobante,
+        d.VentaOriginalId,
+        d.Fecha,
+        d.TipoDevolucion,
+        d.TipoReembolso,
+        d.MetodoPagoOriginal,
+        d.MontoTotal,
+        d.MontoDevuelto,
+        d.Motivo,
+        d.Estado,
+        v.Fecha AS FechaVentaOriginal,
+        COUNT(dd.Id) AS CantidadProductosDevueltos,
+        CASE WHEN d.TipoReembolso = N'Credito' THEN cc.NombreCliente ELSE NULL END AS ClienteCredito,
+        CASE WHEN d.TipoReembolso = N'Credito' THEN cc.NumeroIdentificacion ELSE NULL END AS IdentificacionCliente
+    FROM Devolucion d
+    INNER JOIN Venta v ON d.VentaOriginalId = v.Id
+    LEFT JOIN DetalleDevolucion dd ON d.Id = dd.DevolucionId
+    LEFT JOIN CreditoCliente cc ON d.Id = cc.DevolucionId
+    WHERE 
+        (@FechaInicio IS NULL OR d.Fecha >= @FechaInicio)
+        AND (@FechaFin IS NULL OR d.Fecha <= @FechaFin)
+        AND (@TipoDevolucion IS NULL OR d.TipoDevolucion = @TipoDevolucion)
+        AND (@TipoReembolso IS NULL OR d.TipoReembolso = @TipoReembolso)
+    GROUP BY d.Id, d.NumeroComprobante, d.VentaOriginalId, d.Fecha, d.TipoDevolucion, 
+             d.TipoReembolso, d.MetodoPagoOriginal, d.MontoTotal, d.MontoDevuelto, 
+             d.Motivo, d.Estado, v.Fecha, cc.NombreCliente, cc.NumeroIdentificacion
+    ORDER BY d.Fecha DESC;
+END
+GO
+
+-- =============================================
 -- DATOS INICIALES
 -- =============================================
+
+-- Hotfix: normalizar posibles estados mal codificados por problemas de página de códigos
+-- Esto corrige filas antiguas donde 'En preparación' quedó como 'En preparaciÃ³n'
+UPDATE Pedido SET Estado = N'En preparación' WHERE Estado = N'En preparaciÃ³n';
 
 -- Insertar usuario administrador por defecto si no existe
 IF NOT EXISTS (SELECT 1 FROM Usuario WHERE Email = 'admin@antojeria.com')
@@ -1946,6 +2955,174 @@ BEGIN
 END
 
 -- =============================================
+    -- SPs de PRODUCTO (crear/actualizar/eliminar/obtener) + historial
+    -- =============================================
+
+    -- Tabla de historial de producto
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ProductoHistorial' AND xtype='U')
+    BEGIN
+        CREATE TABLE ProductoHistorial (
+            Id INT IDENTITY(1,1) PRIMARY KEY,
+            IdProducto INT NOT NULL,
+            Fecha DATETIME NOT NULL DEFAULT GETDATE(),
+            Usuario NVARCHAR(100) NOT NULL,
+            Cambio NVARCHAR(500) NOT NULL,
+            CONSTRAINT FK_ProductoHistorial_Producto FOREIGN KEY (IdProducto) REFERENCES Producto(Id)
+        );
+        PRINT 'Tabla ProductoHistorial creada';
+    END
+    GO
+
+    -- Insertar producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProducto')
+        DROP PROCEDURE sp_InsertarProducto;
+    GO
+    CREATE PROCEDURE sp_InsertarProducto
+        @Codigo NVARCHAR(50),
+        @Nombre NVARCHAR(200),
+        @Descripcion NVARCHAR(500) = NULL,
+        @PrecioUnitario DECIMAL(10,2),
+        @Existencias INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        -- Validación de código único
+        IF EXISTS (SELECT 1 FROM Producto WHERE Codigo = @Codigo)
+        BEGIN
+            RAISERROR('El código de producto ya existe', 16, 1);
+            RETURN;
+        END
+
+        INSERT INTO Producto (Codigo, Nombre, Descripcion, Precio, Categoria, Stock, StockMinimo, Gravado, Activo)
+        VALUES (@Codigo, @Nombre, @Descripcion, @PrecioUnitario, NULL, @Existencias, 5, 1, 1);
+
+        SELECT SCOPE_IDENTITY() AS IdProducto;
+    END
+    GO
+
+    -- Obtener producto por Id (con alias esperados por la API)
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerProducto')
+        DROP PROCEDURE sp_ObtenerProducto;
+    GO
+    CREATE PROCEDURE sp_ObtenerProducto
+        @IdProducto INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        SELECT 
+            Id AS IdProducto,
+            Codigo,
+            Nombre,
+            Descripcion,
+            Precio AS PrecioUnitario,
+            Stock AS Existencias
+        FROM Producto
+        WHERE Id = @IdProducto;
+    END
+    GO
+
+    -- Actualizar producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ActualizarProducto')
+        DROP PROCEDURE sp_ActualizarProducto;
+    GO
+    CREATE PROCEDURE sp_ActualizarProducto
+        @IdProducto INT,
+        @Nombre NVARCHAR(200),
+        @Descripcion NVARCHAR(500) = NULL,
+        @PrecioUnitario DECIMAL(10,2),
+        @Existencias INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        IF NOT EXISTS (SELECT 1 FROM Producto WHERE Id = @IdProducto)
+        BEGIN
+            RAISERROR('Producto no encontrado', 16, 1);
+            RETURN;
+        END
+
+        UPDATE Producto
+        SET Nombre = @Nombre,
+            Descripcion = @Descripcion,
+            Precio = @PrecioUnitario,
+            Stock = @Existencias
+        WHERE Id = @IdProducto;
+    END
+    GO
+
+    -- Eliminar (lógico) producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_EliminarProducto')
+        DROP PROCEDURE sp_EliminarProducto;
+    GO
+    CREATE PROCEDURE sp_EliminarProducto
+        @IdProducto INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        IF NOT EXISTS (SELECT 1 FROM Producto WHERE Id = @IdProducto)
+        BEGIN
+            RAISERROR('Producto no encontrado', 16, 1);
+            RETURN;
+        END
+        UPDATE Producto SET Activo = 0 WHERE Id = @IdProducto;
+    END
+    GO
+
+    -- Insertar historial de cambios de producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProductoHistorial')
+        DROP PROCEDURE sp_InsertarProductoHistorial;
+    GO
+    CREATE PROCEDURE sp_InsertarProductoHistorial
+        @IdProducto INT,
+        @Usuario NVARCHAR(100),
+        @Cambio NVARCHAR(500)
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        INSERT INTO ProductoHistorial (IdProducto, Usuario, Cambio)
+        VALUES (@IdProducto, @Usuario, @Cambio);
+    END
+    GO
+
+    -- Obtener historial de producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
+        DROP PROCEDURE sp_ObtenerHistorialProducto;
+    GO
+    CREATE PROCEDURE sp_ObtenerHistorialProducto
+        @IdProducto INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        SELECT IdProducto, Fecha, Usuario, Cambio
+        FROM ProductoHistorial
+        WHERE IdProducto = @IdProducto
+        ORDER BY Fecha DESC, Id DESC;
+    END
+    GO
+
+    -- Wrapper para compatibilidad: sp_RegistrarMovimientoInventario
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_RegistrarMovimientoInventario')
+        DROP PROCEDURE sp_RegistrarMovimientoInventario;
+    GO
+    CREATE PROCEDURE sp_RegistrarMovimientoInventario
+        @IdProducto INT,
+        @TipoMovimiento NVARCHAR(50),
+        @Cantidad INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        DECLARE @UsuarioId INT;
+        SELECT TOP 1 @UsuarioId = Id FROM Usuario ORDER BY CASE WHEN Email='pepe@pepe' THEN 0 ELSE 1 END, Id;
+        EXEC RegistrarMovimientoInventario
+            @ProductoId=@IdProducto,
+            @TipoMovimiento=@TipoMovimiento,
+            @Cantidad=@Cantidad,
+            @Motivo=NULL,
+            @UsuarioId=@UsuarioId,
+            @VentaId=NULL;
+    END
+    GO
+
+    -- =============================================
 -- STORED PROCEDURE PARA SEGUIMIENTO AVANZADO - PED-002
 -- =============================================
 
@@ -2103,6 +3280,7 @@ PRINT '=========================================';
 
 --- MR--001
 
+GO
 CREATE OR ALTER PROCEDURE sp_ReporteVentasAnual
     @Anio INT
 AS
