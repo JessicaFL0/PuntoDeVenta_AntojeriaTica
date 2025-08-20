@@ -30,20 +30,17 @@ namespace AntojeriaTica_Api.Services
         {
             using var memoryStream = new MemoryStream();
             
-            // Crear documento PDF
             var document = new Document(PageSize.A4, 50, 50, 50, 50);
             var writer = PdfWriter.GetInstance(document, memoryStream);
             
             document.Open();
 
-            // Obtener datos de la factura
             var facturaData = ObtenerDatosFactura(idFactura);
             if (facturaData == null)
             {
                 throw new Exception($"Factura con ID {idFactura} no encontrada");
             }
 
-            // Título del documento
             var titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 18, new BaseColor(0, 0, 255));
             var title = new Paragraph("FACTURA ELECTRÓNICA", titleFont)
             {
@@ -52,7 +49,6 @@ namespace AntojeriaTica_Api.Services
             };
             document.Add(title);
 
-            // Información de la empresa
             var empresaFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 12);
             var normalFont = FontFactory.GetFont(FontFactory.HELVETICA, 10);
             
@@ -62,7 +58,6 @@ namespace AntojeriaTica_Api.Services
             document.Add(new Paragraph("Email: info@antojeriatica.com", normalFont));
             document.Add(new Paragraph(" ", normalFont));
 
-            // Información de la factura
             var facturaInfoTable = new PdfPTable(2) { WidthPercentage = 100 };
             facturaInfoTable.SetWidths(new float[] { 1, 1 });
 
@@ -81,7 +76,6 @@ namespace AntojeriaTica_Api.Services
             document.Add(facturaInfoTable);
             document.Add(new Paragraph(" ", normalFont));
 
-            // Información del cliente
             var clienteTitle = new Paragraph("DATOS DEL CLIENTE", empresaFont) { SpacingBefore = 10, SpacingAfter = 10 };
             document.Add(clienteTitle);
 
@@ -106,14 +100,12 @@ namespace AntojeriaTica_Api.Services
             document.Add(clienteTable);
             document.Add(new Paragraph(" ", normalFont));
 
-            // Detalle de productos
             var detalleTitle = new Paragraph("DETALLE DE PRODUCTOS", empresaFont) { SpacingBefore = 10, SpacingAfter = 10 };
             document.Add(detalleTitle);
 
             var detalleTable = new PdfPTable(4) { WidthPercentage = 100 };
             detalleTable.SetWidths(new float[] { 3, 1, 2, 2 });
 
-            // Headers de la tabla
             var headerFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10, new BaseColor(255, 255, 255));
             var headerCell1 = new PdfPCell(new Phrase("Producto", headerFont)) { BackgroundColor = new BaseColor(0, 0, 255), Padding = 5 };
             var headerCell2 = new PdfPCell(new Phrase("Cant.", headerFont)) { BackgroundColor = new BaseColor(0, 0, 255), Padding = 5 };
@@ -125,7 +117,6 @@ namespace AntojeriaTica_Api.Services
             detalleTable.AddCell(headerCell3);
             detalleTable.AddCell(headerCell4);
 
-            // Obtener productos de la factura
             var productos = ObtenerProductosFactura(idFactura);
             foreach (var producto in productos)
             {
@@ -138,7 +129,6 @@ namespace AntojeriaTica_Api.Services
             document.Add(detalleTable);
             document.Add(new Paragraph(" ", normalFont));
 
-            // Totales
             var totalesTable = new PdfPTable(2) { WidthPercentage = 60, HorizontalAlignment = Element.ALIGN_RIGHT };
             totalesTable.SetWidths(new float[] { 1, 1 });
 
@@ -153,7 +143,6 @@ namespace AntojeriaTica_Api.Services
 
             document.Add(totalesTable);
 
-            // Pie de página
             document.Add(new Paragraph(" ", normalFont));
             document.Add(new Paragraph("Gracias por su compra", normalFont) { Alignment = Element.ALIGN_CENTER });
 
@@ -168,10 +157,8 @@ namespace AntojeriaTica_Api.Services
                 var facturaData = ObtenerDatosFactura(idFactura);
                 if (facturaData == null) return false;
 
-                // Generar PDF
                 var pdfContent = GenerarPDFFactura(idFactura);
 
-                // Crear el mensaje de email
                 var message = new MimeMessage();
                 message.From.Add(new MailboxAddress("Antojería Tica", "noreply@antojeriatica.com"));
                 message.To.Add(new MailboxAddress("", emailDestino));
@@ -199,30 +186,20 @@ namespace AntojeriaTica_Api.Services
                     </html>"
                 };
 
-                // Adjuntar PDF
                 bodyBuilder.Attachments.Add($"Factura-{facturaData.NumeroFactura}.pdf", pdfContent, ContentType.Parse("application/pdf"));
                 message.Body = bodyBuilder.ToMessageBody();
 
-                // Enviar email (usando configuración SMTP simulada)
                 using var client = new SmtpClient();
                 
-                // Para desarrollo/prueba, simular el envío
-                await Task.Delay(1000); // Simular tiempo de envío
+                await Task.Delay(1000);
                 
-                // En producción, descomentar estas líneas y configurar SMTP real:
-                // await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-                // await client.AuthenticateAsync("tu_email@gmail.com", "tu_password");
-                // await client.SendAsync(message);
-                // await client.DisconnectAsync(true);
-
-                // Registrar el envío en la base de datos
+                
                 RegistrarEnvioEmail(idFactura, emailDestino, "Enviado", "Email enviado exitosamente");
                 
                 return true;
             }
             catch (Exception ex)
             {
-                // Registrar el error
                 RegistrarEnvioEmail(idFactura, emailDestino, "Error", ex.Message);
                 return false;
             }

@@ -42,7 +42,6 @@ namespace AntojeriaTica_Api.Controllers
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         cmd.Parameters.AddWithValue("@MetodoPago", venta.MetodoPago);
-                        // PedidoId opcional para ventas basadas en pedidos
                         cmd.Parameters.AddWithValue("@PedidoId", (object?)venta.PedidoId ?? DBNull.Value);
 
                         SqlParameter tvpParam = cmd.Parameters.AddWithValue("@DetallesVenta", detalleVentaTable);
@@ -104,7 +103,6 @@ namespace AntojeriaTica_Api.Controllers
             }
             catch (System.Exception ex)
             {
-                // Log más detallado del error
                 return BadRequest(new { 
                     error = ex.Message, 
                     stackTrace = ex.StackTrace,

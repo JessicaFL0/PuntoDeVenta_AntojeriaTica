@@ -21,19 +21,23 @@ namespace AntojeriaTica_Web.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
-        // GET: Pedidos
         public async Task<IActionResult> Index()
         {
+            var rolRedir = HttpContext.Session.GetString("NombreRol") ?? string.Empty;
+            if (rolRedir.Equals("Cocina", StringComparison.OrdinalIgnoreCase))
+            {
+                return RedirectToAction("Cocina");
+            }
+
             var client = _httpClientFactory.CreateClient();
             var rol = HttpContext.Session.GetString("NombreRol") ?? string.Empty;
             var roleNorm = rol.ToLowerInvariant();
-            var isPrivileged = roleNorm.Contains("admin") || roleNorm.Contains("cajero") || roleNorm.Contains("vendedor");
+                var isPrivileged = roleNorm.Contains("admin") || roleNorm.Contains("cajero") || roleNorm.Contains("vendedor");
             var idUsuario = HttpContext.Session.GetInt32("IdUsuario");
 
             var fechaInicio = DateTime.Today;
             var fechaFin = DateTime.Today.AddDays(1).AddSeconds(-1);
 
-            // Construir URL con filtros por defecto (hoy) y por usuario cuando aplica
             var query = new List<string>
             {
                 $"fechaInicio={Uri.EscapeDataString(fechaInicio.ToString("yyyy-MM-ddTHH:mm:ss"))}",
@@ -67,7 +71,6 @@ namespace AntojeriaTica_Web.Controllers
             return View(new List<PedidoResumenModel>());
         }
 
-        // GET: Pedidos/RegistrarPedido
         [HttpGet]
         public async Task<IActionResult> RegistrarPedido()
         {
@@ -75,7 +78,6 @@ namespace AntojeriaTica_Web.Controllers
             return View(new PedidoModel { Detalles = new List<DetallePedidoModel>() });
         }
 
-        // POST: Pedidos/RegistrarPedido
         [HttpPost]
         public async Task<IActionResult> RegistrarPedido(PedidoModel model)
         {
@@ -88,7 +90,6 @@ namespace AntojeriaTica_Web.Controllers
             var client = _httpClientFactory.CreateClient();
             var url = "http://localhost:5062/api/Pedidos/RegistrarPedido";
 
-            // Establecer UsuarioId del usuario logueado desde la sesión
             var idUsuario = HttpContext.Session.GetInt32("IdUsuario");
             if (!idUsuario.HasValue || idUsuario.Value <= 0)
             {
@@ -114,7 +115,6 @@ namespace AntojeriaTica_Web.Controllers
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     
-                    // Intentar deserializar el error para obtener un mensaje más específico
                     try
                     {
                         var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent);
@@ -134,7 +134,6 @@ namespace AntojeriaTica_Web.Controllers
                     }
                     catch
                     {
-                        // Si no se puede deserializar, mostrar el error raw
                         ModelState.AddModelError("", $"Error al registrar el pedido: {errorContent}");
                     }
                 }
@@ -148,13 +147,11 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-    // GET: Pedidos/ActualizarEstado/5
     [AdminOnly("Admin","Cocina")]
         public async Task<IActionResult> ActualizarEstado(int id)
         {
             var client = _httpClientFactory.CreateClient();
             
-            // Obtener estados disponibles
             var estadosUrl = "http://localhost:5062/api/Pedidos/ObtenerEstados";
             var estadosResponse = await client.GetAsync(estadosUrl);
             
@@ -165,7 +162,6 @@ namespace AntojeriaTica_Web.Controllers
                 ViewBag.Estados = new SelectList(estados);
             }
 
-            // Obtener información del pedido
             var pedidoUrl = $"http://localhost:5062/api/Pedidos/ObtenerDetalle/{id}";
             var pedidoResponse = await client.GetAsync(pedidoUrl);
             if (pedidoResponse.IsSuccessStatusCode)
@@ -189,8 +185,7 @@ namespace AntojeriaTica_Web.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Pedidos/Cocina - Vista especial para la cocina
-        [AdminOnly("Admin","Cocina")]
+    [AdminOnly("Admin","Cocina","Cajero","Vendedor")]
         public async Task<IActionResult> Cocina()
         {
             var client = _httpClientFactory.CreateClient();
@@ -219,13 +214,11 @@ namespace AntojeriaTica_Web.Controllers
             return View(new List<PedidoResumenModel>());
         }
 
-        // GET: Pedidos/Editar/{id} - Edición básica (Cliente, Mesa, Observaciones) para usuarios sin rol, 5 minutos
         [HttpGet]
         public async Task<IActionResult> Editar(int id)
         {
             var client = _httpClientFactory.CreateClient();
 
-            // Obtener info básica para validar permisos y ventana de tiempo
             var infoUrl = $"http://localhost:5062/api/Pedidos/InfoBasica/{id}";
             try
             {
@@ -248,7 +241,6 @@ namespace AntojeriaTica_Web.Controllers
                 var esPrivilegiado = rol.Equals("Admin", StringComparison.OrdinalIgnoreCase) || rol.Equals("Cocina", StringComparison.OrdinalIgnoreCase);
                 var idUsuario = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
 
-                // Solo usuarios sin rol: deben ser dueños del pedido y dentro de 5 minutos
                 if (!esPrivilegiado)
                 {
                     var minutos = (int)(DateTime.Now - info.Fecha).TotalMinutes;
@@ -259,7 +251,6 @@ namespace AntojeriaTica_Web.Controllers
                     }
                 }
 
-                // Cargar detalle para mostrar en el formulario
                 var detalleUrl = $"http://localhost:5062/api/Pedidos/ObtenerDetalle/{id}";
                 var detResp = await client.GetAsync(detalleUrl);
                 if (!detResp.IsSuccessStatusCode)
@@ -270,7 +261,6 @@ namespace AntojeriaTica_Web.Controllers
 
                 var detJson = await detResp.Content.ReadAsStringAsync();
                 var pedido = JsonSerializer.Deserialize<PedidoModel>(detJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new PedidoModel();
-                // Necesario para editor de productos
                 await CargarListasAsync();
                 ViewBag.MinutosTranscurridos = (int)(DateTime.Now - info.Fecha).TotalMinutes;
                 return View(pedido);
@@ -282,7 +272,6 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // POST: Pedidos/Editar - aplica edición básica a través del API
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Editar(PedidoModel model)
@@ -295,10 +284,8 @@ namespace AntojeriaTica_Web.Controllers
 
             var client = _httpClientFactory.CreateClient();
             var idUsuario = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-            // Siempre aplicar edición básica
             var urlBasico = $"http://localhost:5062/api/Pedidos/EditarBasico/{model.Id}";
             var bodyBasico = new { UsuarioId = idUsuario, Cliente = model.Cliente, Mesa = model.Mesa, Observaciones = model.Observaciones };
-            // Si hay detalles, enviar edición de productos
             var urlProductos = $"http://localhost:5062/api/Pedidos/EditarProductos/{model.Id}";
             var bodyProductos = new
             {
@@ -328,7 +315,6 @@ namespace AntojeriaTica_Web.Controllers
                     catch { TempData["Error"] = contentBasico; }
                     return RedirectToAction("Editar", new { id = model.Id });
                 }
-                // Si hay items, intentar actualizar productos
                 if (model.Detalles != null && model.Detalles.Count > 0)
                 {
                     var respProd = await client.PutAsJsonAsync(urlProductos, bodyProductos);
@@ -356,12 +342,10 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // Método para cargar listas desplegables
         private async Task CargarListasAsync()
         {
             var client = _httpClientFactory.CreateClient();
 
-            // Cargar productos
             try
             {
                 var productosUrl = "http://localhost:5062/api/Producto/ListarProductos";
@@ -375,7 +359,6 @@ namespace AntojeriaTica_Web.Controllers
                         PropertyNameCaseInsensitive = true
                     });
 
-                    // Pasar la lista completa de productos para acceder al precio
                     ViewBag.ProductosCompletos = productos ?? new List<ProductoModel>();
                     ViewBag.Productos = new SelectList(productos ?? new List<ProductoModel>(), "IdProducto", "Nombre");
                 }
@@ -393,27 +376,20 @@ namespace AntojeriaTica_Web.Controllers
                 ViewBag.Productos = new SelectList(new List<ProductoModel>(), "IdProducto", "Nombre");
             }
 
-            // Cargar tipos de pedido
             ViewBag.TiposPedido = new SelectList(new List<string> { "Mesa", "Telefono", "App" });
         }
 
-        // GET: Pedidos/Seguimiento - PED-002
         public IActionResult Seguimiento()
         {
-            // Permitir acceso sin autenticación (solo lectura)
-            // Los usuarios no autenticados pueden ver pedidos pero no notificaciones personalizadas
             var idUsuario = HttpContext.Session.GetInt32("IdUsuario");
             Console.WriteLine($"Seguimiento - Usuario ID: {idUsuario}");
             
-            // Agregar información del usuario a ViewBag para usar en la vista si es necesario
             ViewBag.UsuarioAutenticado = idUsuario.HasValue && idUsuario.Value > 0;
             ViewBag.IdUsuario = idUsuario ?? 0;
 
             return View();
         }
 
-        // GET: Pedidos/Detalle/{id} - TEMPORALMENTE DESHABILITADO
-        // GET: Pedidos/Detalle/5
         public async Task<IActionResult> Detalle(int id)
         {
             var client = _httpClientFactory.CreateClient();
@@ -445,29 +421,24 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // POST: Pedidos/ActualizarEstado (maneja tanto formularios HTML como AJAX)
     [HttpPost]
     [AdminOnly("Admin","Cocina")]
         public async Task<IActionResult> ActualizarEstado(int pedidoId, string nuevoEstado)
         {
-            // Debug: mostrar los datos recibidos
             Console.WriteLine($"ActualizarEstado - pedidoId: {pedidoId}, nuevoEstado: '{nuevoEstado}'");
             
             var estado = Uri.EscapeDataString(nuevoEstado);
-            // Validar que se haya proporcionado un nuevo estado
             if (string.IsNullOrWhiteSpace(nuevoEstado))
             {
                 var errorMessage = "Debe seleccionar un nuevo estado para el pedido.";
                 Console.WriteLine($"Error: {errorMessage}");
                 
-                // Si es una petición AJAX, devolver JSON
                 if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 {
                     return Json(new { success = false, message = errorMessage });
                 }
                 else
                 {
-                    // Si es un formulario HTML, redirigir con error
                     TempData["Error"] = errorMessage;
                     return RedirectToAction("ActualizarEstado", new { id = pedidoId });
                 }
@@ -494,14 +465,12 @@ namespace AntojeriaTica_Web.Controllers
                 
                 if (response.IsSuccessStatusCode)
                 {
-                    // Si es una petición AJAX, devolver JSON
                     if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                     {
                         return Json(new { success = true, message = "Estado actualizado correctamente" });
                     }
                     else
                     {
-                        // Si es un formulario HTML, redirigir con mensaje
                         TempData["Success"] = "Estado del pedido actualizado correctamente";
                         return RedirectToAction("Index");
                     }
@@ -512,7 +481,6 @@ namespace AntojeriaTica_Web.Controllers
                     Console.WriteLine($"Error del API - Status: {response.StatusCode}");
                     Console.WriteLine($"Error del API - Content: {errorContent}");
                     
-                    // Intentar deserializar el error para obtener un mensaje más específico
                     string errorMessage;
                     try
                     {
@@ -524,7 +492,6 @@ namespace AntojeriaTica_Web.Controllers
                         }
                         else if (errorObj.TryGetProperty("errors", out var errors))
                         {
-                            // Manejar errores de validación
                             var errorMessages = new List<string>();
                             foreach (var error in errors.EnumerateObject())
                             {
@@ -548,14 +515,12 @@ namespace AntojeriaTica_Web.Controllers
                         errorMessage = $"Error del servidor (código {response.StatusCode})";
                     }
 
-                    // Si es una petición AJAX, devolver JSON
                     if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                     {
                         return Json(new { success = false, message = errorMessage });
                     }
                     else
                     {
-                        // Si es un formulario HTML, redirigir con error
                         TempData["Error"] = errorMessage;
                         return RedirectToAction("ActualizarEstado", new { id = pedidoId });
                     }
@@ -565,21 +530,18 @@ namespace AntojeriaTica_Web.Controllers
             {
                 var errorMessage = $"Error de conexión: {ex.Message}";
                 
-                // Si es una petición AJAX, devolver JSON
                 if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 {
                     return Json(new { success = false, message = errorMessage });
                 }
                 else
                 {
-                    // Si es un formulario HTML, redirigir con error
                     TempData["Error"] = errorMessage;
                     return RedirectToAction("ActualizarEstado", new { id = pedidoId });
                 }
             }
         }
 
-        // Endpoints para seguimiento - PED-002
         [HttpGet]
         public async Task<IActionResult> ObtenerPedidosConSeguimiento(int? usuarioId = null, bool soloAtrasados = false)
         {
@@ -704,7 +666,6 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // Método proxy para obtener detalles de un pedido para AJAX
         [HttpGet]
         [Route("api/Pedidos/DetalleJson/{id:int}")]
         public async Task<IActionResult> ObtenerDetallePedidoJson(int id)

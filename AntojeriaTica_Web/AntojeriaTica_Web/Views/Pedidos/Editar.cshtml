@@ -146,10 +146,8 @@
             }
         });
 
-        // Inicializar selects existentes
         document.querySelectorAll('select.producto-select').forEach(sel => {
             sel.addEventListener('change', (e)=> setPriceFromSelect(e.target));
-            // Si precio está vacío o 0, setear por defecto
             setPriceFromSelect(sel);
         });
     })();

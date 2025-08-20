@@ -2,7 +2,6 @@
     ViewData["Title"] = "Inicio";
     var rol = Context.Session.GetString("NombreRol") ?? string.Empty;
     var isAdmin = rol.ToLowerInvariant().Contains("admin");
-    // Datos del negocio para la portada
     var direccion = "C. 6A, Provincia de Alajuela, Alajuela, Costa Rica";
     var hoy = DateTime.Now;
     var horarios = new Dictionary<DayOfWeek, (TimeSpan? Abre, TimeSpan? Cierra)>
@@ -140,7 +139,10 @@
                             </a>
                             @{
                                 var rol2 = Context.Session.GetString("NombreRol") ?? string.Empty;
-                                var esPriv2 = rol2.Equals("Admin", StringComparison.OrdinalIgnoreCase) || rol2.Equals("Cocina", StringComparison.OrdinalIgnoreCase);
+                                var esPriv2 = rol2.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+                                              || rol2.Equals("Cocina", StringComparison.OrdinalIgnoreCase)
+                                              || rol2.Equals("Cajero", StringComparison.OrdinalIgnoreCase)
+                                              || rol2.Equals("Vendedor", StringComparison.OrdinalIgnoreCase);
                             }
                             @if (esPriv2)
                             {
@@ -175,7 +177,6 @@
 @section Scripts {
     <style>
     .map-embed iframe { width:100%; height:100%; display:block; }
-    /* Keep sidebar clickable over map embeds */
     #app-sidebar { position: sticky; z-index: 1030; }
     .ratio iframe { display:block; pointer-events:auto; }
     </style>

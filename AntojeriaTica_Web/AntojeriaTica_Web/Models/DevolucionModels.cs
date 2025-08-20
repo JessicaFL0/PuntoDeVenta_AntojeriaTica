@@ -3,7 +3,6 @@ using System.Collections.Generic;
 
 namespace AntojeriaTica_Web.Models
 {
-    // Modelo general para devoluciones
     public class DevolucionModel
     {
         public int VentaId { get; set; }
@@ -16,7 +15,6 @@ namespace AntojeriaTica_Web.Models
         public List<ProductoDevolucionModel> ProductosADevolver { get; set; } = new List<ProductoDevolucionModel>();
     }
 
-    // Modelos de devolución para la web
     public class DevolucionTotalModel
     {
         public int VentaId { get; set; }
@@ -26,7 +24,6 @@ namespace AntojeriaTica_Web.Models
         public string? NombreCliente { get; set; }
         public int DiasVencimientoCredito { get; set; } = 90;
         
-        // Información de la venta original (para mostrar)
         public DateTime? FechaVenta { get; set; }
         public string? MetodoPagoOriginal { get; set; }
         public decimal MontoTotal { get; set; }
@@ -55,15 +52,12 @@ namespace AntojeriaTica_Web.Models
         public string? NombreCliente { get; set; }
         public int DiasVencimientoCredito { get; set; } = 90;
         
-        // Información de la venta original
         public DateTime? FechaVenta { get; set; }
         public string? MetodoPagoOriginal { get; set; }
         public decimal MontoTotalVenta { get; set; }
         
-        // Productos disponibles para devolución
         public List<ProductoDevolucionModel> ProductosDisponibles { get; set; } = new List<ProductoDevolucionModel>();
         
-        // Totales calculados
         public decimal MontoTotalDevolucion { get; set; }
         public int TotalProductosDevolver { get; set; }
     }
@@ -120,7 +114,6 @@ namespace AntojeriaTica_Web.Models
         public string? TipoReembolso { get; set; }
         public List<DevolucionDetalladaModel> Resultados { get; set; } = new List<DevolucionDetalladaModel>();
         
-        // Opciones para los filtros
         public List<string> TiposDevolucion { get; set; } = new List<string> { "Total", "Parcial" };
         public List<string> TiposReembolso { get; set; } = new List<string> { "Efectivo", "Tarjeta", "Credito" };
     }
@@ -143,7 +136,6 @@ namespace AntojeriaTica_Web.Models
         public List<CreditoClienteModel> CreditosDisponibles { get; set; } = new List<CreditoClienteModel>();
     }
 
-    // Modelo para devoluciones realizadas (historial)
     public class DevolucionRealizada
     {
         public int Id { get; set; }
@@ -157,13 +149,11 @@ namespace AntojeriaTica_Web.Models
         public string? IdentificacionCliente { get; set; }
         public string Estado { get; set; } = "Completada";
         
-        // Información adicional de la venta original
         public DateTime FechaVentaOriginal { get; set; }
         public string MetodoPagoOriginal { get; set; } = string.Empty;
         public decimal MontoVentaOriginal { get; set; }
     }
 
-    // Modelo para créditos de clientes (alias)
     public class CreditoCliente
     {
         public int Id { get; set; }
@@ -175,7 +165,6 @@ namespace AntojeriaTica_Web.Models
         public string Estado { get; set; } = "Disponible"; // Disponible, Utilizado
         public int? DevolucionId { get; set; }
         
-        // Información adicional
         public DateTime? FechaUltimoUso { get; set; }
         public string? DescripcionUltimoUso { get; set; }
     }

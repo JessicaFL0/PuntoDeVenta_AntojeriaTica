@@ -25,14 +25,13 @@ namespace AntojeriaTica_Web.Controllers
                 return View(model);
             }
 
-            // Tomar el ID del usuario desde sesión (ajústalo si usas otro nombre)
             if (HttpContext.Session.GetInt32("IdUsuario") is int idUsuario)
             {
                 model.IdUsuario = idUsuario;
             }
             else
             {
-                ViewBag.Error = "No se encontró el usuario en sesión.";
+                ViewBag.Error = "No se encontrï¿½ el usuario en sesiï¿½n.";
                 return View(model);
             }
 

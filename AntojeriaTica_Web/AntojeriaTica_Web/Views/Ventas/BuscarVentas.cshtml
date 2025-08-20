@@ -37,7 +37,7 @@
                         </div>
                     }
 
-                    <!-- Formulario de Búsqueda -->
+                    
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card bg-gradient-light border-0 shadow-sm">
@@ -113,7 +113,7 @@
                         </div>
                     </div>
 
-                    <!-- Resultados -->
+                    
                     @if (Model.Resultados.Any())
                     {
                         <div class="row">
@@ -247,7 +247,7 @@
                         </div>
                     }
 
-                    <!-- Información de Escenarios de Uso -->
+                    
                     <div class="row mt-4">
                         <div class="col-12">
                             <div class="card bg-gradient-secondary">
@@ -280,18 +280,14 @@
 
 @section Scripts {
     <script>
-        // Inicializar tooltips
         document.addEventListener('DOMContentLoaded', function() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
-
-            // Auto-rellenar fecha de hoy para búsquedas rápidas
             const fechaInicio = document.querySelector('input[name="FechaInicio"]');
             const fechaFin = document.querySelector('input[name="FechaFin"]');
             
-            // Botón para búsqueda del día de hoy
             const buscarHoyBtn = document.createElement('button');
             buscarHoyBtn.type = 'button';
             buscarHoyBtn.className = 'btn btn-outline-primary btn-sm mt-2 me-2';
@@ -305,7 +301,6 @@
                 fechaFin.value = finDelDia.toISOString().slice(0, 16);
             };
 
-            // Botón para búsqueda de ayer
             const buscarAyerBtn = document.createElement('button');
             buscarAyerBtn.type = 'button';
             buscarAyerBtn.className = 'btn btn-outline-warning btn-sm mt-2 me-2';
@@ -320,7 +315,6 @@
                 fechaFin.value = finDelDia.toISOString().slice(0, 16);
             };
 
-            // Botón para búsqueda de esta semana
             const buscarSemanaBtn = document.createElement('button');
             buscarSemanaBtn.type = 'button';
             buscarSemanaBtn.className = 'btn btn-outline-info btn-sm mt-2';
@@ -334,7 +328,6 @@
                 fechaFin.value = new Date(finSemana.setHours(23, 59)).toISOString().slice(0, 16);
             };
 
-            // Agregar botones al formulario
             const formRow = document.querySelector('.card-body .row');
             if (formRow) {
                 const buttonContainer = document.createElement('div');
@@ -345,8 +338,6 @@
                 buttonContainer.appendChild(buscarSemanaBtn);
                 formRow.appendChild(buttonContainer);
             }
-
-            // Destacar filas al pasar el mouse
             const tableRows = document.querySelectorAll('tbody tr');
             tableRows.forEach(row => {
                 row.addEventListener('mouseenter', function() {
@@ -357,8 +348,6 @@
                 });
             });
         });
-
-        // Validación del formulario
         function validarFormulario() {
             const fechaInicio = document.querySelector('input[name="FechaInicio"]').value;
             const fechaFin = document.querySelector('input[name="FechaFin"]').value;
@@ -377,8 +366,6 @@
 
             return true;
         }
-
-        // Agregar validación al formulario
         document.querySelector('form').addEventListener('submit', function(e) {
             if (!validarFormulario()) {
                 e.preventDefault();
@@ -412,7 +399,6 @@
         padding: 0.4rem 0.6rem;
     }
     
-    /* Mejorar visibilidad de fechas */
     .fecha-visible {
         color: #212529 !important;
         font-weight: 600 !important;

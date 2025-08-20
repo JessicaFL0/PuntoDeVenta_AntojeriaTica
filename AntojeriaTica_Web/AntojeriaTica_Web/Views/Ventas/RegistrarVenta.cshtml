@@ -240,10 +240,8 @@
             const res = await fetch(`http://localhost:5062/api/Pedidos/ObtenerDetalle/${pedidoId}`);
             if (!res.ok) { alert('Pedido no encontrado'); return; }
             const pedido = await res.json();
-            // Limpiar productos actuales
             document.getElementById('productosContainer').innerHTML = '';
             productoIndex = 0;
-            // Agregar productos del pedido
             (pedido.detalles || []).forEach(d => {
                 agregarProducto();
                 const select = document.querySelector(`select[name="Detalles[${productoIndex-1}].ProductoId"]`);
@@ -258,10 +256,8 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await cargarCatalogo();
-            // Agregar un renglón por defecto
             agregarProducto();
 
-            // Sincronizar selección con el hidden PedidoId
             const pedidoSelect = document.getElementById('pedidoSelect');
             if (pedidoSelect) {
                 pedidoSelect.addEventListener('change', (e) => {
@@ -275,7 +271,6 @@
                 if (pedidoId) cargarPedido(pedidoId);
             });
 
-            // Cargar pedidos listos para hoy
             await cargarPedidosListos();
 
             document.getElementById('btnVentaRapida').addEventListener('click', () => {

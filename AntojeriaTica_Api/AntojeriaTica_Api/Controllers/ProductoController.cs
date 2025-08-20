@@ -92,7 +92,6 @@ namespace AntojeriaTica_Api.Controllers
                 if (existing == null)
                     return NotFound(new { success = false, message = "Producto no encontrado" });
 
-                // Actualizar
                 using (var updCmd = new SqlCommand("sp_ActualizarProducto", connection) { CommandType = CommandType.StoredProcedure })
                 {
                     updCmd.Parameters.AddWithValue("@IdProducto", model.IdProducto);
@@ -103,7 +102,6 @@ namespace AntojeriaTica_Api.Controllers
                     updCmd.ExecuteNonQuery();
                 }
 
-                // Historial
                 var cambios = $"Existencias: {existing.Existencias} -> {model.Existencias}, Precio: {existing.PrecioUnitario} -> {model.PrecioUnitario}";
                 using (var histCmd = new SqlCommand("sp_InsertarProductoHistorial", connection) { CommandType = CommandType.StoredProcedure })
                 {
@@ -179,7 +177,6 @@ namespace AntojeriaTica_Api.Controllers
                 return StatusCode(500, new { success = false, message = "Error interno", error = ex.Message });
             }
         }
-        //ELIMINAR PRODUCTO
         [HttpDelete("{id}")]
         public IActionResult EliminarProducto(int id)
         {
@@ -207,7 +204,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // REGISTRAR MOVIMIENT
         [HttpPost("RegistrarMovimiento")]
         public IActionResult RegistrarMovimiento([FromBody] MovimientoInventario model)
         {

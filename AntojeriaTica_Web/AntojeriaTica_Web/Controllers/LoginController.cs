@@ -139,7 +139,7 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        //RegistrarEmpleado
+
         [HttpGet]
         [AdminOnly] 
         public async Task<IActionResult> RegistrarEmpleado()
@@ -195,7 +195,7 @@ namespace AntojeriaTica_Web.Controllers
                     else
                     {
                         var errorContent = await response.Content.ReadAsStringAsync();
-                        ViewBag.Error = "Error al registrar empleado: " + errorContent;
+            
                     }
                 }
             }
@@ -243,7 +243,7 @@ namespace AntojeriaTica_Web.Controllers
         }
 
 
-        //Listar Usuarios
+        
         [HttpGet]
             [AdminOnly]
             public IActionResult ListarUsuarios()
@@ -297,18 +297,20 @@ namespace AntojeriaTica_Web.Controllers
 
                     try
                     {
-                        var jsonResponse = System.Text.Json.JsonSerializer.Deserialize<dynamic>(responseContent);
-
-                        var userElement = ((System.Text.Json.JsonElement)jsonResponse).GetProperty("user");
-
-                        model.IdUsuario = userElement.GetProperty("idUsuario").GetInt32();
-                        model.NombreCompleto = userElement.GetProperty("nombreCompleto").GetString();
-                        model.Correo = userElement.GetProperty("correo").GetString();
-                        model.Cedula = userElement.GetProperty("cedula").GetString();
-                        model.Estado = userElement.GetProperty("estado").GetString();
-                        model.IdRol = userElement.GetProperty("idRol").GetInt32();
-
-                        Console.WriteLine($"Usuario cargado: {model.NombreCompleto} - {model.Correo}");
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        using var doc = System.Text.Json.JsonDocument.Parse(responseContent);
+                        if (doc.RootElement.TryGetProperty("user", out var userElement))
+                        {
+                            var parsed = System.Text.Json.JsonSerializer.Deserialize<UsuarioModel>(userElement.GetRawText(), options) ?? new UsuarioModel();
+                            model = parsed;
+                            model.Cedula ??= string.Empty;
+                            Console.WriteLine($"Usuario cargado: {model.NombreCompleto} - {model.Correo}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Respuesta sin propiedad 'user'");
+                            model.IdUsuario = id;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -325,7 +327,6 @@ namespace AntojeriaTica_Web.Controllers
                     return RedirectToAction("ListarUsuarios");
                 }
 
-                // Cargar lista de roles
                 var rolesUrl = "http://localhost:5062/api/Account/GetAllRoles";
                 var rolesResult = httpClient.GetAsync(rolesUrl).Result;
 
@@ -355,6 +356,8 @@ namespace AntojeriaTica_Web.Controllers
                 [AdminOnly]
                 public IActionResult ActualizarUsuario(UsuarioModel model)
                 {
+                    model.Cedula ??= string.Empty;
+
                     using (var httpClient = new HttpClient())
                     {
                         var url = "http://localhost:5062/api/Account/UpdateUser";
@@ -439,7 +442,6 @@ namespace AntojeriaTica_Web.Controllers
                     }
                 }
 
-                // roles
                 [HttpGet]
                 [AdminOnly]
                 public IActionResult RegistrarRol()
@@ -540,7 +542,7 @@ namespace AntojeriaTica_Web.Controllers
 
                     return RedirectToAction("ListarRoles");
                 }
-                // roles
+
 
                 [HttpPost]
                 public IActionResult IniciarSesion(UsuarioModel model)
@@ -605,7 +607,7 @@ namespace AntojeriaTica_Web.Controllers
 
                         ViewBag.Error = "Credenciales inválidas o error al iniciar sesión.";
                     }
-
+        
                     return View(model);
                 }
             }

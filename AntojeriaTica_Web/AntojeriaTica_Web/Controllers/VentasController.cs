@@ -159,12 +159,10 @@ namespace AntojeriaTica_Web.Controllers
             return RedirectToAction("GestionarDescuentos");
         }
 
-        // NUEVAS FUNCIONALIDADES PARA BÚSQUEDA Y FILTRADO DE VENTAS
 
         [HttpGet]
         public async Task<IActionResult> BuscarVentas()
         {
-            // Autocargar ventas del día actual al entrar al módulo
             var model = new BusquedaVentasModel
             {
                 FechaInicio = DateTime.Today,
@@ -229,7 +227,6 @@ namespace AntojeriaTica_Web.Controllers
                 var queryString = string.Join("&", queryParams);
                 var url = $"http://localhost:5062/api/Ventas/BuscarVentas?{queryString}";
 
-                // Log para debug
                 Console.WriteLine($"Llamando a URL: {url}");
 
                 var response = await client.GetAsync(url);
@@ -319,7 +316,6 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // Acción para imprimir comprobante de venta anterior
         [HttpGet]
         public async Task<IActionResult> ImprimirComprobante(int id)
         {
@@ -348,7 +344,6 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // MÉTODOS PARA DEVOLUCIONES
 
         [HttpGet]
         public async Task<IActionResult> DevolucionTotal()
@@ -566,7 +561,6 @@ namespace AntojeriaTica_Web.Controllers
         [HttpGet]
         public IActionResult ProcesarDevoluciones()
         {
-            // Vista principal para procesar devoluciones - permite elegir tipo
             var model = new DevolucionModel();
             return View(model);
         }
@@ -600,14 +594,12 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // Vista para buscar venta para devolución
         [HttpGet]
         public IActionResult BuscarVentaDevolucion()
         {
             return View();
         }
 
-        // Listado simple de ventas (del día o por fecha) para el dropdown
         [HttpGet]
         public async Task<JsonResult> ListarVentasParaDevolucion(DateTime? fecha = null)
         {
@@ -640,79 +632,54 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // Método AJAX para buscar venta específica para devolución
         [HttpPost]
         public async Task<IActionResult> BuscarVentaDevolucionAjax(int ventaId)
         {
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                
-                // Primero validar si la venta se puede devolver
-                var urlValidacion = $"http://localhost:5062/api/Devoluciones/ValidarVentaParaDevolucion/{ventaId}";
-                var responseValidacion = await client.GetAsync(urlValidacion);
-                
-                if (responseValidacion.IsSuccessStatusCode)
+
+                var urlDetalle = $"http://localhost:5062/api/Ventas/DetalleVenta/{ventaId}";
+                var responseDetalle = await client.GetAsync(urlDetalle);
+                if (responseDetalle.IsSuccessStatusCode)
                 {
-                    var validacionJson = await responseValidacion.Content.ReadAsStringAsync();
+                    var venta = await responseDetalle.Content.ReadFromJsonAsync<VentaCompleta>();
+
+                    var urlValidacion = $"http://localhost:5062/api/Devoluciones/ValidarVentaParaDevolucion/{ventaId}";
+                    var responseValidacion = await client.GetAsync(urlValidacion);
+                    if (responseValidacion.IsSuccessStatusCode)
+                    {
+                        var validacionJson = await responseValidacion.Content.ReadAsStringAsync();
+                        var validacion = System.Text.Json.JsonSerializer.Deserialize<dynamic>(validacionJson);
+                        var yaDevuelta = validacion.GetProperty("yaDevuelta").GetBoolean();
+                        if (yaDevuelta)
+                        {
+                            return Json(new {
+                                error = "Esta venta ya tiene devoluciones procesadas",
+                                yaDevuelta = true,
+                                venta
+                            });
+                        }
+                    }
+
+                    return Json(venta);
+                }
+
+
+                var urlValidacionFallback = $"http://localhost:5062/api/Devoluciones/ValidarVentaParaDevolucion/{ventaId}";
+                var responseValidacionFallback = await client.GetAsync(urlValidacionFallback);
+                if (responseValidacionFallback.IsSuccessStatusCode)
+                {
+                    var validacionJson = await responseValidacionFallback.Content.ReadAsStringAsync();
                     var validacion = System.Text.Json.JsonSerializer.Deserialize<dynamic>(validacionJson);
-                    
-                    // Verificar si es válida (el campo se llama "valida" no "EsValida")
                     var esValida = validacion.GetProperty("valida").GetBoolean();
-                    var yaDevuelta = validacion.GetProperty("yaDevuelta").GetBoolean();
-                    
                     if (!esValida)
                     {
                         return Json(new { error = "Venta no válida para devolución" });
                     }
-                    
-                    // Si ya está devuelta, informar al usuario
-                    if (yaDevuelta)
-                    {
-                        // Crear objeto de venta básico desde la validación
-                        var ventaBasica = new
-                        {
-                            id = validacion.GetProperty("ventaId").GetInt32(),
-                            fecha = validacion.GetProperty("fecha").GetDateTime(),
-                            metodoPago = validacion.GetProperty("metodoPago").GetString(),
-                            total = validacion.GetProperty("total").GetDecimal(),
-                            detalles = new object[0] // Array vacío ya que solo necesitamos mostrar que está devuelta
-                        };
-                        
-                        return Json(new { 
-                            error = "Esta venta ya tiene devoluciones procesadas", 
-                            yaDevuelta = true,
-                            venta = ventaBasica 
-                        });
-                    }
-                    
-                    // Si es válida, obtener los detalles completos de la venta
-                    var urlDetalle = $"http://localhost:5062/api/Ventas/DetalleVenta/{ventaId}";
-                    var responseDetalle = await client.GetAsync(urlDetalle);
-                    
-                    if (responseDetalle.IsSuccessStatusCode)
-                    {
-                        var venta = await responseDetalle.Content.ReadFromJsonAsync<VentaCompleta>();
-                        return Json(venta);
-                    }
-                    else
-                    {
-                        return Json(new { error = "No se pudieron obtener los detalles de la venta" });
-                    }
                 }
-                else
-                {
-                    // Fallback: intentar obtener el detalle directo aunque la validación falle
-                    var urlDetalleFallback = $"http://localhost:5062/api/Ventas/DetalleVenta/{ventaId}";
-                    var responseDetalleFallback = await client.GetAsync(urlDetalleFallback);
-                    if (responseDetalleFallback.IsSuccessStatusCode)
-                    {
-                        var venta = await responseDetalleFallback.Content.ReadFromJsonAsync<VentaCompleta>();
-                        return Json(venta);
-                    }
 
-                    return Json(new { error = "Venta no encontrada" });
-                }
+                return Json(new { error = "Venta no encontrada" });
             }
             catch (Exception ex)
             {
@@ -720,7 +687,6 @@ namespace AntojeriaTica_Web.Controllers
             }
         }
 
-        // Método para procesar devoluciones
         [HttpPost]
         public async Task<IActionResult> ProcesarDevolucion([FromBody] DevolucionRequest request)
         {
@@ -736,7 +702,7 @@ namespace AntojeriaTica_Web.Controllers
                     {
                         VentaId = request.VentaId,
                         Motivo = request.Motivo,
-                        TipoReembolso = "Efectivo" // Por defecto, se puede hacer configurable
+                        TipoReembolso = "Efectivo"
                     };
                     
                     var response = await client.PostAsJsonAsync(url, devolucionTotal);
@@ -764,11 +730,11 @@ namespace AntojeriaTica_Web.Controllers
                     {
                         VentaId = request.VentaId,
                         Motivo = request.Motivo,
-                        TipoReembolso = "Efectivo", // Por defecto, se puede hacer configurable
+                        TipoReembolso = "Efectivo",
                         ProductosDevolver = request.DetallesDevolucion.Select(d => new
                         {
                             ProductoId = d.ProductoId,
-                            CantidadDevolver = d.CantidadDevuelta  // Cambio aquí: CantidadDevolver en lugar de CantidadDevuelta
+                            CantidadDevolver = d.CantidadDevuelta
                         }).ToList()
                     };
                     
@@ -800,7 +766,6 @@ namespace AntojeriaTica_Web.Controllers
 
     }
 
-    // Clases auxiliares para las devoluciones
     public class DevolucionRequest
     {
         public int VentaId { get; set; }

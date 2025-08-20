@@ -1,9 +1,4 @@
--- =============================================
--- Base de datos AntojeriaTica - Script Consolidado
--- Incluye todas las funcionalidades: básica + facturación electrónica + pedidos
--- =============================================
 
--- Crear la base de datos si no existe
 IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'AntojeriaTica')
 BEGIN
     CREATE DATABASE AntojeriaTica;
@@ -15,115 +10,13 @@ BEGIN
 END
 GO
 
--- Asegurar contexto de base de datos desde el inicio
+
 IF DB_ID('AntojeriaTica') IS NOT NULL
 BEGIN
     USE AntojeriaTica;
 END
 GO
 
--- =============================================
--- TODOs y notas de mantenimiento (Ejemplos)
--- =============================================
--- Este bloque solo contiene comentarios con ejemplos de TODO para guiar trabajos futuros.
--- No impacta la ejecución del script.
-
-/*
-Formato sugerido de TODO:
-TODO [CATEGORIA][ID opcional]: Título corto y claro
-- Contexto: breve explicación del porqué.
-- Acción/Enfoque: pasos propuestos o decisión pendiente.
-- Riesgos/Dependencias: si aplica.
-- Responsable/ETA: si aplica.
-*/
-
--- TODO [DB-PERF][PERF-001]: Índices para acelerar reportes
--- - Contexto: Consultas frecuentes por fecha y joins de ventas/detalles.
--- - Acción: Crear índices no-clustered en Venta(Fecha), DetalleVenta(VentaId), Producto(Codigo) INCLUDE(Nombre,Precio).
---   Ejemplos:
---   CREATE INDEX IX_Venta_Fecha ON Venta(Fecha);
---   CREATE INDEX IX_DetalleVenta_VentaId ON DetalleVenta(VentaId);
---   CREATE INDEX IX_Producto_Codigo ON Producto(Codigo) INCLUDE (Nombre, Precio);
-
--- TODO [DB-SEC][SEC-001]: Endurecer seguridad de base de datos
--- - Contexto: Separar permisos por roles de app (lectura/escritura/reportes).
--- - Acción: Crear esquemas/roles (app_reader, app_writer, app_report) y aplicar GRANT mínimos a SPs.
--- - Revisar mascarado/datos sensibles (clientes) y políticas de acceso.
-
--- TODO [DB-OBS][OBS-001]: Telemetría y auditoría
--- - Contexto: Necesitamos trazabilidad de ejecuciones de SPs críticos.
--- - Acción: Tabla de auditoría (ExecLog) + capturar parámetros/tiempos/errores; activar XE o Query Store para SPs clave.
-
--- TODO [DB-CLEANUP][CLN-001]: Archivado histórico
--- - Contexto: Tablas de ventas crecerán rápidamente.
--- - Acción: Estrategia de particionamiento por Fecha o tablas *_Archive con jobs mensuales.
-
--- TODO [DB-CI][CI-001]: Versionado de esquema
--- - Contexto: Necesitamos control de versiones e idempotencia en despliegues.
--- - Acción: Tabla __SchemaVersion y convención de scripts (Up/Down); integrar en pipeline CI/CD.
-
--- TODO [DB-API-CONTRACT][API-001]: Contratos SP ↔ modelos
--- - Contexto: Validar que columnas devueltas por SPs coincidan con modelos de la Web/API.
--- - Acción: Documentar contratos en comentarios sobre cada SP y añadir pruebas de integración básicas.
-
--- TODO [DB-TEST][TST-001]: Dataset de prueba y validaciones
--- - Contexto: Validar reportes (diarios/anuales) y cierres de caja.
--- - Acción: Script de seed adicional con diferentes métodos de pago/fechas y consultas de verificación.
-
--- TODO [DB-LOCALE][LOC-001]: Configuración regional/zonas horarias
--- - Contexto: Formateos de mes/nombre de día y TZ.
--- - Acción: Normalizar a UTC en base y presentar en app con TZ; o usar AT TIME ZONE 'Central America Standard Time' cuando aplique.
-
--- TODO [DB-BACKUP][BKP-001]: Plan de respaldo y restauración
--- - Contexto: Definir RPO/RTO.
--- - Acción: Backups diferenciales/diarios, verificación RESTORE WITH VERIFYONLY y procedimiento de DR.
-
--- TODO [DB-MAINT][MTN-001]: Mantenimiento de índices y estadísticas
--- - Contexto: Evitar degradación de rendimiento.
--- - Acción: Jobs para reorganize/rebuild y UPDATE STATISTICS según fragmentación/tamaño.
-
--- TODO [DB-TXN][TXN-001]: Consistencia transaccional
--- - Contexto: SPs con múltiples writes.
--- - Acción: Asegurar TRY/CATCH + TRAN + SET XACT_ABORT ON en SPs críticos.
-
--- TODO [DB-FE][FE-001]: Facturación electrónica avanzada
--- - Contexto: Integración con Hacienda y colas de envío.
--- - Acción: Tabla de colas (EmailQueue/FEQueue), reintentos y DLQ; validar estados con timeouts.
-
--- TODO [DB-MONITOR][MON-001]: Monitoreo de salud
--- - Contexto: Alertas proactivas.
--- - Acción: Métricas de bloqueo/lentitud, espacio en disco, tiempos de SPs; exponer a dashboard.
-
--- TODO [DB-ANON][ANON-001]: Anonimización para entornos de prueba
--- - Contexto: Cumplimiento y privacidad.
--- - Acción: Rutina de scramble para datos de clientes al refrescar ambientes no productivos.
-
--- TODO [DB-ENV][ENV-001]: Parámetros por entorno
--- - Contexto: Diferencias Dev/QA/Prod (porcentajes, seeds, flags).
--- - Acción: Variables/parametrización y toggles en script o uso de DACPAC con perfiles.
-
--- TODO [DB-NAMING][STD-001]: Convenciones de nombres
--- - Contexto: Homogeneidad de objetos.
--- - Acción: Documentar prefijos de SP (sp_), índices (IX_), FKs (FK_Tabla_Ref) y aplicar en objetos nuevos.
-
--- TODO [DB-REPORT][RPT-001]: Mejoras de reportes
--- - Contexto: Dashboard y ventas anuales.
--- - Acción: SPs con filtros por rango/usuario, cacheo temporal y vistas materializadas si procede.
-
-/*
-Plantilla rápida para nuevos TODOs
----------------------------------
-TODO [CATEGORIA][ID]: <Resumen>
-- Contexto:
-- Acción:
-- Dependencias:
-- Responsable/ETA:
-*/
-
--- =============================================
--- DATOS DE EJEMPLO PARA PRUEBAS (SOLO DEV)
--- (Se ejecutará solo si las tablas ya existen)
--- =============================================
 IF DB_ID('AntojeriaTica') IS NOT NULL
 AND OBJECT_ID('dbo.Usuario','U') IS NOT NULL
 AND OBJECT_ID('dbo.Producto','U') IS NOT NULL
@@ -132,9 +25,7 @@ AND OBJECT_ID('dbo.DetalleVenta','U') IS NOT NULL
 AND OBJECT_ID('dbo.MovimientoDiario','U') IS NOT NULL
 AND OBJECT_ID('dbo.CierreCaja','U') IS NOT NULL
 BEGIN
--- Notas:
--- - Inserciones idempotentes: solo se agregan si no existen datos para la fecha objetivo.
--- - Crea ventas y detalles para hoy y días recientes, movimientos de caja del día, y un cierre de caja de ayer.
+
 
 BEGIN TRY
     BEGIN TRANSACTION;
@@ -148,7 +39,6 @@ BEGIN TRY
     DECLARE @ProdP003 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P003');
     DECLARE @ProdP004 INT = (SELECT TOP 1 Id FROM Producto WHERE Codigo = 'P004');
 
-    -- Ventas de HOY si no hay ninguna aún
     IF NOT EXISTS (SELECT 1 FROM Venta WHERE CAST(Fecha AS DATE) = CAST(GETDATE() AS DATE))
     BEGIN
         DECLARE @v1 INT, @v2 INT;
@@ -249,7 +139,6 @@ BEGIN TRY
         WHERE v.Id = @vAyer;
     END
 
-    -- Movimientos de caja para HOY si no hay registros
     IF NOT EXISTS (SELECT 1 FROM MovimientoDiario WHERE CAST(Fecha AS DATE) = CAST(GETDATE() AS DATE))
     BEGIN
         INSERT INTO MovimientoDiario (Fecha, TipoMovimiento, Descripcion, Categoria, Monto, UsuarioId)
@@ -2639,6 +2528,393 @@ END
 GO
 
 -- =============================================
+-- TABLAS Y PROCEDIMIENTOS PARA DEVOLUCIONES Y CRÉDITOS
+-- =============================================
+
+-- Tabla Devolucion
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Devolucion' AND xtype='U')
+BEGIN
+    CREATE TABLE Devolucion (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        VentaOriginalId INT NOT NULL,
+        Fecha DATETIME NOT NULL DEFAULT GETDATE(),
+        TipoDevolucion NVARCHAR(20) NOT NULL, -- 'Total', 'Parcial'
+        TipoReembolso NVARCHAR(20) NOT NULL, -- 'Efectivo', 'Tarjeta', 'Credito'
+        MetodoPagoOriginal NVARCHAR(50) NOT NULL,
+        MontoTotal DECIMAL(10,2) NOT NULL,
+        MontoDevuelto DECIMAL(10,2) NOT NULL,
+        Motivo NVARCHAR(500) NULL,
+        Estado NVARCHAR(20) NOT NULL DEFAULT 'Procesada', -- 'Procesada', 'Cancelada'
+        UsuarioId INT NULL,
+        NumeroComprobante NVARCHAR(50) NULL,
+        CONSTRAINT FK_Devolucion_Venta FOREIGN KEY (VentaOriginalId) REFERENCES Venta(Id)
+    );
+END
+GO
+
+-- Tabla DetalleDevolucion
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DetalleDevolucion' AND xtype='U')
+BEGIN
+    CREATE TABLE DetalleDevolucion (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        DevolucionId INT NOT NULL,
+        ProductoId INT NOT NULL,
+        CantidadDevuelta INT NOT NULL,
+        PrecioUnitario DECIMAL(10,2) NOT NULL,
+        SubtotalDevolucion DECIMAL(10,2) NOT NULL,
+        CONSTRAINT FK_DetalleDevolucion_Devolucion FOREIGN KEY (DevolucionId) REFERENCES Devolucion(Id),
+        CONSTRAINT FK_DetalleDevolucion_Producto FOREIGN KEY (ProductoId) REFERENCES Producto(Id)
+    );
+END
+GO
+
+-- Tabla CreditoCliente
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CreditoCliente' AND xtype='U')
+BEGIN
+    CREATE TABLE CreditoCliente (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        DevolucionId INT NOT NULL,
+        NumeroIdentificacion NVARCHAR(50) NOT NULL,
+        NombreCliente NVARCHAR(200) NOT NULL,
+        MontoCredito DECIMAL(10,2) NOT NULL,
+        MontoUtilizado DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        SaldoDisponible AS (MontoCredito - MontoUtilizado),
+        FechaCreacion DATETIME NOT NULL DEFAULT GETDATE(),
+        FechaVencimiento DATETIME NOT NULL,
+        Estado NVARCHAR(20) NOT NULL DEFAULT 'Activo', -- 'Activo', 'Utilizado', 'Vencido'
+        CONSTRAINT FK_CreditoCliente_Devolucion FOREIGN KEY (DevolucionId) REFERENCES Devolucion(Id)
+    );
+END
+GO
+
+-- Tipo de tabla para productos a devolver (devolución parcial)
+IF TYPE_ID(N'TipoProductosDevolucion') IS NULL
+BEGIN
+    CREATE TYPE TipoProductosDevolucion AS TABLE
+    (
+        ProductoId INT,
+        CantidadDevolver INT
+    );
+END
+GO
+
+-- SP: Procesar Devolución Total
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ProcesarDevolucionTotal')
+    DROP PROCEDURE ProcesarDevolucionTotal;
+GO
+CREATE PROCEDURE ProcesarDevolucionTotal
+    @VentaId INT,
+    @TipoReembolso NVARCHAR(20), -- 'Efectivo', 'Tarjeta', 'Credito'
+    @Motivo NVARCHAR(500) = NULL,
+    @NumeroIdentificacion NVARCHAR(50) = NULL, -- Solo para crédito
+    @NombreCliente NVARCHAR(200) = NULL,       -- Solo para crédito
+    @DiasVencimientoCredito INT = 90
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        DECLARE @MetodoPagoOriginal NVARCHAR(50);
+        DECLARE @MontoTotal DECIMAL(10,2);
+
+        -- Verificar venta y calcular total
+        SELECT 
+            @MetodoPagoOriginal = v.MetodoPago,
+            @MontoTotal = SUM(dv.Cantidad * dv.PrecioUnitario)
+        FROM Venta v
+        INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+        WHERE v.Id = @VentaId
+        GROUP BY v.MetodoPago;
+
+        IF @MetodoPagoOriginal IS NULL
+        BEGIN
+            RAISERROR(N'La venta especificada no existe', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Evitar devoluciones duplicadas
+        IF EXISTS (SELECT 1 FROM Devolucion WHERE VentaOriginalId = @VentaId AND Estado = N'Procesada')
+        BEGIN
+            RAISERROR(N'Esta venta ya ha sido devuelta anteriormente', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Comprobante
+        DECLARE @NumeroComprobante NVARCHAR(50) = N'DEV' + FORMAT(GETDATE(), 'yyyyMMdd') + N'-' + CAST(@VentaId AS NVARCHAR(10));
+
+        -- Registrar devolución
+        INSERT INTO Devolucion (VentaOriginalId, TipoDevolucion, TipoReembolso, MetodoPagoOriginal, MontoTotal, MontoDevuelto, Motivo, NumeroComprobante)
+        VALUES (@VentaId, N'Total', @TipoReembolso, @MetodoPagoOriginal, @MontoTotal, @MontoTotal, @Motivo, @NumeroComprobante);
+
+        DECLARE @DevolucionId INT = SCOPE_IDENTITY();
+
+        -- Detalles devueltos
+        INSERT INTO DetalleDevolucion (DevolucionId, ProductoId, CantidadDevuelta, PrecioUnitario, SubtotalDevolucion)
+        SELECT @DevolucionId, dv.ProductoId, dv.Cantidad, dv.PrecioUnitario, dv.Cantidad * dv.PrecioUnitario
+        FROM DetalleVenta dv
+        WHERE dv.VentaId = @VentaId;
+
+        -- Crédito en cuenta si aplica
+        IF @TipoReembolso = N'Credito'
+        BEGIN
+            IF @NumeroIdentificacion IS NULL OR @NombreCliente IS NULL
+            BEGIN
+                RAISERROR(N'Para crédito se requiere identificación y nombre del cliente', 16, 1);
+                ROLLBACK TRANSACTION; RETURN;
+            END
+
+            INSERT INTO CreditoCliente (DevolucionId, NumeroIdentificacion, NombreCliente, MontoCredito, FechaVencimiento)
+            VALUES (@DevolucionId, @NumeroIdentificacion, @NombreCliente, @MontoTotal, DATEADD(DAY, @DiasVencimientoCredito, GETDATE()));
+        END
+
+        -- Resultado
+        SELECT 
+            d.Id,
+            d.NumeroComprobante,
+            d.MontoDevuelto,
+            d.TipoReembolso,
+            d.Fecha,
+            CASE WHEN d.TipoReembolso = N'Credito' THEN cc.Id ELSE NULL END AS CreditoId
+        FROM Devolucion d
+        LEFT JOIN CreditoCliente cc ON d.Id = cc.DevolucionId
+        WHERE d.Id = @DevolucionId;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Procesar Devolución Parcial
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ProcesarDevolucionParcial')
+    DROP PROCEDURE ProcesarDevolucionParcial;
+GO
+CREATE PROCEDURE ProcesarDevolucionParcial
+    @VentaId INT,
+    @ProductosDevolver TipoProductosDevolucion READONLY,
+    @TipoReembolso NVARCHAR(20),
+    @Motivo NVARCHAR(500) = NULL,
+    @NumeroIdentificacion NVARCHAR(50) = NULL,
+    @NombreCliente NVARCHAR(200) = NULL,
+    @DiasVencimientoCredito INT = 90
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        DECLARE @MetodoPagoOriginal NVARCHAR(50);
+        DECLARE @MontoTotalVenta DECIMAL(10,2);
+
+        SELECT 
+            @MetodoPagoOriginal = v.MetodoPago,
+            @MontoTotalVenta = SUM(dv.Cantidad * dv.PrecioUnitario)
+        FROM Venta v
+        INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+        WHERE v.Id = @VentaId
+        GROUP BY v.MetodoPago;
+
+        IF @MetodoPagoOriginal IS NULL
+        BEGIN
+            RAISERROR(N'La venta especificada no existe', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Monto a devolver
+        DECLARE @MontoDevolver DECIMAL(10,2);
+        SELECT @MontoDevolver = SUM(pd.CantidadDevolver * dv.PrecioUnitario)
+        FROM @ProductosDevolver pd
+        INNER JOIN DetalleVenta dv ON pd.ProductoId = dv.ProductoId AND dv.VentaId = @VentaId;
+
+        IF @MontoDevolver IS NULL OR @MontoDevolver <= 0
+        BEGIN
+            RAISERROR(N'No hay productos válidos para devolver', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        -- Validar cantidades
+        IF EXISTS (
+            SELECT 1
+            FROM @ProductosDevolver pd
+            INNER JOIN DetalleVenta dv ON pd.ProductoId = dv.ProductoId AND dv.VentaId = @VentaId
+            WHERE pd.CantidadDevolver > dv.Cantidad
+        )
+        BEGIN
+            RAISERROR(N'No se puede devolver más cantidad de la vendida', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        DECLARE @NumeroComprobante NVARCHAR(50) = N'DEV-P' + FORMAT(GETDATE(), 'yyyyMMdd') + N'-' + CAST(@VentaId AS NVARCHAR(10));
+
+        INSERT INTO Devolucion (VentaOriginalId, TipoDevolucion, TipoReembolso, MetodoPagoOriginal, MontoTotal, MontoDevuelto, Motivo, NumeroComprobante)
+        VALUES (@VentaId, N'Parcial', @TipoReembolso, @MetodoPagoOriginal, @MontoTotalVenta, @MontoDevolver, @Motivo, @NumeroComprobante);
+
+        DECLARE @DevolucionId INT = SCOPE_IDENTITY();
+
+        INSERT INTO DetalleDevolucion (DevolucionId, ProductoId, CantidadDevuelta, PrecioUnitario, SubtotalDevolucion)
+        SELECT @DevolucionId, pd.ProductoId, pd.CantidadDevolver, dv.PrecioUnitario, pd.CantidadDevolver * dv.PrecioUnitario
+        FROM @ProductosDevolver pd
+        INNER JOIN DetalleVenta dv ON pd.ProductoId = dv.ProductoId AND dv.VentaId = @VentaId;
+
+        IF @TipoReembolso = N'Credito'
+        BEGIN
+            IF @NumeroIdentificacion IS NULL OR @NombreCliente IS NULL
+            BEGIN
+                RAISERROR(N'Para crédito se requiere identificación y nombre del cliente', 16, 1);
+                ROLLBACK TRANSACTION; RETURN;
+            END
+
+            INSERT INTO CreditoCliente (DevolucionId, NumeroIdentificacion, NombreCliente, MontoCredito, FechaVencimiento)
+            VALUES (@DevolucionId, @NumeroIdentificacion, @NombreCliente, @MontoDevolver, DATEADD(DAY, @DiasVencimientoCredito, GETDATE()));
+        END
+
+        SELECT 
+            d.Id,
+            d.NumeroComprobante,
+            d.MontoDevuelto,
+            d.TipoReembolso,
+            d.Fecha,
+            CASE WHEN d.TipoReembolso = N'Credito' THEN cc.Id ELSE NULL END AS CreditoId
+        FROM Devolucion d
+        LEFT JOIN CreditoCliente cc ON d.Id = cc.DevolucionId
+        WHERE d.Id = @DevolucionId;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Buscar créditos disponibles de cliente
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='BuscarCreditosCliente')
+    DROP PROCEDURE BuscarCreditosCliente;
+GO
+CREATE PROCEDURE BuscarCreditosCliente
+    @NumeroIdentificacion NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        cc.Id,
+        cc.NumeroIdentificacion,
+        cc.NombreCliente,
+        cc.MontoCredito,
+        cc.MontoUtilizado,
+        cc.SaldoDisponible,
+        cc.FechaCreacion,
+        cc.FechaVencimiento,
+        cc.Estado,
+        d.NumeroComprobante AS ComprobanteDevolucion,
+        d.VentaOriginalId
+    FROM CreditoCliente cc
+    INNER JOIN Devolucion d ON cc.DevolucionId = d.Id
+    WHERE cc.NumeroIdentificacion = @NumeroIdentificacion
+      AND cc.Estado = N'Activo'
+      AND cc.SaldoDisponible > 0
+      AND cc.FechaVencimiento > GETDATE()
+    ORDER BY cc.FechaCreacion DESC;
+END
+GO
+
+-- SP: Aplicar crédito a una venta
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='AplicarCreditoAVenta')
+    DROP PROCEDURE AplicarCreditoAVenta;
+GO
+CREATE PROCEDURE AplicarCreditoAVenta
+    @CreditoId INT,
+    @VentaId INT,
+    @MontoAplicar DECIMAL(10,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        DECLARE @SaldoDisponible DECIMAL(10,2);
+        SELECT @SaldoDisponible = SaldoDisponible
+        FROM CreditoCliente
+        WHERE Id = @CreditoId AND Estado = N'Activo' AND FechaVencimiento > GETDATE();
+
+        IF @SaldoDisponible IS NULL
+        BEGIN
+            RAISERROR(N'El crédito especificado no existe o no está disponible', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        IF @MontoAplicar > @SaldoDisponible
+        BEGIN
+            RAISERROR(N'El monto a aplicar excede el saldo disponible del crédito', 16, 1);
+            ROLLBACK TRANSACTION; RETURN;
+        END
+
+        UPDATE CreditoCliente
+        SET MontoUtilizado = MontoUtilizado + @MontoAplicar,
+            Estado = CASE WHEN (MontoCredito - (MontoUtilizado + @MontoAplicar)) <= 0 THEN N'Utilizado' ELSE N'Activo' END
+        WHERE Id = @CreditoId;
+
+        SELECT 
+            N'Crédito aplicado exitosamente' AS Mensaje,
+            @MontoAplicar AS MontoAplicado,
+            (SELECT SaldoDisponible FROM CreditoCliente WHERE Id = @CreditoId) AS SaldoRestante;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- SP: Consultar historial de devoluciones
+IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='ConsultarHistorialDevoluciones')
+    DROP PROCEDURE ConsultarHistorialDevoluciones;
+GO
+CREATE PROCEDURE ConsultarHistorialDevoluciones
+    @FechaInicio DATETIME = NULL,
+    @FechaFin DATETIME = NULL,
+    @TipoDevolucion NVARCHAR(20) = NULL,
+    @TipoReembolso NVARCHAR(20) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        d.Id,
+        d.NumeroComprobante,
+        d.VentaOriginalId,
+        d.Fecha,
+        d.TipoDevolucion,
+        d.TipoReembolso,
+        d.MetodoPagoOriginal,
+        d.MontoTotal,
+        d.MontoDevuelto,
+        d.Motivo,
+        d.Estado,
+        v.Fecha AS FechaVentaOriginal,
+        COUNT(dd.Id) AS CantidadProductosDevueltos,
+        CASE WHEN d.TipoReembolso = N'Credito' THEN cc.NombreCliente ELSE NULL END AS ClienteCredito,
+        CASE WHEN d.TipoReembolso = N'Credito' THEN cc.NumeroIdentificacion ELSE NULL END AS IdentificacionCliente
+    FROM Devolucion d
+    INNER JOIN Venta v ON d.VentaOriginalId = v.Id
+    LEFT JOIN DetalleDevolucion dd ON d.Id = dd.DevolucionId
+    LEFT JOIN CreditoCliente cc ON d.Id = cc.DevolucionId
+    WHERE 
+        (@FechaInicio IS NULL OR d.Fecha >= @FechaInicio)
+        AND (@FechaFin IS NULL OR d.Fecha <= @FechaFin)
+        AND (@TipoDevolucion IS NULL OR d.TipoDevolucion = @TipoDevolucion)
+        AND (@TipoReembolso IS NULL OR d.TipoReembolso = @TipoReembolso)
+    GROUP BY d.Id, d.NumeroComprobante, d.VentaOriginalId, d.Fecha, d.TipoDevolucion, 
+             d.TipoReembolso, d.MetodoPagoOriginal, d.MontoTotal, d.MontoDevuelto, 
+             d.Motivo, d.Estado, v.Fecha, cc.NombreCliente, cc.NumeroIdentificacion
+    ORDER BY d.Fecha DESC;
+END
+GO
+
+-- =============================================
 -- DATOS INICIALES
 -- =============================================
 
@@ -2679,6 +2955,174 @@ BEGIN
 END
 
 -- =============================================
+    -- SPs de PRODUCTO (crear/actualizar/eliminar/obtener) + historial
+    -- =============================================
+
+    -- Tabla de historial de producto
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ProductoHistorial' AND xtype='U')
+    BEGIN
+        CREATE TABLE ProductoHistorial (
+            Id INT IDENTITY(1,1) PRIMARY KEY,
+            IdProducto INT NOT NULL,
+            Fecha DATETIME NOT NULL DEFAULT GETDATE(),
+            Usuario NVARCHAR(100) NOT NULL,
+            Cambio NVARCHAR(500) NOT NULL,
+            CONSTRAINT FK_ProductoHistorial_Producto FOREIGN KEY (IdProducto) REFERENCES Producto(Id)
+        );
+        PRINT 'Tabla ProductoHistorial creada';
+    END
+    GO
+
+    -- Insertar producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProducto')
+        DROP PROCEDURE sp_InsertarProducto;
+    GO
+    CREATE PROCEDURE sp_InsertarProducto
+        @Codigo NVARCHAR(50),
+        @Nombre NVARCHAR(200),
+        @Descripcion NVARCHAR(500) = NULL,
+        @PrecioUnitario DECIMAL(10,2),
+        @Existencias INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        -- Validación de código único
+        IF EXISTS (SELECT 1 FROM Producto WHERE Codigo = @Codigo)
+        BEGIN
+            RAISERROR('El código de producto ya existe', 16, 1);
+            RETURN;
+        END
+
+        INSERT INTO Producto (Codigo, Nombre, Descripcion, Precio, Categoria, Stock, StockMinimo, Gravado, Activo)
+        VALUES (@Codigo, @Nombre, @Descripcion, @PrecioUnitario, NULL, @Existencias, 5, 1, 1);
+
+        SELECT SCOPE_IDENTITY() AS IdProducto;
+    END
+    GO
+
+    -- Obtener producto por Id (con alias esperados por la API)
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerProducto')
+        DROP PROCEDURE sp_ObtenerProducto;
+    GO
+    CREATE PROCEDURE sp_ObtenerProducto
+        @IdProducto INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        SELECT 
+            Id AS IdProducto,
+            Codigo,
+            Nombre,
+            Descripcion,
+            Precio AS PrecioUnitario,
+            Stock AS Existencias
+        FROM Producto
+        WHERE Id = @IdProducto;
+    END
+    GO
+
+    -- Actualizar producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ActualizarProducto')
+        DROP PROCEDURE sp_ActualizarProducto;
+    GO
+    CREATE PROCEDURE sp_ActualizarProducto
+        @IdProducto INT,
+        @Nombre NVARCHAR(200),
+        @Descripcion NVARCHAR(500) = NULL,
+        @PrecioUnitario DECIMAL(10,2),
+        @Existencias INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        IF NOT EXISTS (SELECT 1 FROM Producto WHERE Id = @IdProducto)
+        BEGIN
+            RAISERROR('Producto no encontrado', 16, 1);
+            RETURN;
+        END
+
+        UPDATE Producto
+        SET Nombre = @Nombre,
+            Descripcion = @Descripcion,
+            Precio = @PrecioUnitario,
+            Stock = @Existencias
+        WHERE Id = @IdProducto;
+    END
+    GO
+
+    -- Eliminar (lógico) producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_EliminarProducto')
+        DROP PROCEDURE sp_EliminarProducto;
+    GO
+    CREATE PROCEDURE sp_EliminarProducto
+        @IdProducto INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        IF NOT EXISTS (SELECT 1 FROM Producto WHERE Id = @IdProducto)
+        BEGIN
+            RAISERROR('Producto no encontrado', 16, 1);
+            RETURN;
+        END
+        UPDATE Producto SET Activo = 0 WHERE Id = @IdProducto;
+    END
+    GO
+
+    -- Insertar historial de cambios de producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_InsertarProductoHistorial')
+        DROP PROCEDURE sp_InsertarProductoHistorial;
+    GO
+    CREATE PROCEDURE sp_InsertarProductoHistorial
+        @IdProducto INT,
+        @Usuario NVARCHAR(100),
+        @Cambio NVARCHAR(500)
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        INSERT INTO ProductoHistorial (IdProducto, Usuario, Cambio)
+        VALUES (@IdProducto, @Usuario, @Cambio);
+    END
+    GO
+
+    -- Obtener historial de producto
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_ObtenerHistorialProducto')
+        DROP PROCEDURE sp_ObtenerHistorialProducto;
+    GO
+    CREATE PROCEDURE sp_ObtenerHistorialProducto
+        @IdProducto INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        SELECT IdProducto, Fecha, Usuario, Cambio
+        FROM ProductoHistorial
+        WHERE IdProducto = @IdProducto
+        ORDER BY Fecha DESC, Id DESC;
+    END
+    GO
+
+    -- Wrapper para compatibilidad: sp_RegistrarMovimientoInventario
+    IF EXISTS (SELECT * FROM sys.objects WHERE type='P' AND name='sp_RegistrarMovimientoInventario')
+        DROP PROCEDURE sp_RegistrarMovimientoInventario;
+    GO
+    CREATE PROCEDURE sp_RegistrarMovimientoInventario
+        @IdProducto INT,
+        @TipoMovimiento NVARCHAR(50),
+        @Cantidad INT
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        DECLARE @UsuarioId INT;
+        SELECT TOP 1 @UsuarioId = Id FROM Usuario ORDER BY CASE WHEN Email='pepe@pepe' THEN 0 ELSE 1 END, Id;
+        EXEC RegistrarMovimientoInventario
+            @ProductoId=@IdProducto,
+            @TipoMovimiento=@TipoMovimiento,
+            @Cantidad=@Cantidad,
+            @Motivo=NULL,
+            @UsuarioId=@UsuarioId,
+            @VentaId=NULL;
+    END
+    GO
+
+    -- =============================================
 -- STORED PROCEDURE PARA SEGUIMIENTO AVANZADO - PED-002
 -- =============================================
 

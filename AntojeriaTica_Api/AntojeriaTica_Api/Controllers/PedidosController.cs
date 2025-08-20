@@ -29,7 +29,6 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     conn.Open();
 
-                    // Crear DataTable para los detalles del pedido
                     DataTable detallePedidoTable = new DataTable();
                     detallePedidoTable.Columns.Add("ProductoId", typeof(int));
                     detallePedidoTable.Columns.Add("Cantidad", typeof(int));
@@ -48,7 +47,7 @@ namespace AntojeriaTica_Api.Controllers
                         cmd.Parameters.AddWithValue("@Cliente", pedido.Cliente ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@Mesa", pedido.Mesa ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@TipoPedido", pedido.TipoPedido);
-                        cmd.Parameters.AddWithValue("@TiempoEstimado", pedido.TiempoEstimado ?? 30); // Default 30 minutos
+                        cmd.Parameters.AddWithValue("@TiempoEstimado", pedido.TiempoEstimado ?? 30);
                         cmd.Parameters.AddWithValue("@Observaciones", pedido.Observaciones ?? (object)DBNull.Value);
 
                         SqlParameter tvpParam = cmd.Parameters.AddWithValue("@DetallesPedido", detallePedidoTable);
@@ -80,7 +79,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Diagnóstico rápido para verificar UsuarioId grabado en Pedido
         [HttpGet("DebugUltimosPedidos")]
         public IActionResult DebugUltimosPedidos([FromQuery] int top = 10)
         {
@@ -211,7 +209,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Endpoint simplificado para testing
         [HttpPost("ActualizarEstadoSimple/{pedidoId}")]
         public IActionResult ActualizarEstadoSimple(int pedidoId, [FromBody] ActualizarEstadoRequest request)
         {
@@ -239,7 +236,6 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     conn.Open();
                     
-                    // Query SQL directo en lugar del stored procedure
                     string sql = @"
                         UPDATE Pedido 
                         SET Estado = @NuevoEstado, FechaActualizacion = GETDATE() 
@@ -302,7 +298,6 @@ namespace AntojeriaTica_Api.Controllers
                         cmd.Parameters.AddWithValue("@Estado", string.IsNullOrEmpty(estado) ? (object)DBNull.Value : estado);
                         cmd.Parameters.AddWithValue("@TipoPedido", string.IsNullOrEmpty(tipoPedido) ? (object)DBNull.Value : tipoPedido);
                         cmd.Parameters.AddWithValue("@PedidoId", pedidoId.HasValue ? (object)pedidoId.Value : DBNull.Value);
-                        // Filtros adicionales (si el SP los soporta)
                         cmd.Parameters.AddWithValue("@UsuarioId", usuarioId ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@SoloAtrasados", soloAtrasados);
 
@@ -356,7 +351,6 @@ namespace AntojeriaTica_Api.Controllers
                         {
                             Pedido? pedido = null;
 
-                            // Leer información del pedido
                             if (reader.Read())
                             {
                                 pedido = new Pedido
@@ -375,7 +369,6 @@ namespace AntojeriaTica_Api.Controllers
                                 };
                             }
 
-                            // Leer detalles del pedido
                             if (reader.NextResult())
                             {
                                 var detalles = new List<DetallePedido>();
@@ -426,7 +419,6 @@ namespace AntojeriaTica_Api.Controllers
             return Ok(estados);
         }
 
-        // Información básica para validar edición (dueño, fecha, estado)
         [HttpGet("InfoBasica/{pedidoId}")]
         public IActionResult ObtenerInfoBasica(int pedidoId)
         {
@@ -469,7 +461,6 @@ namespace AntojeriaTica_Api.Controllers
             public string? Observaciones { get; set; }
         }
 
-        // Edición básica limitada a 5 minutos para el dueño; Admin/Cocina sin límite pero sin cambiar estado
         [HttpPut("EditarBasico/{pedidoId}")]
         public IActionResult EditarBasico(int pedidoId, [FromBody] EditarBasicoRequest request)
         {
@@ -484,7 +475,6 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     conn.Open();
 
-                    // Traer datos del pedido
                     int ownerId = 0; DateTime fecha; string estado = "";
                     using (var cmd = new SqlCommand("SELECT UsuarioId, Fecha, Estado FROM Pedido WHERE Id=@Id", conn))
                     {
@@ -496,15 +486,12 @@ namespace AntojeriaTica_Api.Controllers
                         }
                     }
 
-                    // Regla de negocio: no editar si ya está Cancelado o Entregado
                     if (string.Equals(estado, "Cancelado", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(estado, "Entregado", StringComparison.OrdinalIgnoreCase))
                     {
                         return BadRequest(new { message = "No se puede editar un pedido cancelado o entregado" });
                     }
 
-                    // Determinar si es admin/cocina a partir de la tabla Usuario.RolId (asumimos 1=Admin, 2=Cocina?)
-                    // Si no existe esa convención, solo aplicar regla de 5 minutos al dueño.
                     bool esPrivilegiado = false;
                     using (var cmdRol = new SqlCommand(@"SELECT r.Nombre FROM Usuario u JOIN Rol r ON r.Id=u.RolId WHERE u.Id=@U", conn))
                     {
@@ -522,7 +509,6 @@ namespace AntojeriaTica_Api.Controllers
                         }
                     }
 
-                    // Actualizar solo campos permitidos
                     using (var upd = new SqlCommand(@"UPDATE Pedido SET Cliente=@Cliente, Mesa=@Mesa, Observaciones=@Obs, FechaActualizacion=GETDATE() WHERE Id=@Id", conn))
                     {
                         upd.Parameters.AddWithValue("@Cliente", (object?)request.Cliente ?? DBNull.Value);
@@ -611,7 +597,6 @@ namespace AntojeriaTica_Api.Controllers
                     {
                         try
                         {
-                            // Borrar detalles actuales
                             using (var del = new SqlCommand("DELETE FROM DetallePedido WHERE PedidoId=@Id", conn, tx))
                             {
                                 del.Parameters.AddWithValue("@Id", pedidoId);
@@ -622,7 +607,6 @@ namespace AntojeriaTica_Api.Controllers
 
                             foreach (var d in request.Detalles)
                             {
-                                // Obtener si el producto es gravado
                                 bool gravado = true;
                                 using (var cmdG = new SqlCommand("SELECT ISNULL(Gravado,1) FROM Producto WHERE Id=@Pid", conn, tx))
                                 {
@@ -690,7 +674,6 @@ VALUES (@PedidoId, @ProductoId, @Cantidad, @PrecioUnitario, 0, @Impuesto, @Subto
             return Ok(tipos);
         }
 
-        // PED-002: Endpoints para seguimiento de pedidos
         [HttpPost("DetectarPedidosAtrasados")]
         public IActionResult DetectarPedidosAtrasados()
         {
@@ -840,15 +823,8 @@ VALUES (@PedidoId, @ProductoId, @Cantidad, @PrecioUnitario, 0, @Impuesto, @Subto
             }
         }
 
-        // =============================================
-        // ENDPOINTS PED-004: CANCELACIÓN DE PEDIDOS
-        // =============================================
+        
 
-        /// <summary>
-        /// Verificar si un pedido puede ser cancelado - PED-004
-        /// </summary>
-        /// <param name="pedidoId">ID del pedido a verificar</param>
-        /// <returns>Información sobre la posibilidad de cancelación</returns>
         [HttpGet("VerificarCancelacion/{pedidoId}")]
         public IActionResult VerificarCancelacion(int pedidoId)
         {
@@ -887,13 +863,6 @@ VALUES (@PedidoId, @ProductoId, @Cantidad, @PrecioUnitario, 0, @Impuesto, @Subto
             }
         }
 
-        /// <summary>
-        /// Cancelar un pedido - PED-004
-        /// Escenario 1: Cancelación sin autorización (antes de iniciar preparación)
-        /// Escenario 2: Cancelación con autorización (después de iniciar preparación)
-        /// </summary>
-        /// <param name="request">Datos de la cancelación</param>
-        /// <returns>Resultado de la cancelación</returns>
         [HttpPost("CancelarPedido")]
         public IActionResult CancelarPedido([FromBody] CancelarPedidoRequest request)
         {
@@ -932,7 +901,6 @@ VALUES (@PedidoId, @ProductoId, @Cantidad, @PrecioUnitario, 0, @Impuesto, @Subto
             }
             catch (SqlException sqlEx)
             {
-                // Errores específicos de SQL Server (validaciones de negocio)
                 return BadRequest(new CancelarPedidoResponse
                 {
                     Exitoso = false,
@@ -949,13 +917,6 @@ VALUES (@PedidoId, @ProductoId, @Cantidad, @PrecioUnitario, 0, @Impuesto, @Subto
             }
         }
 
-        /// <summary>
-        /// Obtener historial de cancelaciones
-        /// </summary>
-        /// <param name="fechaInicio">Fecha de inicio opcional</param>
-        /// <param name="fechaFin">Fecha de fin opcional</param>
-        /// <param name="usuarioId">ID del usuario opcional</param>
-        /// <returns>Lista de pedidos cancelados</returns>
         [HttpGet("HistorialCancelaciones")]
         public IActionResult ObtenerHistorialCancelaciones(
             [FromQuery] DateTime? fechaInicio = null,

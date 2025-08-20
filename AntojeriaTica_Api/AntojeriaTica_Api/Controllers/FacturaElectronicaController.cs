@@ -25,7 +25,6 @@ namespace AntojeriaTica_Api.Controllers
             _facturaService = facturaService;
         }
 
-        // Escenario 1: Generar factura electrónica para una venta
         [HttpPost("GenerarFactura")]
     public IActionResult GenerarFacturaElectronica([FromBody] GenerarFacturaRequest request)
         {
@@ -60,17 +59,13 @@ namespace AntojeriaTica_Api.Controllers
                                     EstadoHacienda = reader["EstadoHacienda"]?.ToString() ?? string.Empty
                                 };
 
-                                // Cerrar reader antes de hacer otras operaciones
                                 reader.Close();
 
-                                // Simular envío a Hacienda
                                 var estadoSimulado = SimularEnvioHacienda(response.ClaveNumerica ?? "");
                                 response.EstadoHacienda = estadoSimulado;
                                 
-                                // Actualizar estado en base de datos
                                 ActualizarEstadoHacienda(conn, response.IdFactura, estadoSimulado);
 
-                                // Enviar email si se proporciona (asíncrono)
                                 if (!string.IsNullOrEmpty(request.ClienteEmail))
                                 {
                                     _ = Task.Run(async () => await _facturaService.EnviarEmailFacturaAsync(response.IdFactura, request.ClienteEmail));
@@ -90,7 +85,6 @@ namespace AntojeriaTica_Api.Controllers
             return BadRequest("No se pudo generar la factura");
         }
 
-        // Escenario 2: Buscar facturas electrónicas
         [HttpGet("BuscarFacturas")]
         public IActionResult BuscarFacturas(DateTime? fechaInicio = null, DateTime? fechaFin = null, 
             string? numeroFactura = null, string? clienteNombre = null, string? estadoHacienda = null)
@@ -140,7 +134,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Escenario 3: Obtener detalle de factura
         [HttpGet("DetalleFactura/{id}")]
         public IActionResult DetalleFactura(int id)
         {
@@ -180,7 +173,6 @@ namespace AntojeriaTica_Api.Controllers
                                     FechaVenta = Convert.ToDateTime(reader["FechaVenta"])
                                 };
 
-                                // Obtener productos (segundo result set)
                                 if (reader.NextResult())
                                 {
                                     detalle.Productos = new List<DetalleProductoFactura>();
@@ -201,7 +193,6 @@ namespace AntojeriaTica_Api.Controllers
                                     }
                                 }
 
-                                // Obtener historial (tercer result set)
                                 if (reader.NextResult())
                                 {
                                     detalle.HistorialEnvios = new List<HistorialEnvioFactura>();
@@ -235,7 +226,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Escenario 4: Reenviar factura por email
         [HttpPost("ReenviarFactura/{id}")]
         public async Task<IActionResult> ReenviarFactura(int id, [FromBody] ReenvioFacturaRequest request)
         {
@@ -258,7 +248,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // Escenario 5: Descargar PDF de factura
         [HttpGet("DescargarPDF/{id}")]
         public IActionResult DescargarPDF(int id)
         {
@@ -273,11 +262,10 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        #region Métodos Privados
+    #region Métodos Privados
 
         private string SimularEnvioHacienda(string claveNumerica)
         {
-            // Simulación simple: 90% de éxito
             var random = new Random();
             return random.NextDouble() > 0.1 ? "Aceptado" : "Rechazado";
         }
@@ -299,7 +287,6 @@ namespace AntojeriaTica_Api.Controllers
         {
             try
             {
-                // Simular envío de email
                 using (SqlCommand cmd = new SqlCommand("RegistrarEnvioFactura", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -320,7 +307,6 @@ namespace AntojeriaTica_Api.Controllers
 
         private byte[] GenerarPDFSimulado(int idFactura)
         {
-            // Contenido PDF simulado
             var content = $"Factura Electrónica #{idFactura}\nGenerada el: {DateTime.Now}\nEste es un PDF de prueba.";
             return Encoding.UTF8.GetBytes(content);
         }

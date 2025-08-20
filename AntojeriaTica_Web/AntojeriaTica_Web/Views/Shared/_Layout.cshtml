@@ -32,7 +32,6 @@
 </head>
 <body>
     <div class="app-shell">
-        <!-- Sidebar -->
         <aside id="app-sidebar" class="app-sidebar">
             <div class="brand">
                 <div class="image">
@@ -140,7 +139,6 @@
             }
         </aside>
 
-        <!-- Main -->
         <div class="app-main">
             <header class="app-header">
                 <div class="header-bar">
@@ -185,7 +183,6 @@
     <script src="@Url.Content("~/js/theme.js")"></script>
 
     <script>
-        // Mensajes globales (TempData/ViewBag)
         (function(){
             const ok = '@(TempData["Mensaje"] ?? "")';
             const err = '@(ViewBag.Error ?? TempData["Error"] ?? "")';

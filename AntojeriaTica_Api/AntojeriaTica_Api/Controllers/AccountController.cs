@@ -276,56 +276,42 @@ namespace AntojeriaTica_Api.Controllers
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
 
                 using (var context = new SqlConnection(connectionString))
+                using (SqlCommand comando = new SqlCommand("sp_ActualizarUsuario", context))
                 {
-                    using (SqlCommand comando = new SqlCommand("sp_ActualizarUsuario", context))
+                    comando.CommandType = System.Data.CommandType.StoredProcedure;
+                    comando.Parameters.AddWithValue("@IdUsuario", model.IdUsuario);
+                    comando.Parameters.AddWithValue("@NombreCompleto", model.NombreCompleto ?? "");
+                    comando.Parameters.AddWithValue("@Correo", model.Correo ?? "");
+                    comando.Parameters.AddWithValue("@Cedula", model.Cedula ?? "");
+                    comando.Parameters.AddWithValue("@Estado", model.Estado ?? "Activo");
+                    comando.Parameters.AddWithValue("@IdRol", model.IdRol ?? 1);
+
+                    context.Open();
+                    comando.ExecuteNonQuery();
+
+                    return Ok(new
                     {
-                        comando.CommandType = System.Data.CommandType.StoredProcedure;
-                        comando.Parameters.AddWithValue("@IdUsuario", model.IdUsuario);
-                        comando.Parameters.AddWithValue("@NombreCompleto", model.NombreCompleto ?? "");
-                        comando.Parameters.AddWithValue("@Correo", model.Correo ?? "");
-                        comando.Parameters.AddWithValue("@Cedula", model.Cedula ?? "");
-                        comando.Parameters.AddWithValue("@Estado", model.Estado ?? "Activo");
-                        comando.Parameters.AddWithValue("@IdRol", model.IdRol ?? 1);
-
-                        context.Open();
-                        var rowsAffected = comando.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            return Ok(new
-                            {
-                                success = true,
-                                message = "Usuario actualizado exitosamente"
-                            });
-                        }
-                        else
-                        {
-                            return NotFound(new
-                            {
-                                success = false,
-                                message = "Usuario no encontrado"
-                            });
-                        }
-                    }
+                        success = true,
+                        message = "Usuario actualizado exitosamente"
+                    });
                 }
             }
             catch (SqlException ex)
             {
-                return StatusCode(500, new
+                var msg = ex.Message?.ToLower() ?? string.Empty;
+                if (msg.Contains("no existe") && msg.Contains("usuario"))
                 {
-                    success = false,
-                    message = "Error de base de datos",
-                    error = ex.Message
-                });
+                    return NotFound(new { success = false, message = "Usuario no encontrado" });
+                }
+                if (msg.Contains("email ya está registrado"))
+                {
+                    return Conflict(new { success = false, message = "El email ya está registrado por otro usuario" });
+                }
+                return StatusCode(500, new { success = false, message = "Error de base de datos", error = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Error interno del servidor",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Error interno del servidor", error = ex.Message });
             }
         }
 
@@ -412,7 +398,6 @@ namespace AntojeriaTica_Api.Controllers
             }
         }
 
-        // roles
         [HttpPost]
         [Route("RegistrarRol")]
         public IActionResult RegistrarRol(Rol model)
@@ -511,7 +496,6 @@ namespace AntojeriaTica_Api.Controllers
                 return StatusCode(500, new { error = "Error al eliminar el rol", detalle = ex.Message });
             }
         }
-        //termina rol
 
     }
 }

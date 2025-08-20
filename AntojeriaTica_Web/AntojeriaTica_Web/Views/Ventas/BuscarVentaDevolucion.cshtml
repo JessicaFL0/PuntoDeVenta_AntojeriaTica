@@ -35,7 +35,7 @@
                         </div>
                     </div>
 
-                    <!-- Área de resultados -->
+                    
                     <div id="resultadoVenta" style="display: none;">
                         <div class="card border-success">
                             <div class="card-header bg-success text-white">
@@ -82,7 +82,7 @@
                         </div>
                     </div>
 
-                    <!-- Área de error -->
+                    
                     <div id="errorVenta" class="alert alert-danger" style="display: none;">
                         <i class="fas fa-exclamation-triangle me-2"></i>
                         <span id="mensajeError"></span>
@@ -554,7 +554,6 @@ function procesarDevolucion(datosDevolucion) {
     });
 }
 
-// Manejar cambio de motivo para mostrar campo "Otro"
 document.getElementById('motivoTotal').addEventListener('change', function() {
     const div = document.getElementById('otroMotivoTotalDiv');
     div.style.display = this.value === 'Otro' ? 'block' : 'none';
@@ -565,14 +564,12 @@ document.getElementById('motivoParcial').addEventListener('change', function() {
     div.style.display = this.value === 'Otro' ? 'block' : 'none';
 });
 
-// Permitir buscar con Enter
 document.getElementById('ventaId').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         buscarVenta();
     }
 });
 
-// Auto-buscar si hay ventaId en la URL
 document.addEventListener('DOMContentLoaded', function() {
     cargarVentasDropdown();
     const urlParams = new URLSearchParams(window.location.search);

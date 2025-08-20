@@ -65,7 +65,6 @@ namespace AntojeriaTica_Web.Models
         public decimal MontoTotal { get; set; }
     }
 
-    // Modelo para validación de ventas
     public class ValidacionVentaModel
     {
         public bool EsValida { get; set; }

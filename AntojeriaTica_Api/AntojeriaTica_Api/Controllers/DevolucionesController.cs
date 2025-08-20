@@ -81,7 +81,6 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     conn.Open();
 
-                    // Crear tabla de productos para devolver
                     DataTable productosTable = new DataTable();
                     productosTable.Columns.Add("ProductoId", typeof(int));
                     productosTable.Columns.Add("CantidadDevolver", typeof(int));
@@ -291,7 +290,6 @@ namespace AntojeriaTica_Api.Controllers
                 {
                     conn.Open();
                     
-                    // Verificar si la venta existe y obtener detalles
                     using (SqlCommand cmd = new SqlCommand(@"
                         SELECT 
                             v.Id,
