@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
 using System.Net.Http;
+using AntojeriaTica_Web.Filters;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using System;
 using System.Text.Json;
+using System.Linq;
 
 namespace AntojeriaTica_Web.Controllers
 {
@@ -24,14 +26,24 @@ namespace AntojeriaTica_Web.Controllers
         {
             var client = _httpClientFactory.CreateClient();
             var rol = HttpContext.Session.GetString("NombreRol") ?? string.Empty;
-            var isAdmin = rol.ToLowerInvariant().Contains("admin");
+            var roleNorm = rol.ToLowerInvariant();
+            var isPrivileged = roleNorm.Contains("admin") || roleNorm.Contains("cajero") || roleNorm.Contains("vendedor");
             var idUsuario = HttpContext.Session.GetInt32("IdUsuario");
 
-            string url = "http://localhost:5062/api/Pedidos/BuscarPedidos";
-            if (!isAdmin && idUsuario.HasValue)
+            var fechaInicio = DateTime.Today;
+            var fechaFin = DateTime.Today.AddDays(1).AddSeconds(-1);
+
+            // Construir URL con filtros por defecto (hoy) y por usuario cuando aplica
+            var query = new List<string>
             {
-                url += $"?usuarioId={idUsuario.Value}";
+                $"fechaInicio={Uri.EscapeDataString(fechaInicio.ToString("yyyy-MM-ddTHH:mm:ss"))}",
+                $"fechaFin={Uri.EscapeDataString(fechaFin.ToString("yyyy-MM-ddTHH:mm:ss"))}"
+            };
+            if (!isPrivileged && idUsuario.HasValue)
+            {
+                query.Add($"usuarioId={idUsuario.Value}");
             }
+            string url = $"http://localhost:5062/api/Pedidos/BuscarPedidos?{string.Join("&", query)}";
 
             try
             {
@@ -76,8 +88,15 @@ namespace AntojeriaTica_Web.Controllers
             var client = _httpClientFactory.CreateClient();
             var url = "http://localhost:5062/api/Pedidos/RegistrarPedido";
 
-            // Simular UsuarioId del usuario logueado (esto debería venir de la sesión)
-            model.UsuarioId = 1;
+            // Establecer UsuarioId del usuario logueado desde la sesión
+            var idUsuario = HttpContext.Session.GetInt32("IdUsuario");
+            if (!idUsuario.HasValue || idUsuario.Value <= 0)
+            {
+                ModelState.AddModelError("", "No se pudo determinar el usuario en sesión. Inicie sesión nuevamente.");
+                await CargarListasAsync();
+                return View(model);
+            }
+            model.UsuarioId = idUsuario.Value;
 
             try
             {
@@ -129,7 +148,8 @@ namespace AntojeriaTica_Web.Controllers
             return View(model);
         }
 
-        // GET: Pedidos/ActualizarEstado/5
+    // GET: Pedidos/ActualizarEstado/5
+    [AdminOnly("Admin","Cocina")]
         public async Task<IActionResult> ActualizarEstado(int id)
         {
             var client = _httpClientFactory.CreateClient();
@@ -148,7 +168,6 @@ namespace AntojeriaTica_Web.Controllers
             // Obtener información del pedido
             var pedidoUrl = $"http://localhost:5062/api/Pedidos/ObtenerDetalle/{id}";
             var pedidoResponse = await client.GetAsync(pedidoUrl);
-            
             if (pedidoResponse.IsSuccessStatusCode)
             {
                 var pedidoJson = await pedidoResponse.Content.ReadAsStringAsync();
@@ -171,10 +190,12 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         // GET: Pedidos/Cocina - Vista especial para la cocina
+        [AdminOnly("Admin","Cocina")]
         public async Task<IActionResult> Cocina()
         {
             var client = _httpClientFactory.CreateClient();
-            var url = "http://localhost:5062/api/Pedidos/BuscarPedidos?estado=En preparación";
+            var estado = Uri.EscapeDataString("En preparación");
+            var url = $"http://localhost:5062/api/Pedidos/BuscarPedidos?estado={estado}";
 
             try
             {
@@ -196,6 +217,143 @@ namespace AntojeriaTica_Web.Controllers
             }
 
             return View(new List<PedidoResumenModel>());
+        }
+
+        // GET: Pedidos/Editar/{id} - Edición básica (Cliente, Mesa, Observaciones) para usuarios sin rol, 5 minutos
+        [HttpGet]
+        public async Task<IActionResult> Editar(int id)
+        {
+            var client = _httpClientFactory.CreateClient();
+
+            // Obtener info básica para validar permisos y ventana de tiempo
+            var infoUrl = $"http://localhost:5062/api/Pedidos/InfoBasica/{id}";
+            try
+            {
+                var infoResp = await client.GetAsync(infoUrl);
+                if (!infoResp.IsSuccessStatusCode)
+                {
+                    TempData["Error"] = "No se pudo cargar el pedido o no existe";
+                    return RedirectToAction("Index");
+                }
+
+                var infoJson = await infoResp.Content.ReadAsStringAsync();
+                var info = JsonSerializer.Deserialize<PedidoBasicoInfo>(infoJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (info == null)
+                {
+                    TempData["Error"] = "Pedido no encontrado";
+                    return RedirectToAction("Index");
+                }
+
+                var rol = HttpContext.Session.GetString("NombreRol") ?? string.Empty;
+                var esPrivilegiado = rol.Equals("Admin", StringComparison.OrdinalIgnoreCase) || rol.Equals("Cocina", StringComparison.OrdinalIgnoreCase);
+                var idUsuario = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+
+                // Solo usuarios sin rol: deben ser dueños del pedido y dentro de 5 minutos
+                if (!esPrivilegiado)
+                {
+                    var minutos = (int)(DateTime.Now - info.Fecha).TotalMinutes;
+                    if (info.UsuarioId != idUsuario || minutos > 5)
+                    {
+                        TempData["Error"] = "No tiene permisos para editar este pedido o se superó la ventana de 5 minutos";
+                        return RedirectToAction("Index");
+                    }
+                }
+
+                // Cargar detalle para mostrar en el formulario
+                var detalleUrl = $"http://localhost:5062/api/Pedidos/ObtenerDetalle/{id}";
+                var detResp = await client.GetAsync(detalleUrl);
+                if (!detResp.IsSuccessStatusCode)
+                {
+                    TempData["Error"] = "No se pudo cargar el detalle del pedido";
+                    return RedirectToAction("Index");
+                }
+
+                var detJson = await detResp.Content.ReadAsStringAsync();
+                var pedido = JsonSerializer.Deserialize<PedidoModel>(detJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new PedidoModel();
+                // Necesario para editor de productos
+                await CargarListasAsync();
+                ViewBag.MinutosTranscurridos = (int)(DateTime.Now - info.Fecha).TotalMinutes;
+                return View(pedido);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error cargando pedido: {ex.Message}";
+                return RedirectToAction("Index");
+            }
+        }
+
+        // POST: Pedidos/Editar - aplica edición básica a través del API
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Editar(PedidoModel model)
+        {
+            if (model == null || model.Id <= 0)
+            {
+                TempData["Error"] = "Datos inválidos";
+                return RedirectToAction("Index");
+            }
+
+            var client = _httpClientFactory.CreateClient();
+            var idUsuario = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            // Siempre aplicar edición básica
+            var urlBasico = $"http://localhost:5062/api/Pedidos/EditarBasico/{model.Id}";
+            var bodyBasico = new { UsuarioId = idUsuario, Cliente = model.Cliente, Mesa = model.Mesa, Observaciones = model.Observaciones };
+            // Si hay detalles, enviar edición de productos
+            var urlProductos = $"http://localhost:5062/api/Pedidos/EditarProductos/{model.Id}";
+            var bodyProductos = new
+            {
+                UsuarioId = idUsuario,
+                Detalles = ((model.Detalles ?? new List<DetallePedidoModel>())
+                            .Select(d => (object)new {
+                                ProductoId = d.ProductoId,
+                                Cantidad = d.Cantidad,
+                                PrecioUnitario = d.PrecioUnitario,
+                                ObservacionesItem = d.ObservacionesItem
+                            }).ToList())
+            };
+
+            try
+            {
+                var respBasico = await client.PutAsJsonAsync(urlBasico, bodyBasico);
+                string contentBasico = await respBasico.Content.ReadAsStringAsync();
+
+                if (!respBasico.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        var errObj = JsonSerializer.Deserialize<JsonElement>(contentBasico);
+                        string msg = errObj.TryGetProperty("message", out var m) ? m.GetString() : contentBasico;
+                        TempData["Error"] = msg;
+                    }
+                    catch { TempData["Error"] = contentBasico; }
+                    return RedirectToAction("Editar", new { id = model.Id });
+                }
+                // Si hay items, intentar actualizar productos
+                if (model.Detalles != null && model.Detalles.Count > 0)
+                {
+                    var respProd = await client.PutAsJsonAsync(urlProductos, bodyProductos);
+                    var contentProd = await respProd.Content.ReadAsStringAsync();
+                    if (!respProd.IsSuccessStatusCode)
+                    {
+                        try
+                        {
+                            var errObj = JsonSerializer.Deserialize<JsonElement>(contentProd);
+                            string msg = errObj.TryGetProperty("message", out var m) ? m.GetString() : contentProd;
+                            TempData["Error"] = "Básico actualizado, pero productos: " + msg;
+                        }
+                        catch { TempData["Error"] = "Básico actualizado, pero productos: " + contentProd; }
+                        return RedirectToAction("Editar", new { id = model.Id });
+                    }
+                }
+
+                TempData["Success"] = "Pedido actualizado";
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error de conexión: {ex.Message}";
+                return RedirectToAction("Editar", new { id = model.Id });
+            }
         }
 
         // Método para cargar listas desplegables
@@ -288,12 +446,14 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         // POST: Pedidos/ActualizarEstado (maneja tanto formularios HTML como AJAX)
-        [HttpPost]
+    [HttpPost]
+    [AdminOnly("Admin","Cocina")]
         public async Task<IActionResult> ActualizarEstado(int pedidoId, string nuevoEstado)
         {
             // Debug: mostrar los datos recibidos
             Console.WriteLine($"ActualizarEstado - pedidoId: {pedidoId}, nuevoEstado: '{nuevoEstado}'");
             
+            var estado = Uri.EscapeDataString(nuevoEstado);
             // Validar que se haya proporcionado un nuevo estado
             if (string.IsNullOrWhiteSpace(nuevoEstado))
             {

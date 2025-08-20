@@ -233,12 +233,12 @@ namespace AntojeriaTica_Api.Services
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
 
-            var sql = @"
-                SELECT f.IdFactura, f.NumeroFactura, f.ClaveNumerica, f.ClienteNombre, 
-                       f.ClienteEmail, f.ClienteTelefono, f.FechaEmision, f.SubTotal, 
-                       f.MontoImpuesto, f.MontoTotal, f.EstadoHacienda
-                FROM FacturaElectronica f 
-                WHERE f.IdFactura = @IdFactura";
+         var sql = @"
+          SELECT f.IdFactura, f.NumeroFactura, f.ClaveNumerica, f.ClienteNombre, 
+              f.ClienteEmail, f.ClienteTelefono, f.FechaEmision, f.SubTotal, 
+              f.MontoImpuesto, f.MontoTotal, f.EstadoHacienda
+          FROM FacturaElectronica f 
+          WHERE f.Id = @IdFactura";
 
             using var command = new SqlCommand(sql, connection);
             command.Parameters.AddWithValue("@IdFactura", idFactura);
@@ -276,8 +276,8 @@ namespace AntojeriaTica_Api.Services
                 SELECT p.Nombre as NombreProducto, dv.Cantidad, dv.PrecioUnitario
                 FROM FacturaElectronica f
                 INNER JOIN DetalleVenta dv ON f.VentaId = dv.VentaId
-                INNER JOIN Producto p ON dv.ProductoId = p.IdProducto
-                WHERE f.IdFactura = @IdFactura";
+                INNER JOIN Producto p ON dv.ProductoId = p.Id
+                WHERE f.Id = @IdFactura";
 
             using var command = new SqlCommand(sql, connection);
             command.Parameters.AddWithValue("@IdFactura", idFactura);
@@ -301,20 +301,15 @@ namespace AntojeriaTica_Api.Services
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
 
-            var sql = @"
-                INSERT INTO HistorialEnvioFacturas (IdFactura, TipoEnvio, Destinatario, EstadoEnvio, MensajeRespuesta, FechaEnvio)
-                VALUES (@IdFactura, 'Email', @Destinatario, @EstadoEnvio, @MensajeRespuesta, GETDATE());
-                
-                UPDATE FacturaElectronica 
-                SET EmailEnviado = @EmailEnviado, FechaEnvioEmail = CASE WHEN @EstadoEnvio = 'Enviado' THEN GETDATE() ELSE FechaEnvioEmail END
-                WHERE IdFactura = @IdFactura";
-
-            using var command = new SqlCommand(sql, connection);
+            using var command = new SqlCommand("RegistrarEnvioFactura", connection)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
             command.Parameters.AddWithValue("@IdFactura", idFactura);
-            command.Parameters.AddWithValue("@Destinatario", emailDestino);
+            command.Parameters.AddWithValue("@TipoEnvio", "Email");
+            command.Parameters.AddWithValue("@Destinatario", (object?)emailDestino ?? DBNull.Value);
             command.Parameters.AddWithValue("@EstadoEnvio", estado);
-            command.Parameters.AddWithValue("@MensajeRespuesta", mensaje);
-            command.Parameters.AddWithValue("@EmailEnviado", estado == "Enviado");
+            command.Parameters.AddWithValue("@MensajeRespuesta", (object?)mensaje ?? DBNull.Value);
 
             command.ExecuteNonQuery();
         }

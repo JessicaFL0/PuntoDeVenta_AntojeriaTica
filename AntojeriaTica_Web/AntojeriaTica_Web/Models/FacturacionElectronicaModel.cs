@@ -9,11 +9,11 @@ namespace AntojeriaTica_Web.Models
         public string NumeroFactura { get; set; }
         public string ClaveNumerica { get; set; }
         
-        [JsonPropertyName("nombreCliente")]
-        public string ClienteNombre { get; set; }
+    [JsonPropertyName("nombreCliente")]
+    public string ClienteNombre { get; set; }
         
-        [JsonPropertyName("correoCliente")]
-        public string ClienteEmail { get; set; }
+    [JsonPropertyName("correoCliente")]
+    public string ClienteEmail { get; set; }
         
         public DateTime FechaGeneracion { get; set; }
         public decimal TotalComprobante { get; set; }

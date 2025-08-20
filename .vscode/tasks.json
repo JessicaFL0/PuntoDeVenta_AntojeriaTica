@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-slns",
+			"type": "shell",
+			"command": "dotnet build AntojeriaTica_Api/AntojeriaTica_Api.sln && dotnet build AntojeriaTica_Web/AntojeriaTica_Web.sln",
+			"args": [],
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		}
+	]
+}

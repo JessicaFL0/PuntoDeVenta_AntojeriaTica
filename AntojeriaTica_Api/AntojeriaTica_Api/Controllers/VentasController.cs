@@ -20,7 +20,7 @@ namespace AntojeriaTica_Api.Controllers
         }
 
         [HttpPost("RegistrarVenta")]
-        public IActionResult RegistrarVenta([FromBody] Venta venta)
+    public IActionResult RegistrarVenta([FromBody] Venta venta)
         {
             try
             {
@@ -42,6 +42,8 @@ namespace AntojeriaTica_Api.Controllers
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         cmd.Parameters.AddWithValue("@MetodoPago", venta.MetodoPago);
+                        // PedidoId opcional para ventas basadas en pedidos
+                        cmd.Parameters.AddWithValue("@PedidoId", (object?)venta.PedidoId ?? DBNull.Value);
 
                         SqlParameter tvpParam = cmd.Parameters.AddWithValue("@DetallesVenta", detalleVentaTable);
                         tvpParam.SqlDbType = SqlDbType.Structured;

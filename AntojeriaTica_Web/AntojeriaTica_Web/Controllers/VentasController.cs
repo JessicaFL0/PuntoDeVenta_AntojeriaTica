@@ -28,19 +28,34 @@ namespace AntojeriaTica_Web.Controllers
         [HttpPost]
         public async Task<IActionResult> RegistrarVenta(VentaModel model)
         {
-            var client = _httpClientFactory.CreateClient();
-            var url = "http://localhost:5062/api/Ventas/RegistrarVenta"; 
-
-            var response = await client.PostAsJsonAsync(url, model);
-
-            if (response.IsSuccessStatusCode)
+            if (model == null || model.Detalles == null || model.Detalles.Count == 0)
             {
-                TempData["Comprobante"] = "Venta registrada correctamente con método de pago: " + model.MetodoPago;
-                return RedirectToAction("Comprobante");
+                ModelState.AddModelError("", "Debe agregar al menos un producto.");
+                return View(model ?? new VentaModel { Detalles = new List<DetalleVentaModel>() });
             }
-            else
+
+            var client = _httpClientFactory.CreateClient();
+            var url = "http://localhost:5062/api/Ventas/RegistrarVenta";
+
+            try
             {
-                ModelState.AddModelError("", "Error al registrar la venta.");
+                var response = await client.PostAsJsonAsync(url, model);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    TempData["Comprobante"] = "Venta registrada correctamente con método de pago: " + model.MetodoPago;
+                    return RedirectToAction("Comprobante");
+                }
+                else
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    ModelState.AddModelError("", $"Error al registrar la venta: {content}");
+                    return View(model);
+                }
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error de conexión: {ex.Message}");
                 return View(model);
             }
         }
@@ -147,9 +162,47 @@ namespace AntojeriaTica_Web.Controllers
         // NUEVAS FUNCIONALIDADES PARA BÚSQUEDA Y FILTRADO DE VENTAS
 
         [HttpGet]
-        public IActionResult BuscarVentas()
+        public async Task<IActionResult> BuscarVentas()
         {
-            var model = new BusquedaVentasModel();
+            // Autocargar ventas del día actual al entrar al módulo
+            var model = new BusquedaVentasModel
+            {
+                FechaInicio = DateTime.Today,
+                FechaFin = DateTime.Today.AddHours(23).AddMinutes(59)
+            };
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                var queryParams = new List<string>();
+
+                if (model.FechaInicio.HasValue)
+                    queryParams.Add($"fechaInicio={Uri.EscapeDataString(model.FechaInicio.Value.ToString("yyyy-MM-ddTHH:mm:ss"))}");
+
+                if (model.FechaFin.HasValue)
+                    queryParams.Add($"fechaFin={Uri.EscapeDataString(model.FechaFin.Value.ToString("yyyy-MM-ddTHH:mm:ss"))}");
+
+                var queryString = string.Join("&", queryParams);
+                var url = $"http://localhost:5062/api/Ventas/BuscarVentas?{queryString}";
+
+                var response = await client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var ventas = await response.Content.ReadFromJsonAsync<List<VentaDetallada>>();
+                    model.Resultados = ventas ?? new List<VentaDetallada>();
+                }
+                else
+                {
+                    model.Resultados = new List<VentaDetallada>();
+                    ViewBag.Error = $"Error al cargar ventas iniciales. Status: {response.StatusCode}";
+                }
+            }
+            catch (Exception ex)
+            {
+                model.Resultados = new List<VentaDetallada>();
+                ViewBag.Error = $"Error de conexión: {ex.Message}";
+            }
+
             return View(model);
         }
 
@@ -471,12 +524,12 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         [HttpGet]
-        public async Task<JsonResult> ValidarVentaParaDevolucion(int ventaId)
+    public async Task<JsonResult> ValidarVentaParaDevolucion(int ventaId)
         {
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                var url = $"http://localhost:5062/api/Devoluciones/ValidarVenta/{ventaId}";
+        var url = $"http://localhost:5062/api/Devoluciones/ValidarVentaParaDevolucion/{ventaId}";
 
                 var response = await client.GetAsync(url);
 
@@ -554,6 +607,39 @@ namespace AntojeriaTica_Web.Controllers
             return View();
         }
 
+        // Listado simple de ventas (del día o por fecha) para el dropdown
+        [HttpGet]
+        public async Task<JsonResult> ListarVentasParaDevolucion(DateTime? fecha = null)
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                var dia = (fecha ?? DateTime.Today).Date;
+                var inicio = new DateTime(dia.Year, dia.Month, dia.Day, 0, 0, 0);
+                var fin = new DateTime(dia.Year, dia.Month, dia.Day, 23, 59, 59);
+
+                var url = $"http://localhost:5062/api/Ventas/BuscarVentas?fechaInicio={Uri.EscapeDataString(inicio.ToString("yyyy-MM-ddTHH:mm:ss"))}&fechaFin={Uri.EscapeDataString(fin.ToString("yyyy-MM-ddTHH:mm:ss"))}";
+                var response = await client.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return Json(new List<object>());
+                }
+
+                var ventas = await response.Content.ReadFromJsonAsync<List<VentaDetallada>>();
+                var lista = (ventas ?? new List<VentaDetallada>()).Select(v => new
+                {
+                    id = v.Id,
+                    label = $"#{v.Id} - {v.Fecha:dd/MM HH:mm} - ₡{v.Total.ToString("N0")} - {v.MetodoPago}"
+                }).ToList();
+
+                return Json(lista);
+            }
+            catch
+            {
+                return Json(new List<object>());
+            }
+        }
+
         // Método AJAX para buscar venta específica para devolución
         [HttpPost]
         public async Task<IActionResult> BuscarVentaDevolucionAjax(int ventaId)
@@ -616,6 +702,15 @@ namespace AntojeriaTica_Web.Controllers
                 }
                 else
                 {
+                    // Fallback: intentar obtener el detalle directo aunque la validación falle
+                    var urlDetalleFallback = $"http://localhost:5062/api/Ventas/DetalleVenta/{ventaId}";
+                    var responseDetalleFallback = await client.GetAsync(urlDetalleFallback);
+                    if (responseDetalleFallback.IsSuccessStatusCode)
+                    {
+                        var venta = await responseDetalleFallback.Content.ReadFromJsonAsync<VentaCompleta>();
+                        return Json(venta);
+                    }
+
                     return Json(new { error = "Venta no encontrada" });
                 }
             }

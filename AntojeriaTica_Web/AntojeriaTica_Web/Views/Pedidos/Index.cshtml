@@ -2,6 +2,8 @@
 
 @{
     ViewData["Title"] = "Gestión de Pedidos";
+    var rol = Context.Session.GetString("NombreRol") ?? string.Empty;
+    var esPriv = rol.Equals("Admin", StringComparison.OrdinalIgnoreCase) || rol.Equals("Cocina", StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="container-fluid">
@@ -13,9 +15,13 @@
                     <a asp-action="RegistrarPedido" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nuevo Pedido
                     </a>
-                    <a asp-action="Cocina" class="btn btn-warning">
-                        <i class="fas fa-utensils"></i> Vista Cocina
-                    </a>
+                                                    @* Usar variables de rol definidas arriba para evitar redeclaración *@
+                    @if (esPriv)
+                    {
+                        <a asp-action="Cocina" class="btn btn-warning">
+                            <i class="fas fa-utensils"></i> Vista Cocina
+                        </a>
+                    }
                 </div>
             </div>
 
@@ -102,10 +108,20 @@
                                                     </a>
                                                     @if (pedido.Estado != "Entregado" && pedido.Estado != "Cancelado")
                                                     {
-                                                        <a asp-action="ActualizarEstado" asp-route-id="@pedido.Id" 
-                                                           class="btn btn-sm btn-outline-warning" title="Cambiar Estado">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
+                                                        if (esPriv)
+                                                        {
+                                                            <a asp-action="ActualizarEstado" asp-route-id="@pedido.Id" 
+                                                               class="btn btn-sm btn-outline-warning" title="Cambiar Estado">
+                                                                <i class="fas fa-edit"></i>
+                                                            </a>
+                                                        }
+                                                        else
+                                                        {
+                                                            <a asp-action="Editar" asp-route-id="@pedido.Id" 
+                                                               class="btn btn-sm btn-outline-secondary" title="Editar (5 min)">
+                                                                <i class="fas fa-pen"></i>
+                                                            </a>
+                                                        }
                                                     }
                                                 </div>
                                             </td>

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Data;
 using Microsoft.Data.SqlClient;
 using System;
+using System.Linq;
 
 namespace AntojeriaTica_Api.Controllers
 {
@@ -62,6 +63,7 @@ namespace AntojeriaTica_Api.Controllers
                                 {
                                     PedidoId = Convert.ToInt32(reader["PedidoId"]),
                                     NumeroPedido = reader["NumeroPedido"].ToString(),
+                                    UsuarioId = pedido.UsuarioId,
                                     Mensaje = reader["Mensaje"].ToString()
                                 };
                                 return Ok(resultado);
@@ -75,6 +77,45 @@ namespace AntojeriaTica_Api.Controllers
             catch (System.Exception ex)
             {
                 return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // Diagnóstico rápido para verificar UsuarioId grabado en Pedido
+        [HttpGet("DebugUltimosPedidos")]
+        public IActionResult DebugUltimosPedidos([FromQuery] int top = 10)
+        {
+            try
+            {
+                using (var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    var pedidos = new List<object>();
+                    using (var cmd = new SqlCommand(@"SELECT TOP (@Top) p.Id, p.NumeroPedido, p.UsuarioId, p.Fecha, u.Nombre AS Usuario
+                                                      FROM Pedido p LEFT JOIN Usuario u ON u.Id = p.UsuarioId
+                                                      ORDER BY p.Id DESC", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Top", top);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                pedidos.Add(new
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                    NumeroPedido = reader.GetString(reader.GetOrdinal("NumeroPedido")),
+                                    UsuarioId = reader.GetInt32(reader.GetOrdinal("UsuarioId")),
+                                    Usuario = reader.IsDBNull(reader.GetOrdinal("Usuario")) ? null : reader.GetString(reader.GetOrdinal("Usuario")),
+                                    Fecha = reader.GetDateTime(reader.GetOrdinal("Fecha"))
+                                });
+                            }
+                        }
+                    }
+                    return Ok(pedidos);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
             }
         }
 
@@ -383,6 +424,257 @@ namespace AntojeriaTica_Api.Controllers
             };
 
             return Ok(estados);
+        }
+
+        // Información básica para validar edición (dueño, fecha, estado)
+        [HttpGet("InfoBasica/{pedidoId}")]
+        public IActionResult ObtenerInfoBasica(int pedidoId)
+        {
+            try
+            {
+                using (var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+                    using (var cmd = new SqlCommand(@"SELECT Id, UsuarioId, Fecha, Estado FROM Pedido WHERE Id = @Id", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", pedidoId);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return Ok(new
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                    UsuarioId = reader.GetInt32(reader.GetOrdinal("UsuarioId")),
+                                    Fecha = reader.GetDateTime(reader.GetOrdinal("Fecha")),
+                                    Estado = reader.GetString(reader.GetOrdinal("Estado"))
+                                });
+                            }
+                            return NotFound(new { message = "Pedido no encontrado" });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        public class EditarBasicoRequest
+        {
+            public int UsuarioId { get; set; }
+            public string? Cliente { get; set; }
+            public string? Mesa { get; set; }
+            public string? Observaciones { get; set; }
+        }
+
+        // Edición básica limitada a 5 minutos para el dueño; Admin/Cocina sin límite pero sin cambiar estado
+        [HttpPut("EditarBasico/{pedidoId}")]
+        public IActionResult EditarBasico(int pedidoId, [FromBody] EditarBasicoRequest request)
+        {
+            if (request == null || pedidoId <= 0 || request.UsuarioId <= 0)
+            {
+                return BadRequest(new { message = "Datos inválidos" });
+            }
+
+            try
+            {
+                using (var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+
+                    // Traer datos del pedido
+                    int ownerId = 0; DateTime fecha; string estado = "";
+                    using (var cmd = new SqlCommand("SELECT UsuarioId, Fecha, Estado FROM Pedido WHERE Id=@Id", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", pedidoId);
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            if (!r.Read()) return NotFound(new { message = "Pedido no encontrado" });
+                            ownerId = r.GetInt32(0); fecha = r.GetDateTime(1); estado = r.GetString(2);
+                        }
+                    }
+
+                    // Regla de negocio: no editar si ya está Cancelado o Entregado
+                    if (string.Equals(estado, "Cancelado", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(estado, "Entregado", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return BadRequest(new { message = "No se puede editar un pedido cancelado o entregado" });
+                    }
+
+                    // Determinar si es admin/cocina a partir de la tabla Usuario.RolId (asumimos 1=Admin, 2=Cocina?)
+                    // Si no existe esa convención, solo aplicar regla de 5 minutos al dueño.
+                    bool esPrivilegiado = false;
+                    using (var cmdRol = new SqlCommand(@"SELECT r.Nombre FROM Usuario u JOIN Rol r ON r.Id=u.RolId WHERE u.Id=@U", conn))
+                    {
+                        cmdRol.Parameters.AddWithValue("@U", request.UsuarioId);
+                        var rolNombre = cmdRol.ExecuteScalar() as string;
+                        esPrivilegiado = string.Equals(rolNombre, "Admin", StringComparison.OrdinalIgnoreCase) || string.Equals(rolNombre, "Cocina", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (!esPrivilegiado)
+                    {
+                        var minutos = (int)(DateTime.Now - fecha).TotalMinutes;
+                        if (request.UsuarioId != ownerId || minutos > 5)
+                        {
+                            return StatusCode(403, new { message = "No autorizado: ventana de edición expirada o no es el dueño" });
+                        }
+                    }
+
+                    // Actualizar solo campos permitidos
+                    using (var upd = new SqlCommand(@"UPDATE Pedido SET Cliente=@Cliente, Mesa=@Mesa, Observaciones=@Obs, FechaActualizacion=GETDATE() WHERE Id=@Id", conn))
+                    {
+                        upd.Parameters.AddWithValue("@Cliente", (object?)request.Cliente ?? DBNull.Value);
+                        upd.Parameters.AddWithValue("@Mesa", (object?)request.Mesa ?? DBNull.Value);
+                        upd.Parameters.AddWithValue("@Obs", (object?)request.Observaciones ?? DBNull.Value);
+                        upd.Parameters.AddWithValue("@Id", pedidoId);
+                        upd.ExecuteNonQuery();
+                    }
+
+                    return Ok(new { message = "Pedido actualizado" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        public class EditarProductosRequest
+        {
+            public int UsuarioId { get; set; }
+            public List<DetalleEditarProducto> Detalles { get; set; } = new List<DetalleEditarProducto>();
+        }
+
+        public class DetalleEditarProducto
+        {
+            public int ProductoId { get; set; }
+            public int Cantidad { get; set; }
+            public decimal PrecioUnitario { get; set; }
+            public string? ObservacionesItem { get; set; }
+        }
+
+        [HttpPut("EditarProductos/{pedidoId}")]
+        public IActionResult EditarProductos(int pedidoId, [FromBody] EditarProductosRequest request)
+        {
+            if (request == null || pedidoId <= 0 || request.UsuarioId <= 0)
+            {
+                return BadRequest(new { message = "Datos inválidos" });
+            }
+            if (request.Detalles == null || request.Detalles.Count == 0)
+            {
+                return BadRequest(new { message = "Debe proporcionar al menos un producto" });
+            }
+
+            try
+            {
+                using (var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    conn.Open();
+
+                    int ownerId = 0; DateTime fecha; string estado = "";
+                    using (var cmd = new SqlCommand("SELECT UsuarioId, Fecha, Estado FROM Pedido WHERE Id=@Id", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", pedidoId);
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            if (!r.Read()) return NotFound(new { message = "Pedido no encontrado" });
+                            ownerId = r.GetInt32(0); fecha = r.GetDateTime(1); estado = r.GetString(2);
+                        }
+                    }
+
+                    if (string.Equals(estado, "Cancelado", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(estado, "Entregado", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return BadRequest(new { message = "No se puede editar un pedido cancelado o entregado" });
+                    }
+
+                    bool esPrivilegiado = false;
+                    using (var cmdRol = new SqlCommand(@"SELECT r.Nombre FROM Usuario u JOIN Rol r ON r.Id=u.RolId WHERE u.Id=@U", conn))
+                    {
+                        cmdRol.Parameters.AddWithValue("@U", request.UsuarioId);
+                        var rolNombre = cmdRol.ExecuteScalar() as string;
+                        esPrivilegiado = string.Equals(rolNombre, "Admin", StringComparison.OrdinalIgnoreCase) || string.Equals(rolNombre, "Cocina", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (!esPrivilegiado)
+                    {
+                        var minutos = (int)(DateTime.Now - fecha).TotalMinutes;
+                        if (request.UsuarioId != ownerId || minutos > 5)
+                        {
+                            return StatusCode(403, new { message = "No autorizado: ventana de edición expirada o no es el dueño" });
+                        }
+                    }
+
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        try
+                        {
+                            // Borrar detalles actuales
+                            using (var del = new SqlCommand("DELETE FROM DetallePedido WHERE PedidoId=@Id", conn, tx))
+                            {
+                                del.Parameters.AddWithValue("@Id", pedidoId);
+                                del.ExecuteNonQuery();
+                            }
+
+                            decimal subtotal = 0m; decimal impuesto = 0m;
+
+                            foreach (var d in request.Detalles)
+                            {
+                                // Obtener si el producto es gravado
+                                bool gravado = true;
+                                using (var cmdG = new SqlCommand("SELECT ISNULL(Gravado,1) FROM Producto WHERE Id=@Pid", conn, tx))
+                                {
+                                    cmdG.Parameters.AddWithValue("@Pid", d.ProductoId);
+                                    var val = cmdG.ExecuteScalar();
+                                    if (val is bool b) gravado = b; else if (val is int i) gravado = i != 0; else gravado = true;
+                                }
+
+                                var subItem = d.Cantidad * d.PrecioUnitario;
+                                var impItem = gravado ? subItem * 0.13m : 0m;
+
+                                using (var ins = new SqlCommand(@"INSERT INTO DetallePedido (PedidoId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal, ObservacionesItem)
+VALUES (@PedidoId, @ProductoId, @Cantidad, @PrecioUnitario, 0, @Impuesto, @Subtotal, @Obs)", conn, tx))
+                                {
+                                    ins.Parameters.AddWithValue("@PedidoId", pedidoId);
+                                    ins.Parameters.AddWithValue("@ProductoId", d.ProductoId);
+                                    ins.Parameters.AddWithValue("@Cantidad", d.Cantidad);
+                                    ins.Parameters.AddWithValue("@PrecioUnitario", d.PrecioUnitario);
+                                    ins.Parameters.AddWithValue("@Impuesto", impItem);
+                                    ins.Parameters.AddWithValue("@Subtotal", subItem);
+                                    ins.Parameters.AddWithValue("@Obs", (object?)d.ObservacionesItem ?? DBNull.Value);
+                                    ins.ExecuteNonQuery();
+                                }
+
+                                subtotal += subItem;
+                                impuesto += impItem;
+                            }
+
+                            using (var upd = new SqlCommand(@"UPDATE Pedido SET Subtotal=@S, Impuesto=@I, Total=@T, FechaActualizacion=GETDATE() WHERE Id=@Id", conn, tx))
+                            {
+                                upd.Parameters.AddWithValue("@S", subtotal);
+                                upd.Parameters.AddWithValue("@I", impuesto);
+                                upd.Parameters.AddWithValue("@T", subtotal + impuesto);
+                                upd.Parameters.AddWithValue("@Id", pedidoId);
+                                upd.ExecuteNonQuery();
+                            }
+
+                            tx.Commit();
+                            return Ok(new { message = "Productos del pedido actualizados" });
+                        }
+                        catch (Exception ex)
+                        {
+                            tx.Rollback();
+                            return StatusCode(500, new { message = ex.Message });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         [HttpGet("ObtenerTiposPedido")]

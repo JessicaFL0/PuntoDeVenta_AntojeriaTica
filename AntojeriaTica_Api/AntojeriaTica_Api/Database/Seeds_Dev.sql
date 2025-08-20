@@ -1,6 +1,10 @@
 -- Seeds_Dev.sql - Datos de ejemplo para pruebas locales/DEV
 -- Ejecutar contra la BD AntojeriaTica
 
+-- Asegurar contexto
+USE AntojeriaTica;
+GO
+
 SET NOCOUNT ON;
 
 BEGIN TRY

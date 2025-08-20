@@ -15,6 +15,13 @@ BEGIN
 END
 GO
 
+-- Asegurar contexto de base de datos desde el inicio
+IF DB_ID('AntojeriaTica') IS NOT NULL
+BEGIN
+    USE AntojeriaTica;
+END
+GO
+
 -- =============================================
 -- TODOs y notas de mantenimiento (Ejemplos)
 -- =============================================
@@ -115,7 +122,16 @@ TODO [CATEGORIA][ID]: <Resumen>
 
 -- =============================================
 -- DATOS DE EJEMPLO PARA PRUEBAS (SOLO DEV)
+-- (Se ejecutará solo si las tablas ya existen)
 -- =============================================
+IF DB_ID('AntojeriaTica') IS NOT NULL
+AND OBJECT_ID('dbo.Usuario','U') IS NOT NULL
+AND OBJECT_ID('dbo.Producto','U') IS NOT NULL
+AND OBJECT_ID('dbo.Venta','U') IS NOT NULL
+AND OBJECT_ID('dbo.DetalleVenta','U') IS NOT NULL
+AND OBJECT_ID('dbo.MovimientoDiario','U') IS NOT NULL
+AND OBJECT_ID('dbo.CierreCaja','U') IS NOT NULL
+BEGIN
 -- Notas:
 -- - Inserciones idempotentes: solo se agregan si no existen datos para la fecha objetivo.
 -- - Crea ventas y detalles para hoy y días recientes, movimientos de caja del día, y un cierre de caja de ayer.
@@ -263,7 +279,10 @@ BEGIN CATCH
     -- Registrar el error si fuese necesario
 END CATCH
 
+END -- FIN IF de datos DEV (solo si tablas existen)
 
+
+-- (Contexto ya establecido arriba; repetimos por seguridad)
 USE AntojeriaTica;
 GO
 
@@ -478,6 +497,20 @@ BEGIN
 END
 GO
 
+-- Agregar columna PedidoId a Venta si no existe y crear FK a Pedido
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Venta') AND name = 'PedidoId')
+BEGIN
+    ALTER TABLE Venta ADD PedidoId int NULL;
+    PRINT 'Columna PedidoId agregada a Venta';
+END
+-- Nota: La FK depende de la existencia de la tabla Pedido; se crea más adelante tras crear Pedido
+IF OBJECT_ID('Pedido','U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Venta_Pedido')
+BEGIN
+    ALTER TABLE Venta WITH CHECK ADD CONSTRAINT FK_Venta_Pedido FOREIGN KEY (PedidoId) REFERENCES Pedido(Id);
+    PRINT 'FK_Venta_Pedido creada';
+END
+GO
+
 -- 8. Tabla DetalleVenta
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DetalleVenta' AND xtype='U')
 BEGIN
@@ -499,6 +532,15 @@ END
 ELSE
 BEGIN
     PRINT 'Tabla DetalleVenta ya existe';
+END
+GO
+
+-- Crear FK Venta(PedidoId) -> Pedido(Id) después de asegurar que Pedido existe
+IF OBJECT_ID('dbo.Pedido','U') IS NOT NULL AND OBJECT_ID('dbo.Venta','U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Venta_Pedido')
+BEGIN
+    ALTER TABLE Venta WITH CHECK ADD CONSTRAINT FK_Venta_Pedido FOREIGN KEY (PedidoId) REFERENCES Pedido(Id);
+    PRINT 'FK_Venta_Pedido creada';
 END
 GO
 
@@ -1715,6 +1757,230 @@ GO
 -- STORED PROCEDURES DE PEDIDOS
 -- =============================================
 
+-- =============================================
+-- SPs de soporte para Facturación Electrónica (faltantes)
+-- =============================================
+
+-- Actualizar estado en Hacienda para una factura electrónica
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'ActualizarEstadoFacturaHacienda')
+    DROP PROCEDURE ActualizarEstadoFacturaHacienda;
+GO
+CREATE PROCEDURE ActualizarEstadoFacturaHacienda
+    @IdFactura INT,
+    @EstadoHacienda NVARCHAR(50),
+    @MensajeHacienda NVARCHAR(MAX) = NULL,
+    @XMLGenerado NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Actualizar encabezado de factura
+    UPDATE FacturaElectronica
+    SET 
+        EstadoHacienda = @EstadoHacienda,
+        MensajeHacienda = COALESCE(@MensajeHacienda, MensajeHacienda),
+        FechaRespuestaHacienda = GETDATE(),
+        ModificadoPor = 'Sistema',
+        FechaModificacion = GETDATE()
+    WHERE Id = @IdFactura;
+
+    -- Registrar historial del cambio
+    INSERT INTO HistorialFacturacionElectronica (IdFactura, TipoEvento, Detalle, Estado, Mensaje, FechaEvento)
+    VALUES (@IdFactura, 'Hacienda', 'Actualización de estado', @EstadoHacienda, ISNULL(@MensajeHacienda, 'Actualización automática'), GETDATE());
+END
+GO
+
+-- Registrar evento de envío (Email u otros) asociado a la factura
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'RegistrarEnvioFactura')
+    DROP PROCEDURE RegistrarEnvioFactura;
+GO
+CREATE PROCEDURE RegistrarEnvioFactura
+    @IdFactura INT,
+    @TipoEnvio NVARCHAR(50),
+    @Destinatario NVARCHAR(255) = NULL,
+    @EstadoEnvio NVARCHAR(50) = 'Enviado',
+    @MensajeRespuesta NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Marcar envío de email si corresponde
+    IF @TipoEnvio = 'Email'
+    BEGIN
+        UPDATE FacturaElectronica
+        SET EmailEnviado = CASE WHEN @EstadoEnvio IN ('Enviado','Exitoso') THEN 1 ELSE EmailEnviado END,
+            FechaEnvioEmail = GETDATE(),
+            ModificadoPor = 'Sistema',
+            FechaModificacion = GETDATE()
+        WHERE Id = @IdFactura;
+    END
+
+    -- Insertar en historial
+    INSERT INTO HistorialFacturacionElectronica (IdFactura, TipoEvento, Detalle, Estado, Mensaje, FechaEvento)
+    VALUES (@IdFactura, @TipoEnvio, @Destinatario, @EstadoEnvio, @MensajeRespuesta, GETDATE());
+END
+GO
+
+-- =============================================
+-- TIPOS Y STORED PROCEDURES DE VENTAS (FALTANTES)
+-- =============================================
+
+-- Tipo de tabla para registrar detalles de venta
+IF NOT EXISTS (
+    SELECT 1 FROM sys.types st
+    JOIN sys.schemas ss ON st.schema_id = ss.schema_id
+    WHERE st.name = 'TipoDetalleVenta' AND ss.name = 'dbo'
+)
+BEGIN
+    CREATE TYPE dbo.TipoDetalleVenta AS TABLE (
+        ProductoId INT NOT NULL,
+        Cantidad   INT NOT NULL,
+        PrecioUnitario DECIMAL(10,2) NOT NULL
+    );
+    PRINT 'Tipo TipoDetalleVenta creado';
+END
+GO
+
+-- Registrar venta a partir de TVP
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'RegistrarVenta') AND type = 'P')
+    DROP PROCEDURE RegistrarVenta;
+GO
+CREATE PROCEDURE RegistrarVenta
+    @MetodoPago NVARCHAR(50),
+    @DetallesVenta dbo.TipoDetalleVenta READONLY,
+    @PedidoId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @VentaId INT;
+    DECLARE @UsuarioId INT;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Obtener un UsuarioId válido (fallback a cualquier usuario activo)
+        SELECT TOP 1 @UsuarioId = u.Id
+        FROM Usuario u
+        WHERE u.Activo = 1
+        ORDER BY CASE WHEN u.Email = 'pepe@pepe' THEN 0 ELSE 1 END, u.Id;
+
+        IF @UsuarioId IS NULL
+        BEGIN
+            -- Si no hay usuarios activos, tomar cualquier usuario disponible
+            SELECT TOP 1 @UsuarioId = u.Id FROM Usuario u ORDER BY u.Id;
+        END
+
+        -- Crear encabezado de venta con totales en 0
+        INSERT INTO Venta (Fecha, UsuarioId, Cliente, Subtotal, Impuesto, Descuento, Total, MetodoPago, Estado, Observaciones, PedidoId)
+        VALUES (GETDATE(), @UsuarioId, NULL, 0, 0, 0, 0, @MetodoPago, N'Completada', NULL, @PedidoId);
+        SET @VentaId = SCOPE_IDENTITY();
+
+        -- Insertar detalles
+        INSERT INTO DetalleVenta (VentaId, ProductoId, Cantidad, PrecioUnitario, Descuento, Impuesto, Subtotal)
+        SELECT 
+            @VentaId,
+            dv.ProductoId,
+            dv.Cantidad,
+            dv.PrecioUnitario,
+            0 AS Descuento,
+            CASE WHEN ISNULL(p.Gravado,1)=1 THEN (dv.Cantidad * dv.PrecioUnitario * 0.13) ELSE 0 END AS Impuesto,
+            (dv.Cantidad * dv.PrecioUnitario) AS Subtotal
+        FROM @DetallesVenta dv
+        INNER JOIN Producto p ON p.Id = dv.ProductoId;
+
+        -- Recalcular totales
+        UPDATE v SET 
+            Subtotal = x.Subtotal,
+            Impuesto = x.Impuesto,
+            Total    = x.Subtotal + x.Impuesto
+        FROM Venta v
+        CROSS APPLY (
+            SELECT 
+                SUM(dv.Cantidad*dv.PrecioUnitario) AS Subtotal,
+                SUM(CASE WHEN ISNULL(p.Gravado,1)=1 THEN dv.Cantidad*dv.PrecioUnitario*0.13 ELSE 0 END) AS Impuesto
+            FROM DetalleVenta dv
+            INNER JOIN Producto p ON p.Id = dv.ProductoId
+            WHERE dv.VentaId = v.Id
+        ) x
+        WHERE v.Id = @VentaId;
+
+        -- Si la venta corresponde a un pedido, marcarlo como Entregado
+        IF @PedidoId IS NOT NULL
+        BEGIN
+            UPDATE Pedido
+            SET Estado = 'Entregado',
+                FechaActualizacion = GETDATE(),
+                FechaFinalizacion = COALESCE(FechaFinalizacion, GETDATE())
+            WHERE Id = @PedidoId;
+        END
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END
+GO
+
+-- Buscar ventas (filtros por fecha, método, id)
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'BuscarVentas') AND type = 'P')
+    DROP PROCEDURE BuscarVentas;
+GO
+CREATE PROCEDURE BuscarVentas
+    @FechaInicio DATETIME = NULL,
+    @FechaFin    DATETIME = NULL,
+    @MetodoPago  NVARCHAR(50) = NULL,
+    @VentaId     INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        v.Id,
+        v.Fecha,
+        v.MetodoPago,
+        SUM(dv.Cantidad * dv.PrecioUnitario) AS Total,
+        SUM(dv.Cantidad) AS CantidadProductos
+    FROM Venta v
+    INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+    WHERE 
+        (@FechaInicio IS NULL OR v.Fecha >= @FechaInicio)
+        AND (@FechaFin IS NULL OR v.Fecha <= @FechaFin)
+        AND (@MetodoPago IS NULL OR v.MetodoPago = @MetodoPago)
+        AND (@VentaId IS NULL OR v.Id = @VentaId)
+    GROUP BY v.Id, v.Fecha, v.MetodoPago
+    ORDER BY v.Fecha DESC, v.Id DESC;
+END
+GO
+
+-- Obtener detalle completo de una venta
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'ObtenerDetalleVenta') AND type = 'P')
+    DROP PROCEDURE ObtenerDetalleVenta;
+GO
+CREATE PROCEDURE ObtenerDetalleVenta
+    @VentaId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        v.Id AS VentaId,
+        v.Fecha,
+        v.MetodoPago,
+        SUM(dv.Cantidad * dv.PrecioUnitario) OVER(PARTITION BY v.Id) AS TotalVenta,
+        dv.ProductoId,
+        p.Nombre AS ProductoNombre,
+        p.Codigo AS ProductoCodigo,
+        dv.Cantidad,
+        dv.PrecioUnitario,
+        (dv.Cantidad * dv.PrecioUnitario) AS Subtotal
+    FROM Venta v
+    INNER JOIN DetalleVenta dv ON v.Id = dv.VentaId
+    INNER JOIN Producto p ON dv.ProductoId = p.Id
+    WHERE v.Id = @VentaId
+    ORDER BY dv.ProductoId;
+END
+GO
+
 -- Crear tipo de tabla para detalles de pedido
 IF NOT EXISTS (SELECT * FROM sys.types st JOIN sys.schemas ss ON st.schema_id = ss.schema_id WHERE st.name = 'TipoDetallePedido' AND ss.name = 'dbo')
 BEGIN
@@ -1988,7 +2254,12 @@ BEGIN
     WHERE
         (@FechaInicio IS NULL OR p.Fecha >= @FechaInicio)
         AND (@FechaFin IS NULL OR p.Fecha <= @FechaFin)
-        AND (@Estado IS NULL OR p.Estado = @Estado)
+        AND (
+            @Estado IS NULL 
+            OR p.Estado = @Estado 
+            -- Compatibilidad por datos con codificación inválida ('En preparaciÃ³n')
+            OR (@Estado = N'En preparación' AND p.Estado = N'En preparaciÃ³n')
+        )
         AND (@TipoPedido IS NULL OR p.TipoPedido = @TipoPedido)
         AND (@PedidoId IS NULL OR p.Id = @PedidoId)
         AND (@UsuarioId IS NULL OR p.UsuarioId = @UsuarioId)
@@ -2021,7 +2292,7 @@ BEGIN
     SELECT Id, UsuarioId, NumeroPedido,
            DATEDIFF(MINUTE, FechaEstimadaEntrega, GETDATE()) as MinutosAtraso
     FROM Pedido
-    WHERE Estado IN ('En preparación')
+    WHERE Estado IN (N'En preparación', N'En preparaciÃ³n')
       AND FechaEstimadaEntrega < GETDATE()
       AND EsAtrasado = 0; -- Solo los que no han sido marcados como atrasados
 
@@ -2370,6 +2641,10 @@ GO
 -- =============================================
 -- DATOS INICIALES
 -- =============================================
+
+-- Hotfix: normalizar posibles estados mal codificados por problemas de página de códigos
+-- Esto corrige filas antiguas donde 'En preparación' quedó como 'En preparaciÃ³n'
+UPDATE Pedido SET Estado = N'En preparación' WHERE Estado = N'En preparaciÃ³n';
 
 -- Insertar usuario administrador por defecto si no existe
 IF NOT EXISTS (SELECT 1 FROM Usuario WHERE Email = 'admin@antojeria.com')

@@ -2,8 +2,9 @@
 {
     public class VentaModel
     {
-        public string MetodoPago { get; set; }
-        public string CodigoCupon { get; set; }
-        public List<DetalleVentaModel> Detalles { get; set; }
+    public int? PedidoId { get; set; }
+    public string MetodoPago { get; set; } = string.Empty;
+    public string CodigoCupon { get; set; } = string.Empty;
+    public List<DetalleVentaModel> Detalles { get; set; } = new List<DetalleVentaModel>();
     }
 }

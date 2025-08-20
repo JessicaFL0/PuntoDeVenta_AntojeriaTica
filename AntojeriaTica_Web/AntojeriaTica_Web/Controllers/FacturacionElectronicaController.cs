@@ -78,9 +78,16 @@ namespace AntojeriaTica_Web.Controllers
         }
 
         // GET: FacturacionElectronica
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var model = new BusquedaFacturasElectronicasViewModel();
+            var model = new BusquedaFacturasElectronicasViewModel
+            {
+                FechaInicio = DateTime.Today,
+                FechaFin = DateTime.Today
+            };
+
+            // Cargar resultados iniciales (hoy)
+            await BuscarFacturas(model);
             return View(model);
         }
 

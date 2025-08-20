@@ -10,7 +10,7 @@ namespace AntojeriaTica_Web.Models
         public string? MetodoPago { get; set; }
         public int? VentaId { get; set; }
         public List<VentaDetallada> Resultados { get; set; } = new List<VentaDetallada>();
-        public List<string> MetodosPago { get; set; } = new List<string> { "Efectivo", "Tarjeta", "Sinpe Móvil" };
+    public List<string> MetodosPago { get; set; } = new List<string> { "Efectivo", "Tarjeta", "SINPE Móvil" };
     }
 
     public class VentaDetallada

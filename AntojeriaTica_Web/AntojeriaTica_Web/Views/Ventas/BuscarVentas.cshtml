@@ -73,12 +73,12 @@
                                                     <option value="">
                                                         <i class="fas fa-list me-1"></i>-- Todos los métodos --
                                                     </option>
-                                                    @foreach (var metodo in Model.MetodosPago)
+                            @foreach (var metodo in Model.MetodosPago)
                                                     {
                                                         <option value="@metodo">
-                                                            @if(metodo == "Efectivo") { <text>💵</text> }
-                                                            else if(metodo == "Tarjeta") { <text>💳</text> }
-                                                            else if(metodo == "Sinpe Móvil") { <text>📱</text> }
+                                @if(metodo == "Efectivo") { <text>💵</text> }
+                                else if(metodo == "Tarjeta") { <text>💳</text> }
+                                else if(metodo == "SINPE Móvil") { <text>📱</text> }
                                                             @metodo
                                                         </option>
                                                     }
@@ -133,9 +133,6 @@
                                         <thead class="table-dark">
                                             <tr>
                                                 <th>
-                                                    <i class="fas fa-hashtag me-1"></i>ID
-                                                </th>
-                                                <th>
                                                     <i class="fas fa-calendar-day me-1"></i>Fecha y Hora
                                                 </th>
                                                 <th>
@@ -157,14 +154,6 @@
                                             {
                                                 <tr class="border-bottom">
                                                     <td>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar avatar-sm rounded-circle bg-gradient-info me-2">
-                                                                <span class="text-white text-xs font-weight-bold">@venta.Id.ToString().Substring(Math.Max(0, venta.Id.ToString().Length - 2))</span>
-                                                            </div>
-                                                            <span class="text-sm font-weight-bold">#@venta.Id</span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
                                                         <div class="d-flex flex-column justify-content-center">
                                                             <h6 class="mb-0 text-sm fecha-visible">
                                                                 <i class="fas fa-calendar-alt text-info me-1"></i>
@@ -178,21 +167,22 @@
                                                     </td>
                                                     <td>
                                                         @{
-                                                            var metodoBadgeClass = venta.MetodoPago switch {
-                                                                "Efectivo" => "bg-gradient-success",
-                                                                "Tarjeta" => "bg-gradient-primary", 
-                                                                "Sinpe Móvil" => "bg-gradient-warning",
-                                                                _ => "bg-gradient-secondary"
+                                                            var metodo = (venta.MetodoPago ?? string.Empty).Trim();
+                                                            var metodoBadgeClass = metodo switch {
+                                                                "Efectivo" => "bg-success text-white",
+                                                                "Tarjeta" => "bg-primary text-white", 
+                                                                "SINPE Móvil" => "bg-info text-dark",
+                                                                _ => "bg-secondary text-white"
                                                             };
-                                                            var metodoIcon = venta.MetodoPago switch {
+                                                            var metodoIcon = metodo switch {
                                                                 "Efectivo" => "fas fa-money-bill-wave",
                                                                 "Tarjeta" => "fas fa-credit-card",
-                                                                "Sinpe Móvil" => "fas fa-mobile-alt",
+                                                                "SINPE Móvil" => "fas fa-mobile-alt",
                                                                 _ => "fas fa-question"
                                                             };
                                                         }
-                                                        <span class="badge @metodoBadgeClass">
-                                                            <i class="@metodoIcon me-1"></i>@venta.MetodoPago
+                                                        <span class="badge @metodoBadgeClass" style="font-size:0.85rem;">
+                                                            <i class="@metodoIcon me-1"></i>@metodo
                                                         </span>
                                                     </td>
                                                     <td>

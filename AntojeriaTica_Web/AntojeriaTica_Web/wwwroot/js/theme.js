@@ -20,12 +20,41 @@
     });
   }
 
+  // Sidebar collapsed state persistence (desktop)
+  function setSidebarCollapsed(collapsed){
+    if(!sidebar) return;
+    if(window.innerWidth < 992){
+      // On mobile use overlay menu, not collapsed mode
+      sidebar.classList.remove('collapsed');
+      return;
+    }
+    if(collapsed) sidebar.classList.add('collapsed');
+    else sidebar.classList.remove('collapsed');
+    localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0');
+  }
+
+  // Restore state on load (desktop only)
+  const savedCollapsed = localStorage.getItem('sidebar-collapsed') === '1';
+  if(window.innerWidth >= 992){
+    setSidebarCollapsed(savedCollapsed);
+  }
+
   if(toggleBtn && sidebar){
     toggleBtn.addEventListener('click', function(){
       if(window.innerWidth < 992){
         sidebar.classList.toggle('show');
       }else{
-        sidebar.classList.toggle('collapsed');
+        const willCollapse = !sidebar.classList.contains('collapsed');
+        setSidebarCollapsed(willCollapse);
+      }
+    });
+    // Adjust on resize between desktop and mobile
+    window.addEventListener('resize', function(){
+      if(window.innerWidth < 992){
+        sidebar.classList.remove('collapsed');
+      }else{
+        const saved = localStorage.getItem('sidebar-collapsed') === '1';
+        setSidebarCollapsed(saved);
       }
     });
   }
